@@ -1456,15 +1456,15 @@ const css = `
 
 const STORAGE_KEY = 'tournoi-voitures-db';
 
-async function storageSave(data) {
-  try { await window.storage.set(STORAGE_KEY, JSON.stringify(data)); } catch {}
+function storageSave(data) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 }
 
-async function storageLoad() {
+function storageLoad() {
   try {
-    const result = await window.storage.get(STORAGE_KEY);
-    if (result?.value) {
-      const parsed = JSON.parse(result.value);
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
       if (!parsed.photos) parsed.photos = {};
       if (!parsed.brands) parsed.brands = {};
       return parsed;
@@ -1535,7 +1535,8 @@ export default function App() {
       setIsPrivate(true);
     }
 
-    storageLoad().then(saved => {
+    const saved = storageLoad();
+if (saved) {
       if (saved) {
         if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
           const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, brands: saved.brands || {} };
@@ -1563,8 +1564,8 @@ export default function App() {
         }
       }
       setLoaded(true);
-    });
-  }, []);
+  }
+}, []);
 
   useEffect(() => {
     if (!loaded) return;
