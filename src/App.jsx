@@ -1537,7 +1537,6 @@ export default function App() {
 
     const saved = storageLoad();
 if (saved) {
-      if (saved) {
         if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
           const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, brands: saved.brands || {} };
           fresh.seasons.push(initSeason(33));
