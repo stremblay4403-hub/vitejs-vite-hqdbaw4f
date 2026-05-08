@@ -1563,8 +1563,7 @@ if (saved) {
         }
       }
       setLoaded(true);
-  }
-}, []);
+  }, []);
 
   useEffect(() => {
     if (!loaded) return;
