@@ -8945,7 +8945,7 @@ if (saved) {
     });
 
     const html = '<!DOCTYPE html><html><head><meta charset="utf-8"><style>'
-     + '* { margin:0; padding:0; box-sizing:border-box; }'
+     + '* { margin:0; padding:0; box-sizing:border-box; -webkit-print-color-adjust:exact; print-color-adjust:exact; }'
       + '@page { size: landscape; margin: 10mm; }'
       + 'body { background:#ffffff; color:#111111; font-family:sans-serif; width:277mm; min-height:190mm; display:flex; flex-direction:column; align-items:center; justify-content:center; }'
       + '.subtitle { font-size:20px; color:#8a6f2e; letter-spacing:4px; text-align:center; margin-bottom:60px; }'
