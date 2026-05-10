@@ -1485,6 +1485,8 @@ export default function App() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainTab, setMainTab] = useState("dashboard");
+  const [allCarsSearch, setAllCarsSearch] = useState('');
+  const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [confirmReset, setConfirmReset] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
@@ -8068,13 +8070,10 @@ if (saved) {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = useState(AllCarsView._search || '');
-    const [leagueFilter, setLeagueFilter] = useState(AllCarsView._filter || 'Toutes');
+    const [search, setSearch] = [allCarsSearch, setAllCarsSearch];
+    const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
-
-    React.useEffect(() => { AllCarsView._search = search; }, [search]);
-    React.useEffect(() => { AllCarsView._filter = leagueFilter; }, [leagueFilter]);
 
     const allCars = [];
     [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
