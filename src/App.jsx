@@ -8861,7 +8861,7 @@ if (saved) {
                       if (!entry) return null;
                       return (
                         <div key={rank} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:12 }}>
-                       width:'min(220px,28vw)',height:'min(160px,20vw)',borderRadius:10,overflow:'hidden',border:'4px solid '+color }}
+                       <div style={{ width:'min(220px,28vw)',height:'min(160px,20vw)',borderRadius:10,overflow:'hidden',border:'4px solid '+color }}>
                             onClick={() => setProfileCar({ leagueName: entry.league, carId: entry.id })}>
                             {entry.photo ? <img src={entry.photo} style={{ width:'100%',height:'100%',objectFit:'contain',background:'#f5f5f5' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:64,background:'#f5f5f5' }}>🚗</div>}
                           </div>
