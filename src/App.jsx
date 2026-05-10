@@ -8850,7 +8850,7 @@ if (saved) {
                   </button>
                 </div>
                 <div className="card-body" style={{ background:'#fff',borderRadius:'0 0 8px 8px' }}>
-                  <div style={{ display:'flex',gap:32,justifyContent:'center',alignItems:'flex-end',padding:'60px 20px' }}>
+                  <div style={{ display:'flex',gap:8,justifyContent:'center',alignItems:'flex-end',padding:'20px 8px',flexWrap:'wrap',overflowX:'auto' }}>
                     {[
                       { rank: 2, height: 360, color: '#C0C0C0', label: '2E' },
                       { rank: 1, height: 480, color: '#FFD700', label: '1ER' },
@@ -8861,11 +8861,11 @@ if (saved) {
                       if (!entry) return null;
                       return (
                         <div key={rank} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:12 }}>
-                          <div style={{ width:220,height:160,borderRadius:10,overflow:'hidden',border:`4px solid ${color}`,cursor:'pointer' }}
+                         <div style={{ width:'min(220px,28vw)',height:'min(160px,20vw)',borderRadius:10,overflow:'hidden',border:`4px solid ${color}`
                             onClick={() => setProfileCar({ leagueName: entry.league, carId: entry.id })}>
                             {entry.photo ? <img src={entry.photo} style={{ width:'100%',height:'100%',objectFit:'contain',background:'#f5f5f5' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:64,background:'#f5f5f5' }}>🚗</div>}
                           </div>
-                          <div style={{ fontSize:28,fontWeight:700,color:'#111',textAlign:'center',maxWidth:220,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{entry.name}</div>
+                          <div style={{ fontSize:'min(28px,4vw)',fontWeight:700,color:'#111',textAlign:'center',maxWidth:'min(220px,28vw)',fontFamily:
                           {getCarBrand(entry.id) && (
                             <div style={{ fontSize:20,color:'#555',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{getCarBrand(entry.id)}</div>
                           )}
