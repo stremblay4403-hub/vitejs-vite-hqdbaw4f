@@ -2158,8 +2158,42 @@ if (saved) {
     });
   }
 
-  function setCarPhoto(carId, base64) {
-    setDb(d => ({ ...d, photos: { ...(d.photos || {}), [carId]: base64 } }));
+  async function compressImage(file) {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const maxW = 800, maxH = 600;
+          let w = img.width, h = img.height;
+          if (w > maxW) { h = h * maxW / w; w = maxW; }
+          if (h > maxH) { w = w * maxH / h; h = maxH; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          canvas.toBlob((blob) => resolve(blob), 'image/jpeg', 0.85);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function uploadToCloudinary(file) {
+    const compressed = await compressImage(file);
+    const formData = new FormData();
+    formData.append('file', compressed);
+    formData.append('upload_preset', 'Tournois de Voitures');
+    const res = await fetch('https://api.cloudinary.com/v1_1/dty8if0h1/image/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    return data.secure_url;
+  }
+
+  function setCarPhoto(carId, url) {
+    setDb(d => ({ ...d, photos: { ...(d.photos || {}), [carId]: url } }));
   }
   function getCarStats(carId, matches) {
     let w = 0, d = 0, l = 0;
