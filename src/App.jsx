@@ -3193,7 +3193,19 @@ if (saved) {
 
   function resetData() {
     loadedForNotifs.current = false;
-    const fresh = { seasons: [], currentSeasonIdx: 0, photos: db.photos || {}, brands: db.brands || {} };
+    const fresh = { 
+      seasons: [], 
+      currentSeasonIdx: 0, 
+      photos: db.photos || {}, 
+      brands: db.brands || {},
+      histOverrides: db.histOverrides || {},
+      nameMap: db.nameMap || {}
+    };
+    LEAGUES.forEach(l => {
+      const prevCars = db.seasons[0]?.leagues[l]?.cars.map(c => ({ id: c.id, name: c.name })) || [];
+      fresh.seasons[0] = fresh.seasons[0] || initSeason(33);
+    });
+    fresh.seasons = [];
     fresh.seasons.push(initSeason(33));
     storageSave(fresh);
     setDb(fresh);
