@@ -8068,10 +8068,13 @@ if (saved) {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = useState('');
-    const [leagueFilter, setLeagueFilter] = useState('Toutes');
-    const [editKey, setEditKey] = useState(null); // `${league}||${name}`
+    const [search, setSearch] = useState(AllCarsView._search || '');
+    const [leagueFilter, setLeagueFilter] = useState(AllCarsView._filter || 'Toutes');
+    const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
+
+    React.useEffect(() => { AllCarsView._search = search; }, [search]);
+    React.useEffect(() => { AllCarsView._filter = leagueFilter; }, [leagueFilter]);
 
     const allCars = [];
     [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
