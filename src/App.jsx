@@ -4354,8 +4354,7 @@ if (saved) {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = ev => setCarPhoto(carId, ev.target.result);
-      reader.readAsDataURL(file);
+      uploadToCloudinary(file).then(url => setCarPhoto(carId, url));
     }
 
     return (
