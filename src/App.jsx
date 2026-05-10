@@ -8070,12 +8070,10 @@ if (saved) {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = useState(allCarsSearch);
+    const [search, setSearch] = useState('');
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
-
-    React.useEffect(() => { setAllCarsSearch(search); }, [search]);
 
     const allCars = [];
     [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
