@@ -8923,10 +8923,10 @@ if (saved) {
 
   function generatePodiumPDF(top4, season) {
       const places = [
-        { rank: 2, h: 140, w: 160, ph: 100, color: '#C0C0C0', textColor: '#000', label: '2e' },
-        { rank: 1, h: 190, w: 180, ph: 120, color: '#FFD700', textColor: '#000', label: '1er' },
-        { rank: 3, h: 110, w: 150, ph: 90, color: '#CD7F32', textColor: '#000', label: '3e' },
-        { rank: 4, h: 80,  w: 140, ph: 80,  color: '#333333', textColor: '#e8e0d0', label: '4e' },
+       { rank: 2, h: 200, w: 220, ph: 150, color: '#C0C0C0', textColor: '#000', label: '2e' },
+        { rank: 1, h: 260, w: 240, ph: 170, color: '#FFD700', textColor: '#000', label: '1er' },
+        { rank: 3, h: 160, w: 200, ph: 130, color: '#CD7F32', textColor: '#000', label: '3e' },
+        { rank: 4, h: 120, w: 180, ph: 110, color: '#333333', textColor: '#e8e0d0', label: '4e' },
       ];
     let placesHTML = '';
     places.forEach(({ rank, h, w, ph, color, textColor, label }) => {
