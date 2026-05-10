@@ -3235,12 +3235,16 @@ if (saved) {
       histOverrides: db.histOverrides || {},
       nameMap: db.nameMap || {}
     };
+    const newSeason = initSeason(33);
     LEAGUES.forEach(l => {
-      const prevCars = db.seasons[0]?.leagues[l]?.cars.map(c => ({ id: c.id, name: c.name })) || [];
-      fresh.seasons[0] = fresh.seasons[0] || initSeason(33);
+      const prevCars = db.seasons[db.currentSeasonIdx]?.leagues[l]?.cars.map(c => ({ id: c.id, name: c.name })) || [];
+      if (prevCars.length > 0) newSeason.leagues[l] = initLeague(l, prevCars);
     });
-    fresh.seasons = [];
-    fresh.seasons.push(initSeason(33));
+    AUXILIARY_LEAGUES.forEach(l => {
+      const prevCars = db.seasons[db.currentSeasonIdx]?.leagues[l]?.cars || [];
+      if (prevCars.length > 0) newSeason.leagues[l] = initAuxLeague(l, prevCars);
+    });
+    fresh.seasons = [newSeason];
     storageSave(fresh);
     setDb(fresh);
   }
