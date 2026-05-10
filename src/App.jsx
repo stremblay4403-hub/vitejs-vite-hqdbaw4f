@@ -8543,36 +8543,37 @@ if (saved) {
         <ExpandableSection id="champs" title="🏆 Plus de Championnats V1-V4" rows={topChamps} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
             <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
             <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>{Object.entries(e.leagues).map(([l, n]) => `${n}× ${l.replace('Voitures ','V')}`).join(', ')}</td>
             <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.count}×</td>
           </tr>
         )} />
-
         <ExpandableSection id="reg" title="🏁 Meilleure Saison Régulière (pts)" rows={topRegSeason} renderRow={(e, i) => (
           <tr key={`${e.name}-${e.season}`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
             <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
             <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.w}V {e.d}N {e.l}D</td>
             <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.pts} pts</td>
           </tr>
         )} />
-
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" rows={topTotal} renderRow={(e, i) => {
           const league = e.carId ? findLeagueByCarId(e.carId) : null;
           return (
             <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
               <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+              <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
               <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
               <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>{league ? league.replace('Voitures ','V') : '—'}</td>
               <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.total} pts</td>
             </tr>
           );
         }} />
-
         <ExpandableSection id="rel" title="⬇ Plus de Relégations V1-V4" rows={topRelegated} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
             <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
             <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'#e74c3c' }}>{e.count}×</td>
           </tr>
