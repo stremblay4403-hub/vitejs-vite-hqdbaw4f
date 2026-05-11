@@ -2227,7 +2227,7 @@ if (saved) {
   function getCarPhotoByName(name) {
     if (!name) return null;
     for (const season of db.seasons) {
-      for (const league of LEAGUES) {
+      for (const league of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
         const car = season.leagues[league]?.cars.find(c =>
           c.name.toLowerCase() === name.toLowerCase() ||
           resolveHistName(c.name).toLowerCase() === name.toLowerCase()
