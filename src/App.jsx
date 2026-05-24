@@ -1930,6 +1930,21 @@ if (saved) {
     );
   }
 
+  // Conteneur scroll qui préserve sa position après re-render
+  function ScrollKeeper({ children, maxHeight = 700 }) {
+    const ref = React.useRef(null);
+    const pos = React.useRef(0);
+    React.useLayoutEffect(() => {
+      if (ref.current) ref.current.scrollTop = pos.current;
+    });
+    return (
+      <div ref={ref} onScroll={e => { pos.current = e.currentTarget.scrollTop; }}
+        style={{ maxHeight, overflowY:'auto', padding:6 }}>
+        {children}
+      </div>
+    );
+  }
+
   function addSeason() {
     const prev = db.seasons[db.seasons.length - 1];
     const newNum = prev.season + 1;
@@ -5109,7 +5124,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch
@@ -5189,7 +5204,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -5415,7 +5430,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch
@@ -5495,7 +5510,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -5657,7 +5672,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch
@@ -5733,7 +5748,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -5894,7 +5909,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -5946,7 +5961,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -6107,7 +6122,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -6159,7 +6174,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -6320,7 +6335,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -6372,7 +6387,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -6533,7 +6548,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -6585,7 +6600,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -6746,7 +6761,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -6798,7 +6813,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -6959,7 +6974,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -7011,7 +7026,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -7172,7 +7187,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -7224,7 +7239,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -7385,7 +7400,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -7437,7 +7452,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -7598,7 +7613,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -7650,7 +7665,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -7804,7 +7819,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch ? dayMatches.filter(m => getName(m.homeId).toLowerCase().includes(matchSearch.toLowerCase()) || getName(m.awayId).toLowerCase().includes(matchSearch.toLowerCase())) : dayMatches;
@@ -7856,7 +7871,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
@@ -8022,7 +8037,7 @@ if (saved) {
               </div>
             </div>
             <div className="card">
-              <div style={{ maxHeight:700,overflowY:'auto',padding:6 }}>
+              <ScrollKeeper maxHeight={700}>
                 {days.map(day => {
                   const dayMatches = allMatches.filter(m => m.day === day);
                   const filteredDay = matchSearch
@@ -8102,7 +8117,7 @@ if (saved) {
                     </div>
                   );
                 })}
-              </div>
+              </ScrollKeeper>
             </div>
           </div>
         )}
