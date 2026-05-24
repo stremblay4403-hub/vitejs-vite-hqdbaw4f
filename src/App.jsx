@@ -1473,6 +1473,24 @@ function storageLoad() {
   return null;
 }
 
+// Composant scroll stable — défini hors de App pour éviter le remount à chaque render
+function ScrollKeeper({ children, maxHeight = 700 }) {
+  const ref = React.useRef(null);
+  const pos = React.useRef(0);
+  React.useLayoutEffect(() => {
+    if (ref.current) ref.current.scrollTop = pos.current;
+  });
+  return (
+    <div
+      ref={ref}
+      onScroll={e => { pos.current = e.currentTarget.scrollTop; }}
+      style={{ maxHeight, overflowY:'auto', padding:6 }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export default function App() {
   const [db, setDb] = useState(() => {
     const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
@@ -1926,21 +1944,6 @@ if (saved) {
         {photo
           ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',display:'block' }} />
           : '🚗'}
-      </div>
-    );
-  }
-
-  // Conteneur scroll qui préserve sa position après re-render
-  function ScrollKeeper({ children, maxHeight = 700 }) {
-    const ref = React.useRef(null);
-    const pos = React.useRef(0);
-    React.useLayoutEffect(() => {
-      if (ref.current) ref.current.scrollTop = pos.current;
-    });
-    return (
-      <div ref={ref} onScroll={e => { pos.current = e.currentTarget.scrollTop; }}
-        style={{ maxHeight, overflowY:'auto', padding:6 }}>
-        {children}
       </div>
     );
   }
