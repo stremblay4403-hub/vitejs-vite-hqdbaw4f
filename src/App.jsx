@@ -8229,7 +8229,7 @@ if (saved) {
             }
           }}>
           <td style={{ width:60,padding:'4px 6px' }}>
-            <label onClick={e => e.stopPropagation()} style={{ cursor:'pointer',display:'block',width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center' }}>
+            <label onClick={e => e.stopPropagation()} style={{ cursor:'pointer',display:'flex',width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',flexShrink:0,alignItems:'center',justifyContent:'center' }}>
               {photo
                 ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',display:'block' }} />
                 : <span style={{ fontSize:18 }}>🚗</span>}
