@@ -1161,9 +1161,9 @@ const css = `
     --blue: #2980b9;
   }
   
-  body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; height: 100vh; overflow: hidden; overflow-x: hidden; }
   
-  .app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100vw; overflow-x: hidden; }
+  .app { display: flex; flex-direction: column; height: 100vh; max-width: 100vw; overflow: hidden; }
   
   /* Header */
   .header {
@@ -1198,7 +1198,7 @@ const css = `
   .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
   
   /* Content */
-  .content { flex: 1; padding: 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: hidden; }
+  .content { flex: 1; padding: 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: hidden; overflow-y: auto; min-height: 0; }
   
   /* Cards */
   .card {
@@ -1491,6 +1491,14 @@ export default function App() {
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
   const recordsScrollPos = React.useRef(0);
+  const contentRef = React.useRef(null);
+  const scrollPosRef = React.useRef(0);
+
+  // Sauvegarde la position de scroll avant chaque mise à jour
+  const setDbPreserveScroll = React.useCallback((updater) => {
+    scrollPosRef.current = contentRef.current ? contentRef.current.scrollTop : window.scrollY;
+    setDb(updater);
+  }, []);
   const [sectionTab, setSectionTab] = useState("groupes");
   const [ligueSubTab, setLigueSubTab] = useState('principales');
   const [succSubTab, setSuccSubTab] = useState('classement');
@@ -1578,6 +1586,10 @@ if (saved) {
   useEffect(() => {
     if (!loaded) return;
     storageSave(db);
+    // Restaurer la position de scroll après sauvegarde
+    if (contentRef.current && scrollPosRef.current > 0) {
+      contentRef.current.scrollTop = scrollPosRef.current;
+    }
   }, [db, loaded]);
 
   const currentSeason = db.seasons[db.currentSeasonIdx];
@@ -8232,7 +8244,7 @@ if (saved) {
 
     function CarRow({ entry }) {
       const mainLeague = entry.leagues?.[0];
-      const photo = mainLeague ? getCarPhoto(mainLeague.carId) : null;
+      const photo = (mainLeague ? getCarPhoto(mainLeague.carId) : null) || getCarPhotoByName(entry.displayName || entry.name);
 
       return (
         <tr style={{ cursor:'pointer' }}
@@ -8572,7 +8584,7 @@ if (saved) {
         <ExpandableSection id="champs" title="🏆 Plus de Championnats V1-V4" rows={topChamps} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
-            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
             <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>{Object.entries(e.leagues).map(([l, n]) => `${n}× ${l.replace('Voitures ','V')}`).join(', ')}</td>
             <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.count}×</td>
@@ -8581,7 +8593,7 @@ if (saved) {
         <ExpandableSection id="reg" title="🏁 Meilleure Saison Régulière (pts)" rows={topRegSeason} renderRow={(e, i) => (
           <tr key={`${e.name}-${e.season}`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
-            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
             <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.w}V {e.d}N {e.l}D</td>
             <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.pts} pts</td>
@@ -8592,7 +8604,7 @@ if (saved) {
           return (
             <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
               <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
-              <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
+              <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
               <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
               <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>{league ? league.replace('Voitures ','V') : '—'}</td>
               <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.total} pts</td>
@@ -8602,7 +8614,7 @@ if (saved) {
         <ExpandableSection id="rel" title="⬇ Plus de Relégations V1-V4" rows={topRelegated} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
-            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{e.carId && getCarPhoto(e.carId) ? <img src={getCarPhoto(e.carId)} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>}</div></td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
             <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'#e74c3c' }}>{e.count}×</td>
           </tr>
@@ -9359,7 +9371,8 @@ if (saved) {
         )}
 
         {/* Content */}
-        <div className="content">
+        <div className="content" ref={contentRef} style={{ overflowY:'auto', flex:1 }}
+          onScroll={e => { scrollPosRef.current = e.currentTarget.scrollTop; }}>
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
