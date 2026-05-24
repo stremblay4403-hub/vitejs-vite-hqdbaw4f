@@ -1824,64 +1824,79 @@ if (saved) {
 
     function closeModal() { setMatchModal(null); setMatchHg(null); setMatchAg(null); }
 
+    const imgW = 140;
+    const imgH = Math.round(imgW * 0.73);
+
     return (
-      <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:5000,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+      <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:5000,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
         onClick={closeModal}>
-        <div style={{ background:'var(--dark2)',border:'1px solid var(--gold-dim)',borderRadius:8,width:'100%',maxWidth:380,padding:24,boxShadow:'0 0 40px rgba(201,168,76,0.15)' }}
+        <div style={{ background:'var(--dark2)',border:'1px solid var(--gold-dim)',borderRadius:10,width:'100%',maxWidth:460,boxShadow:'0 0 50px rgba(201,168,76,0.2)',overflow:'hidden' }}
           onClick={e => e.stopPropagation()}>
 
-          {/* Teams row */}
-          <div style={{ display:'flex',alignItems:'center',gap:8,marginBottom:24 }}>
+          {/* ── Images + Noms ── */}
+          <div style={{ display:'flex',gap:0 }}>
             {/* Home */}
-            <div style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6 }}>
-              <CarThumb photo={homePhoto} size={72} />
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,textAlign:'center',color:hWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{homeName}</div>
-              <StatsBadge stats={homeStats} rank={homeRank} pts={homePts} qual={homeQual} />
-            </div>
-
-            {/* Score */}
-            <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:10,flexShrink:0 }}>
-              <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-                {/* Home score */}
-                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6 }}>
-                  <button onClick={() => setHg(h => Math.min(9, (h??0)+1))} style={{ width:44,height:44,fontSize:24,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:6,color:'var(--gold)',cursor:'pointer' }}>+</button>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:42,color:hWin ? 'var(--green)' :aWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:36,textAlign:'center' }}>
-                    {hg ?? '—'}
-                  </div>
-                  <button onClick={() => setHg(h => h !== null ? Math.max(0, h-1) : null)} style={{ width:44,height:44,fontSize:24,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-dim)',cursor:'pointer' }}>−</button>
-                </div>
-
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--text-dim)' }}>:</div>
-
-                {/* Away score */}
-                <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6 }}>
-                  <button onClick={() => setAg(a => Math.min(9, (a??0)+1))} style={{ width:44,height:44,fontSize:24,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:6,color:'var(--gold)',cursor:'pointer' }}>+</button>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:42,color:aWin ? 'var(--green)' :hWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:36,textAlign:'center' }}>
-                    {ag ?? '—'}
-                  </div>
-                  <button onClick={() => setAg(a => a !== null ? Math.max(0, a-1) : null)} style={{ width:44,height:44,fontSize:24,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:6,color:'var(--text-dim)',cursor:'pointer' }}>−</button>
-                </div>
+            <div style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:0,borderRight:'1px solid var(--border)' }}>
+              <div style={{ width:'100%',height:imgH+20,background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden' }}>
+                {homePhoto
+                  ? <img src={homePhoto} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center' }} />
+                  : <span style={{ fontSize:48 }}>🚗</span>}
               </div>
-
-              {draw && hg !== null && <div style={{ fontSize:11,color:'var(--text-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>MATCH NUL</div>}
+              <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: hWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:hWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{homeName}</div>
+                <StatsBadge stats={homeStats} rank={homeRank} pts={homePts} qual={homeQual} align="center" />
+              </div>
             </div>
 
             {/* Away */}
-            <div style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:6 }}>
-              <CarThumb photo={awayPhoto} size={72} />
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,textAlign:'center',color:aWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{awayName}</div>
-              <StatsBadge stats={awayStats} rank={awayRank} pts={awayPts} qual={awayQual} />
+            <div style={{ flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:0 }}>
+              <div style={{ width:'100%',height:imgH+20,background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden' }}>
+                {awayPhoto
+                  ? <img src={awayPhoto} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center' }} />
+                  : <span style={{ fontSize:48 }}>🚗</span>}
+              </div>
+              <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: aWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:aWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{awayName}</div>
+                <StatsBadge stats={awayStats} rank={awayRank} pts={awayPts} qual={awayQual} align="center" />
+              </div>
             </div>
           </div>
 
-          {/* Actions */}
-          <div style={{ display:'flex',gap:8 }}>
-            <button className="btn btn-dark" style={{ flex:1 }} onClick={closeModal}>Annuler</button>
-            <button className="btn btn-sim" style={{ flex:1 }} onClick={simulate}>🎲 Simuler</button>
+          {/* ── Steppers + Score ── */}
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:16,padding:'20px 24px',borderTop:'1px solid var(--border)',borderBottom:'1px solid var(--border)',background:'var(--dark3)' }}>
+            {/* Home stepper */}
+            <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
+              <button onClick={() => setHg(h => Math.min(9, (h??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:hWin ? 'var(--green)' :aWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:44,textAlign:'center' }}>
+                {hg ?? '—'}
+              </div>
+              <button onClick={() => setHg(h => h !== null ? Math.max(0, h-1) : null)} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text-dim)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>−</button>
+            </div>
+
+            {/* Séparateur */}
+            <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:4 }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:'var(--text-dim)',lineHeight:1 }}>:</div>
+              {draw && hg !== null && <div style={{ fontSize:10,color:'var(--text-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginTop:4 }}>NUL</div>}
+            </div>
+
+            {/* Away stepper */}
+            <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
+              <button onClick={() => setAg(a => Math.min(9, (a??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:aWin ? 'var(--green)' :hWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:44,textAlign:'center' }}>
+                {ag ?? '—'}
+              </div>
+              <button onClick={() => setAg(a => a !== null ? Math.max(0, a-1) : null)} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text-dim)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>−</button>
+            </div>
+          </div>
+
+          {/* ── Boutons ── */}
+          <div style={{ display:'flex',gap:8,padding:'14px 16px',background:'var(--dark2)' }}>
+            <button className="btn btn-dark" style={{ flex:1,padding:'12px 8px' }} onClick={closeModal}>Annuler</button>
+            <button className="btn btn-sim" style={{ flex:1,padding:'12px 8px' }} onClick={simulate}>🎲 Simuler</button>
             {hg !== null && ag !== null && (
-              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.2)',border:'1px solid rgba(192,57,43,0.4)',color:'#e74c3c' }} onClick={reset}>✕</button>
+              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.2)',border:'1px solid rgba(192,57,43,0.4)',color:'#e74c3c',padding:'12px 10px' }} onClick={reset}>✕</button>
             )}
-            <button className="btn btn-gold" style={{ flex:1 }}
+            <button className="btn btn-gold" style={{ flex:1,padding:'12px 8px' }}
               onClick={() => { if (hg !== null && ag !== null) { onConfirm(hg, ag); closeModal(); } }}>
               ✓ Confirmer
             </button>
