@@ -1526,6 +1526,14 @@ export default function App() {
   const [profileCar, setProfileCar] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [matchModal, setMatchModal] = useState(null);
+  const [matchHg, setMatchHg] = useState(null);
+  const [matchAg, setMatchAg] = useState(null);
+
+  function openMatchModal(config) {
+    setMatchHg(config.homeGoals ?? null);
+    setMatchAg(config.awayGoals ?? null);
+    setMatchModal(config);
+  }
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique'); // 'historique' | 'mouvements'
 
@@ -1771,6 +1779,12 @@ if (saved) {
     const { homeName, awayName, homePhoto, awayPhoto, onConfirm, homeStats, awayStats,
             homeRank, awayRank, homePts, awayPts, homeQual, awayQual } = matchModal;
 
+    // hg/ag vivent dans le state parent pour survivre aux re-renders des notifications
+    const hg = matchHg;
+    const ag = matchAg;
+    const setHg = setMatchHg;
+    const setAg = setMatchAg;
+
     function StatsBadge({ stats, rank, pts, qual, align = 'center' }) {
       if (!stats && !rank) return null;
       return (
@@ -1796,8 +1810,6 @@ if (saved) {
         </div>
       );
     }
-    const [hg, setHg] = useState(matchModal.homeGoals ?? null);
-    const [ag, setAg] = useState(matchModal.awayGoals ?? null);
 
     const hWin = hg !== null && ag !== null && hg > ag;
     const aWin = hg !== null && ag !== null && ag > hg;
@@ -1810,9 +1822,11 @@ if (saved) {
 
     function reset() { setHg(null); setAg(null); }
 
+    function closeModal() { setMatchModal(null); setMatchHg(null); setMatchAg(null); }
+
     return (
       <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:5000,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
-        onClick={() => setMatchModal(null)}>
+        onClick={closeModal}>
         <div style={{ background:'var(--dark2)',border:'1px solid var(--gold-dim)',borderRadius:8,width:'100%',maxWidth:380,padding:24,boxShadow:'0 0 40px rgba(201,168,76,0.15)' }}
           onClick={e => e.stopPropagation()}>
 
@@ -1862,13 +1876,13 @@ if (saved) {
 
           {/* Actions */}
           <div style={{ display:'flex',gap:8 }}>
-            <button className="btn btn-dark" style={{ flex:1 }} onClick={() => setMatchModal(null)}>Annuler</button>
+            <button className="btn btn-dark" style={{ flex:1 }} onClick={closeModal}>Annuler</button>
             <button className="btn btn-sim" style={{ flex:1 }} onClick={simulate}>🎲 Simuler</button>
             {hg !== null && ag !== null && (
               <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.2)',border:'1px solid rgba(192,57,43,0.4)',color:'#e74c3c' }} onClick={reset}>✕</button>
             )}
             <button className="btn btn-gold" style={{ flex:1 }}
-              onClick={() => { if (hg !== null && ag !== null) { onConfirm(hg, ag); setMatchModal(null); } }}>
+              onClick={() => { if (hg !== null && ag !== null) { onConfirm(hg, ag); closeModal(); } }}>
               ✓ Confirmer
             </button>
           </div>
@@ -3789,7 +3803,7 @@ if (saved) {
                           const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                           return (
                             <div key={m.id}
-                              onClick={() => setMatchModal({
+                              onClick={() => openMatchModal({
                                 homeName: home?.name, awayName: away?.name,
                                 homePhoto, awayPhoto,
                                 homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -3919,7 +3933,7 @@ if (saved) {
       const awayStats = getGroupStatsForCar(m.awayId, leagueTab);
       return (
         <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:6,cursor:'pointer' }}
-          onClick={() => setMatchModal({
+          onClick={() => openMatchModal({
             homeName: home?.name, awayName: away?.name,
             homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -4199,7 +4213,7 @@ if (saved) {
                               const awayStats = getGroupStatsForCar(m.awayId, leagueTab);
                               return (
                                 <div key={m.id}
-                                  onClick={() => setMatchModal({
+                                  onClick={() => openMatchModal({
                                     homeName: home?.name, awayName: away?.name,
                                     homePhoto, awayPhoto,
                                     homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -4916,7 +4930,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c=>c.id).join(','), playedMatches.length]);
+    }, [cars.map(c=>c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -4980,7 +4994,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {/* CLASSEMENT */}
@@ -5113,7 +5127,7 @@ if (saved) {
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
                               <div key={m.id}
-                                onClick={() => setMatchModal({
+                                onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -5228,7 +5242,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -5291,7 +5305,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -5419,7 +5433,7 @@ if (saved) {
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
                               <div key={m.id}
-                                onClick={() => setMatchModal({
+                                onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -5478,7 +5492,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -5533,7 +5547,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simRemplac}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simRemplac}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -5657,7 +5671,7 @@ if (saved) {
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
                               <div key={m.id}
-                                onClick={() => setMatchModal({
+                                onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -5715,7 +5729,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -5770,7 +5784,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAvantDern}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAvantDern}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -5884,7 +5898,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -5928,7 +5942,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -5983,7 +5997,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simDerniere}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simDerniere}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6097,7 +6111,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -6141,7 +6155,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -6196,7 +6210,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simPersev}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simPersev}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6310,7 +6324,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -6354,7 +6368,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -6409,7 +6423,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simDeter}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simDeter}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6523,7 +6537,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -6567,7 +6581,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -6622,7 +6636,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAcharn}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAcharn}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6736,7 +6750,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -6780,7 +6794,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -6835,7 +6849,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simObstin}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simObstin}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6949,7 +6963,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -6993,7 +7007,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -7048,7 +7062,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simInsist}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simInsist}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7162,7 +7176,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -7206,7 +7220,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -7261,7 +7275,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simComeback}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simComeback}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7375,7 +7389,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -7419,7 +7433,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -7474,7 +7488,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simImport}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simImport}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7588,7 +7602,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -7632,7 +7646,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c => c.id).join(','), playedMatches.length]);
+    }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -7687,7 +7701,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simOubl}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simOubl}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7794,7 +7808,7 @@ if (saved) {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => setMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3 }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -7838,7 +7852,7 @@ if (saved) {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
-    }, [cars.map(c=>c.id).join(','), playedMatches.length]);
+    }, [cars.map(c=>c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
 
     const standings = cars.map(car => {
       const cm = allMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -7901,7 +7915,7 @@ if (saved) {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8026,7 +8040,7 @@ if (saved) {
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
                               <div key={m.id}
-                                onClick={() => setMatchModal({
+                                onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
@@ -8787,7 +8801,7 @@ if (saved) {
       const awayStats = getGroupStatsForCar(m.awayId, m.awayLeague);
       return (
         <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:4,cursor:'pointer' }}
-          onClick={() => setMatchModal({
+          onClick={() => openMatchModal({
             homeName, awayName, homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
             homeStats, awayStats,
@@ -9332,7 +9346,7 @@ if (saved) {
         {/* Content */}
         <div className="content">
           {mainTab === 'dashboard' && <Dashboard />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView key={`${leagueTab}-${activeGroup}`} />}
+          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'relegation' && <RelegationView />}
           {mainTab === 'ligues' && ligueSubTab === 'champions' && <TournoiChampionsView />}
