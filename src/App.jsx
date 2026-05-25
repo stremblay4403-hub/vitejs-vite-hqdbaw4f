@@ -9763,7 +9763,13 @@ export default function App() {
         )}
 
         {/* Content */}
-        <div className="content">
+        <div className="content" style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
+          {isPublicMode && (
+            <div style={{
+              position:'absolute', inset:0, zIndex:4000,
+              cursor:'default', background:'transparent'
+            }} />
+          )}
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
@@ -9782,7 +9788,7 @@ export default function App() {
           {mainTab === 'ligues' && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'actuelles' && (
+          {mainTab === 'ligues' && ligueSubTab === 'actuelles' && !isPublicMode && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
               <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }} onClick={simAllActuelles}>⚡ Simuler toutes les Actuelles</button>
             </div>
