@@ -1477,14 +1477,29 @@ function storageLoad() {
 function ScrollKeeper({ children, maxHeight = 700 }) {
   const ref = React.useRef(null);
   const pos = React.useRef(0);
+  const isUpdating = React.useRef(false);
+
+  const handleScroll = React.useCallback((e) => {
+    if (!isUpdating.current) {
+      pos.current = e.currentTarget.scrollTop;
+    }
+  }, []);
+
   React.useLayoutEffect(() => {
-    if (ref.current) ref.current.scrollTop = pos.current;
+    const el = ref.current;
+    if (!el) return;
+    isUpdating.current = true;
+    el.scrollTop = pos.current;
+    // Laisser le navigateur traiter, puis relâcher le verrou
+    const t = setTimeout(() => { isUpdating.current = false; }, 50);
+    return () => clearTimeout(t);
   });
+
   return (
     <div
       ref={ref}
-      onScroll={e => { pos.current = e.currentTarget.scrollTop; }}
-      style={{ maxHeight, overflowY:'auto', padding:6 }}
+      onScroll={handleScroll}
+      style={{ maxHeight, overflowY: 'auto', padding: 6 }}
     >
       {children}
     </div>
@@ -1511,21 +1526,7 @@ export default function App() {
   const recordsScrollPos = React.useRef(0);
   const contentRef = React.useRef(null);
   const scrollPosRef = React.useRef(0);
-  const tabScrollPos = React.useRef({}); // { tabKey: scrollY }
-
-  // Clé unique pour l'onglet actif
-  const currentTabKey = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
-
-  // Sauvegarde scroll avant changement d'onglet
-  function saveScrollForTab() {
-    tabScrollPos.current[currentTabKey] = window.scrollY;
-  }
-
-  // Restaure scroll après changement d'onglet
-  function restoreScrollForTab(key) {
-    const pos = tabScrollPos.current[key] || 0;
-    requestAnimationFrame(() => window.scrollTo(0, pos));
-  }
+  const tabScrollPos = React.useRef({});
 
   const setDbPreserveScroll = React.useCallback((updater) => {
     scrollPosRef.current = window.scrollY;
@@ -1575,7 +1576,17 @@ export default function App() {
     setMatchModal(config);
   }
   const [brandModal, setBrandModal] = useState(null);
-  const [histSubTab, setHistSubTab] = useState('historique'); // 'historique' | 'mouvements'
+  const [histSubTab, setHistSubTab] = useState('historique');
+
+  // Fonctions scroll par onglet — définies après tous les états
+  function saveScrollForTab() {
+    const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
+    tabScrollPos.current[key] = window.scrollY;
+  }
+  function restoreScrollForTab(key) {
+    const pos = tabScrollPos.current[key] || 0;
+    requestAnimationFrame(() => window.scrollTo(0, pos));
+  }
 
   useEffect(() => {
     try {
@@ -3814,7 +3825,7 @@ if (saved) {
                 return (
                   <div key={day} style={{ marginBottom:3 }}>
                     {/* Journée header */}
-                    <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                    <div onClick={() => setOpenDay(isOpen ? null : day)}
                       style={{
                         display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none'
                       }}>
@@ -4240,7 +4251,7 @@ if (saved) {
                     const isOpen = openDay === day;
                     return (
                       <div key={day} style={{ marginBottom:3 }}>
-                        <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                        <div onClick={() => setOpenDay(isOpen ? null : day)}
                           style={{
                             display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,userSelect:'none'
                           }}>
@@ -5153,7 +5164,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -5164,7 +5175,7 @@ if (saved) {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>
+                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>
                             🎲
                           </button>
                         )}
@@ -5459,7 +5470,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -5470,7 +5481,7 @@ if (saved) {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>
+                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>
                             🎲
                           </button>
                         )}
@@ -5701,7 +5712,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -5710,7 +5721,7 @@ if (saved) {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>
+                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
@@ -5936,12 +5947,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -6149,12 +6160,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -6362,12 +6373,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -6575,12 +6586,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -6788,12 +6799,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -7001,12 +7012,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -7214,12 +7225,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -7427,12 +7438,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -7640,12 +7651,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -7846,12 +7857,12 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       {isOpen && (
@@ -8066,7 +8077,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => { const sy = window.scrollY; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}
+                      <div onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -8077,7 +8088,7 @@ if (saved) {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => window.scrollTo(0, sy)); }}>
+                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>
                             🎲
                           </button>
                         )}
