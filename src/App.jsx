@@ -1165,9 +1165,9 @@ const css = `
     --blue: #2980b9;
   }
   
-  body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: clip; }
   
-  .app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100vw; overflow-x: hidden; }
+  .app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100vw; overflow-x: clip; }
   
   /* Header */
   .header {
@@ -1202,7 +1202,7 @@ const css = `
   .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
   
   /* Content */
-  .content { flex: 1; padding: 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: hidden; }
+  .content { flex: 1; padding: 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
   
   /* Cards */
   .card {
