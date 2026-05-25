@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { initializeApp } from 'firebase/app';
+import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
 
 const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
@@ -1455,9 +1457,57 @@ const css = `
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
+const FIREBASE_DOC_ID = 'main';
 
+// ── Firebase init ──────────────────────────────────────────────────
+
+const firebaseConfig = {
+  apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId:         import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket:     import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId:             import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+const firebaseApp = initializeApp(firebaseConfig);
+const firestoreDb = getFirestore(firebaseApp);
+const tournoisDocRef = doc(firestoreDb, 'tournois', FIREBASE_DOC_ID);
+
+// ── Sauvegarde localStorage (backup local) ─────────────────────────
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+  // Sauvegarde Firestore en arrière-plan (sans bloquer l'UI)
+  setDoc(tournoisDocRef, { data: JSON.stringify(data), updatedAt: Date.now() })
+    .catch(e => console.warn('Firebase save error:', e));
+}
+
+// ── Chargement : Firestore en priorité, localStorage en fallback ───
+async function storageLoadAsync() {
+  try {
+    const snap = await getDoc(tournoisDocRef);
+    if (snap.exists()) {
+      const parsed = JSON.parse(snap.data().data);
+      if (!parsed.photos) parsed.photos = {};
+      if (!parsed.brands) parsed.brands = {};
+      // Sync localStorage avec les données Firebase
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch {}
+      return parsed;
+    }
+  } catch (e) {
+    console.warn('Firebase load error, fallback to localStorage:', e);
+  }
+  // Fallback localStorage
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (!parsed.photos) parsed.photos = {};
+      if (!parsed.brands) parsed.brands = {};
+      return parsed;
+    }
+  } catch {}
+  return null;
 }
 
 function storageLoad() {
@@ -1596,35 +1646,44 @@ export default function App() {
       setIsPrivate(true);
     }
 
-    const saved = storageLoad();
-if (saved) {
-        if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
-          const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, brands: saved.brands || {} };
-          fresh.seasons.push(initSeason(33));
-          setDb(fresh);
-        } else {
-          const migrations = { 'Q6': 'Q6 E-Tron' };
-          saved.seasons.forEach(s => {
-            Object.values(s.leagues || {}).forEach(league => {
-              if (!league) return;
-              (league.cars || []).forEach(car => {
-                if (migrations[car.name]) car.name = migrations[car.name];
-              });
-            });
-            let migrated = false;
-            AUXILIARY_LEAGUES.forEach(l => {
-              if (!s.leagues[l]) {
-                s.leagues[l] = initAuxLeague(l, null);
-                migrated = true;
-              }
-            });
-          });
-          setDb(saved);
-          storageSave(saved);
-        }
-      }
+    // Chargement localStorage immédiat (évite l'écran blanc)
+    const localSaved = storageLoad();
+    if (localSaved) applyLoadedData(localSaved);
+    else setLoaded(true);
+
+    // Chargement Firebase en arrière-plan (override si plus récent)
+    storageLoadAsync().then(saved => {
+      if (saved) applyLoadedData(saved);
       setLoaded(true);
+    }).catch(() => setLoaded(true));
   }, []);
+
+  function applyLoadedData(saved) {
+    if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
+      const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, brands: saved.brands || {}, histOverrides: saved.histOverrides || {} };
+      fresh.seasons.push(initSeason(33));
+      setDb(fresh);
+    } else {
+      const migrations = { 'Q6': 'Q6 E-Tron' };
+      saved.seasons.forEach(s => {
+        Object.values(s.leagues || {}).forEach(league => {
+          if (!league) return;
+          (league.cars || []).forEach(car => {
+            if (migrations[car.name]) car.name = migrations[car.name];
+          });
+        });
+        let migrated = false;
+        AUXILIARY_LEAGUES.forEach(l => {
+          if (!s.leagues[l]) {
+            s.leagues[l] = initAuxLeague(l, null);
+            migrated = true;
+          }
+        });
+      });
+      setDb(saved);
+      storageSave(saved);
+    }
+  }
 
   useEffect(() => {
     if (!loaded) return;
