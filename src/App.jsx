@@ -1473,9 +1473,14 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
+const isLoadingFromFirebase = { current: false };
+
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+
+  // Ne pas sauvegarder vers Firestore si on vient de charger depuis Firestore
+  if (isLoadingFromFirebase.current) return;
 
   const { photos, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -1483,11 +1488,9 @@ function storageSave(data) {
   );
   if (!hasData) return;
 
-  // Données légères sans photos
   setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() })
     .catch(e => console.warn('Firebase data save error:', e));
 
-  // Photos dans document séparé
   const photoCount = Object.keys(photos || {}).length;
   if (photoCount > 0) {
     setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
@@ -1683,7 +1686,9 @@ export default function App() {
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
+          isLoadingFromFirebase.current = true;
           applyLoadedData(parsed, true);
+          setTimeout(() => { isLoadingFromFirebase.current = false; }, 500);
         } catch(e) {
           console.warn('Firebase parse error:', e);
         }
