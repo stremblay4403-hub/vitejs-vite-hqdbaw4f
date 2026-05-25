@@ -1590,6 +1590,64 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
   );
 }
 
+// Composant réutilisable pour toutes les ligues — style leaderboard mobile
+function LeaderboardRow({ rank, rankDiff, carId, leagueName, name, photo, badge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
+  const diff = (gf ?? 0) - (ga ?? 0);
+  return (
+    <div style={{ display:'flex', alignItems:'stretch', borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a', minHeight:72, background: rank <= 8 ? 'rgba(39,174,96,0.05)' : rank <= 10 ? 'rgba(201,168,76,0.05)' : 'transparent' }}>
+      {/* Rang — fixe */}
+      <div style={{ width:36, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingLeft:4 }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color: borderColor || 'var(--gold-dim)', lineHeight:1 }}>{rank}</div>
+        {rankDiff !== null && rankDiff !== 0 && (
+          <div style={{ fontSize:9, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, marginTop:2 }}>
+            {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
+          </div>
+        )}
+        {rankDiff === 0 && <div style={{ fontSize:9, color:'var(--text-dim)', lineHeight:1, marginTop:2 }}>—</div>}
+      </div>
+
+      {/* Photo — fixe */}
+      <div style={{ width:62, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', padding:'4px 0' }} onClick={onClick}>
+        <CarThumb photo={photo} size={54} onClick={onClick} />
+      </div>
+
+      {/* Nom + badge — fixe, flex:1 mais avec overflow hidden */}
+      <div style={{ flex:'0 0 auto', width:'calc(100% - 36px - 62px - 64px)', minWidth:0, display:'flex', alignItems:'center', paddingRight:6, overflow:'hidden', cursor:'pointer' }} onClick={onClick}>
+        <div style={{ minWidth:0 }}>
+          <div style={{ fontWeight:700, fontSize:18, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
+          {badge && (
+            <span style={{ display:'inline-block', marginTop:3, padding:'1px 7px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+          )}
+        </div>
+      </div>
+
+      {/* Points — visible immédiatement, fixe */}
+      <div style={{ width:64, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:10 }}>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:36, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
+      </div>
+
+      {/* Stats scrollables */}
+      <div style={{ display:'flex', alignItems:'center', gap:0, overflowX:'auto', WebkitOverflowScrolling:'touch', flexShrink:0, maxWidth:220, borderLeft:'1px solid #1a1a1a' }}>
+        {[
+          { label:'V', value:w ?? 0, color:'var(--green)' },
+          { label:'N', value:d ?? 0, color:'var(--text-dim)' },
+          { label:'D', value:l ?? 0, color:'#e74c3c' },
+          { label:'BC', value:gf ?? 0, color:'var(--text)' },
+          { label:'BE', value:ga ?? 0, color:'var(--text)' },
+          { label:'±', value: diff > 0 ? `+${diff}` : diff, color: diff > 0 ? 'var(--green)' : diff < 0 ? '#e74c3c' : 'var(--text-dim)' },
+          { label:'PJ', value:gp ?? 0, color:'var(--text-dim)' },
+          ...(bp !== undefined ? [{ label:'BP', value:bp, color:'var(--gold-dim)' }] : []),
+        ].map(({ label, value, color }) => (
+          <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:40, height:'100%', borderRight:'1px solid #111', padding:'0 4px' }}>
+            <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>{label}</div>
+            <div style={{ fontSize:18, fontWeight:700, color, fontFamily:"'Bebas Neue',sans-serif", lineHeight:1.2 }}>{value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [db, setDb] = useState(() => {
     const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
@@ -3844,32 +3902,12 @@ export default function App() {
           {/* Classement */}
           <div className="card">
             <div className="card-header"><div className="card-title">Classement — Groupe {activeGroup + 1}</div></div>
-            <div className="card-body" style={{ padding:0,overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
+            <div className="card-body" style={{ padding:0 }}>
               {(() => {
                 const quals = computeQualifications(leagueTab);
-                const TH = ({children, color='var(--gold-dim)', left=false}) => (
-                  <th style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color,letterSpacing:1,padding:'10px 6px',textAlign:left ? 'left' :'center',borderBottom:'2px solid var(--border)',background:'var(--dark3)',whiteSpace:'nowrap',fontWeight:400 }}>{children}</th>
-                );
                 return (
-                  <table style={{ borderCollapse:'collapse',width:'100%',minWidth:540 }}>
-                    <thead>
-                      <tr>
-                        <TH>#</TH>
-                        <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                        <TH color="var(--gold)" left>VOITURE</TH>
-                        <TH color="var(--gold)">PTS</TH>
-                        <TH color="var(--green)">V</TH>
-                        <TH>N</TH>
-                        <TH color="#e74c3c">D</TH>
-                        <TH>BP</TH>
-                        <TH>BC</TH>
-                        <TH>+/-</TH>
-                        <TH>J</TH>
-                      </tr>
-                    </thead>
-                    <tbody>
+                  <div>
                       {standings.map((s, i) => {
-                        const rowBg = i < 8 ? 'rgba(39,174,96,0.07)' : i < 10 ? 'rgba(201,168,76,0.07)' : i === standings.length-1 ? 'rgba(192,57,43,0.09)' : 'transparent';
                         const borderColor = i < 8 ? 'var(--green)' : i < 10 ? 'var(--gold-dim)' : i === standings.length-1 ? '#e74c3c' : 'transparent';
                         const photo = getCarPhoto(s.id);
                         const badge = quals.Z.has(s.id) ? { label:'Z', bg:'#c9a84c', color:'#000' }
@@ -3880,8 +3918,6 @@ export default function App() {
                                     : getCarMovement(s.id, leagueTab) === 'promoted' ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
                                     : getCarMovement(s.id, leagueTab) === 'relegated' ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }
                                     : null;
-                        const diff = s.gf - s.ga;
-                        const td = { padding:'0 6px', borderBottom:'1px solid #1a1a1a', background: rowBg, height:84 };
                         const prevRank = (() => {
                           if (!prevSeason) return null;
                           const prevLeague = prevSeason.leagues[leagueTab];
@@ -3901,38 +3937,18 @@ export default function App() {
                         })();
                         const rankDiff = prevRank !== null ? prevRank - (i + 1) : null;
                         return (
-                          <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                            <td style={{ ...td,textAlign:'center',width:36 }}>
-                              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:i < 8 ? 'var(--green)' :i === standings.length-1 ? '#e74c3c' :'var(--gold-dim)',lineHeight:1 }}>{i+1}</div>
-                              {rankDiff !== null && rankDiff !== 0 && (
-                                <div style={{ fontSize:9,color:rankDiff > 0 ? 'var(--green)' :'#e74c3c',lineHeight:1,marginTop:2 }}>
-                                  {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
-                                </div>
-                              )}
-                              {rankDiff === 0 && <div style={{ fontSize:9,color:'var(--text-dim)',lineHeight:1,marginTop:2 }}>—</div>}
-                            </td>
-                            <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                              <CarThumb photo={photo} size={58} onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })} />
-                            </td>
-                            <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })}>
-                              <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                                <span style={{ fontWeight:700,fontSize:19 }}>{s.name}</span>
-                                {badge && <span style={{ flexShrink:0,padding:'2px 7px',borderRadius:3,fontSize:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,background:badge.bg,color:badge.color }}>{badge.label}</span>}
-                              </div>
-                            </td>
-                            <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:'var(--green)',fontWeight:700,width:44 }}>{s.w}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:'var(--text-dim)',width:44 }}>{s.d}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:'#e74c3c',fontWeight:700,width:44 }}>{s.l}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:'var(--text)',width:44 }}>{s.gf}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:'var(--text)',width:44 }}>{s.ga}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                            <td style={{ ...td,textAlign:'center',fontSize:19,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                          </tr>
+                          <LeaderboardRow key={s.id}
+                            rank={i+1} rankDiff={rankDiff}
+                            carId={s.id} leagueName={leagueTab}
+                            name={s.name} photo={photo} badge={badge}
+                            pts={s.pts} w={s.w} d={s.d} l={s.l}
+                            gf={s.gf} ga={s.ga} gp={s.gp}
+                            borderColor={borderColor}
+                            onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })}
+                          />
                         );
                       })}
-                    </tbody>
-                  </table>
+                  </div>
                 );
               })()}
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:8,flexWrap:'wrap',color:'var(--text-dim)',alignItems:'center' }}>
@@ -4554,39 +4570,25 @@ export default function App() {
                 <div className="card-title">Classement Barrage</div>
                 {relId && <span className="badge badge-red" style={{ marginLeft:8 }}>⬇ {getCar(leagueTab, relId)?.name}</span>}
               </div>
-              <div className="card-body" style={{ padding:0,overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:300 }}>
-                  <thead>
-                    <tr>
-                      {[['#','var(--gold-dim)'],['',''],['VOITURE','var(--gold)'],['PTS','var(--gold)'],['V','var(--green)'],['N','var(--text-dim)'],['D','#e74c3c'],['J','var(--text-dim)']].map(([h,c],idx) => (
-                        <th key={idx} style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:c,letterSpacing:1,padding:'10px 6px',textAlign:idx===2 ? 'left' :'center',borderBottom:'2px solid var(--border)',background:'var(--dark3)',fontWeight:400,whiteSpace:'nowrap' }}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div className="card-body" style={{ padding:0 }}>
+                <div>
                     {standings.map((s, i) => {
                       const photo = getCarPhoto(s.id);
                       const isLast = i === standings.length - 1;
-                      const td = { padding:'0 6px', borderBottom:'1px solid #1a1a1a', background: isLast ? 'rgba(192,57,43,0.09)' : 'transparent', height:80 };
+                      const badge = isLast ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:isLast ? '4px solid #e74c3c' :'4px solid transparent' }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:isLast ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{i+1}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={58} onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })}>
-                            <span style={{ fontWeight:700,fontSize:18 }}>{s.name}{isLast ? ' ⬇' : ''}</span>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:18,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:18,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:18,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:18,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={i+1} rankDiff={null}
+                          carId={s.id} leagueName={leagueTab}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={isLast ? '#e74c3c' : 'transparent'}
+                          onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })}
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
+                </div>
                 {standings.length > 0 && !relId && (
                   <div style={{ padding:12 }}>
                     <button className="btn btn-danger btn-sm" onClick={() => finalizeRelegation(leagueTab)}>
@@ -5462,61 +5464,30 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 4;
                       const sucSucc = rank >= 73;
                       const actuelles = rank >= 25 && rank < 73;
-                      const rowBg = promoted ? 'rgba(39,174,96,0.07)' : sucSucc ? 'rgba(192,57,43,0.09)' : actuelles ? 'rgba(241,196,15,0.05)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : sucSucc ? '#e74c3c' : actuelles ? 'var(--gold-dim)' : 'transparent';
                       const photo = getCarPhoto(s.id);
-                      const diff = s.gf - s.ga;
-                      const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                      const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
+                                  : sucSucc ? { label:'⬇⬇ SUC.SUCC', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }
+                                  : actuelles ? { label:'⬇ ACTUELLES', bg:'rgba(201,168,76,0.2)', color:'var(--gold)' }
+                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :sucSucc ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {actuelles && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#c9a84c',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                              {sucSucc && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={leagueName}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
               </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 4 → Promus V1/V2/V3/V4</span>
@@ -5782,24 +5753,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 12;
@@ -5809,33 +5763,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 12 → Successeurs</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>13-16 → Restent</span>
@@ -6035,24 +5975,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -6062,33 +5985,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Succ. aux Succ.</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-48 → Restent</span>
@@ -6283,24 +6192,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -6310,33 +6202,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Remplaçants</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-24 → Restent</span>
@@ -6507,24 +6385,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 8;
@@ -6534,33 +6395,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 8 → Avant-dernière chance</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>9-16 → Restent</span>
@@ -6731,24 +6578,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -6758,33 +6588,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Dernière chance</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-32 → Restent</span>
@@ -6955,24 +6771,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 32;
@@ -6982,33 +6781,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 32 → Persévérance</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>33-48 → Restent</span>
@@ -7179,24 +6964,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -7206,33 +6974,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Détermination</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-48 → Restent</span>
@@ -7403,24 +7157,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -7430,33 +7167,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Acharnement</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-24 → Restent</span>
@@ -7627,24 +7350,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 8;
@@ -7654,33 +7360,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 8 → Obstination</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>9-16 → Restent</span>
@@ -7851,24 +7543,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -7878,33 +7553,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Insistance</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-76 → Restent</span>
@@ -8075,24 +7736,7 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 16;
@@ -8102,33 +7746,19 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :relegated ? '#e74c3c' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                              {relegated && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'#e74c3c',color:'#fff',fontFamily:"'Bebas Neue',sans-serif" }}>⬇</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Comeback</span>
                 <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-82 → Restent</span>
@@ -8299,55 +7929,25 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: 'rgba(39,174,96,0.07)', height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
-                        <tr key={s.id} style={{ borderLeft:'4px solid var(--green)' }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--green)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={'Successeurs'}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                        />
                       );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                    })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Toutes → Importation (4 promus, 4 entrants)</span>
               </div>
@@ -8525,57 +8125,26 @@ export default function App() {
               </div>
             </div>
             <div className="card">
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table style={{ borderCollapse:'collapse',width:'100%',minWidth:580 }}>
-                  <thead>
-                    <tr>
-                      <TH>#</TH>
-                      <th style={{ background:'var(--dark3)',borderBottom:'2px solid var(--border)',width:68 }}></th>
-                      <TH color="var(--gold)" left>VOITURE</TH>
-                      <TH color="var(--gold)">PTS</TH>
-                      <TH color="var(--green)">V</TH>
-                      <TH>N</TH>
-                      <TH color="#e74c3c">D</TH>
-                      <TH>BP</TH>
-                      <TH>BC</TH>
-                      <TH>+/-</TH>
-                      <TH>J</TH>
-                    </tr>
-                  </thead>
-                  <tbody>
+              <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const promoted = rank <= 4;
-                      const rowBg = promoted ? 'rgba(39,174,96,0.07)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : 'transparent';
                       const photo = getCarPhoto(s.id);
-                      const diff = s.gf - s.ga;
-                      const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
+                      const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
+                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
-                        <tr key={s.id} style={{ borderLeft:`4px solid ${borderColor}` }}>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:promoted ? 'var(--green)' :'var(--gold-dim)',width:36 }}>{rank}</td>
-                          <td style={{ ...td,padding:'6px 4px',width:68 }}>
-                            <CarThumb photo={photo} size={52} onClick={() => setProfileCar({ leagueName, carId: s.id })} />
-                          </td>
-                          <td style={{ ...td,cursor:'pointer',paddingLeft:6 }} onClick={() => setProfileCar({ leagueName, carId: s.id })}>
-                            <div style={{ display:'flex',alignItems:'center',gap:8,whiteSpace:'nowrap' }}>
-                              <span style={{ fontWeight:700,fontSize:17 }}>{s.name}</span>{(() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(39,174,96,0.25)',color:'var(--green)',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>▲ PROMU</span>; if (mv === 'relegated') return <span style={{ marginLeft:4,fontSize:10,padding:'1px 5px',borderRadius:3,background:'rgba(192,57,43,0.25)',color:'#e74c3c',fontFamily:'Bebas Neue,sans-serif',letterSpacing:1 }}>⬇ RELÉGUÉ</span>; return null; })()}
-                              {promoted && <span style={{ padding:'2px 6px',borderRadius:3,fontSize:11,background:'var(--green)',color:'#000',fontFamily:"'Bebas Neue',sans-serif" }}>▲</span>}
-                            </div>
-                          </td>
-                          <td style={{ ...td,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold)',width:52 }}>{s.pts}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--green)',fontWeight:700,width:40 }}>{s.w}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:40 }}>{s.d}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'#e74c3c',fontWeight:700,width:40 }}>{s.l}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.gf}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,width:40 }}>{s.ga}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:diff > 0 ? 'var(--green)' :diff < 0 ? '#e74c3c' :'var(--text-dim)',fontWeight:diff !== 0 ? 700 :400,width:50 }}>{diff > 0 ? `+${diff}` : diff}</td>
-                          <td style={{ ...td,textAlign:'center',fontSize:17,color:'var(--text-dim)',width:36 }}>{s.gp}</td>
-                        </tr>
+                        <LeaderboardRow key={s.id}
+                          rank={rank} rankDiff={null}
+                          carId={s.id} leagueName={leagueName}
+                          name={s.name} photo={photo} badge={badge}
+                          pts={s.pts} w={s.w} d={s.d} l={s.l}
+                          gf={s.gf} ga={s.ga} gp={s.gp}
+                          borderColor={borderColor}
+                          onClick={() => setProfileCar({ leagueName, carId: s.id })}
+                        />
                       );
                     })}
-                  </tbody>
-                </table>
               </div>
               <div style={{ padding:'8px 12px',fontSize:11,color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 4 → Promus vers Successeurs</span>
