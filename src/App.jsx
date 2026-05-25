@@ -3972,13 +3972,18 @@ export default function App() {
       }
     }, [leagueTab, activeGroup]);
 
-    useEffect(() => {
-      if (matches.length === 0) return;
+    // Initialiser groupOpenDay une seule fois par groupe/ligue
+    const initKey = `${leagueTab}-${activeGroup}`;
+    const initKeyRef = React.useRef(null);
+    if (initKeyRef.current !== initKey && matches.length > 0) {
+      initKeyRef.current = initKey;
       const days = [...new Set(matches.map(m => m.day))].sort((a, b) => a - b);
       const firstIncomplete = days.find(d => matches.filter(m => m.day === d).some(m => m.homeGoals === null));
-      // Seulement initialiser si openDay est null — ne jamais écraser une journée ouverte
-      setOpenDay(prev => prev === null ? (firstIncomplete ?? days[days.length - 1]) : prev);
-    }, [leagueTab, activeGroup]); // Dépend du groupe/ligue, pas de matches.length
+      const target = firstIncomplete ?? days[days.length - 1] ?? null;
+      if (groupOpenDay !== target) {
+        setTimeout(() => setGroupOpenDay(target), 0);
+      }
+    }
 
     const totalMatches = matches.length;
     const playedMatches = matches.filter(m => m.homeGoals !== null).length;
