@@ -2192,10 +2192,47 @@ export default function App() {
     }
 
     for (let i = 1; i <= 32; i++) {
-      const h = seeded[i - 1];
-      const a = seeded[64 - i];
+      const h = seeded[i - 1];      // seed i (1-32)
+      const a = seeded[64 - i];     // seed 65-i (33-64)
       makeMatch('r1', i, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
     }
+    // Re-order R1 matches so seeds are spread evenly across the bracket
+    // Standard bracket distribution for 64 teams:
+    // Position order: 1,16,9,8,5,12,13,4, 3,14,11,6,7,10,15,2 (left half top→bottom)
+    //                 2,15,10,7,6,11,14,3, 4,13,12,5,8,9,16,1 (right half - mirror)
+    // Seeds in each quarter: Q1=[1,8,9,16], Q2=[4,5,12,13], Q3=[2,7,10,15], Q4=[3,6,11,14]
+    // Match ordering by seed position (bracketPos):
+    // Left top (Q1):    1vs64, 16vs49, 9vs56, 8vs57   → bracketPos 1,2,3,4
+    // Left bottom (Q2): 4vs61, 13vs52, 12vs53, 5vs60  → bracketPos 5,6,7,8
+    // Right top (Q3):   2vs63, 15vs50, 10vs55, 7vs58  → bracketPos 9,10,11,12 (mirrored)
+    // Right bottom (Q4):3vs62, 14vs51, 11vs54, 6vs59  → bracketPos 13,14,15,16 (mirrored)
+    // Seeds for left: 1,8,9,16,4,5,12,13 and right: 2,7,10,15,3,6,11,14
+    // Remap bracketPos to achieve proper distribution
+    const seedOrder = [
+      // Left half (pos 1-16): seeds paired top to bottom
+      1,16,9,8,5,12,13,4,  // Q1 and Q2 left
+      // Right half (pos 17-32): seeds paired — mirror order
+      2,15,10,7,6,11,14,3,  // Q3 and Q4 right top
+      32,17,24,25,28,21,20,29, // fillers
+      31,18,23,26,27,22,19,30  // fillers
+    ];
+    // Actually simplest: reorder the bracketPos assignments
+    // Left half seeds: 1,16,9,8,5,12,13,4 with opponents 64,49,56,57,60,53,52,61
+    // Right half seeds: 2,15,10,7,6,11,14,3 with opponents 63,50,55,58,59,54,51,62
+    const leftSeeds  = [1,16,9,8,5,12,13,4,  // top 8 left matches (Q1+Q2)
+                        32,17,24,25,28,21,20,29]; // bottom 8 left matches
+    const rightSeeds = [2,15,10,7,6,11,14,3,  // top 8 right matches (Q3+Q4)
+                        31,18,23,26,27,22,19,30]; // bottom 8 right matches
+    // Rebuild matches with proper bracketPos
+    const matchEntries = Object.entries(matches).filter(([,m]) => m.round === 'r1');
+    const byPos = {};
+    matchEntries.forEach(([id,m]) => { byPos[m.bracketPos] = id; });
+    // Reassign bracketPos based on seed order
+    const allR1Seeds = [...leftSeeds, ...rightSeeds]; // 32 seeds for left+right
+    allR1Seeds.forEach((seed, newPos) => {
+      const matchId = byPos[seed]; // original pos = seed index
+      if (matchId) matches[matchId] = { ...matches[matchId], bracketPos: newPos + 1 };
+    });
     for (let i = 1; i <= 16; i++) makeMatch('r2', 32 + i, null, null, null, null, null, null, null, null);
     for (let i = 1; i <= 8; i++)  makeMatch('r3', 48 + i, null, null, null, null, null, null, null, null);
     for (let i = 1; i <= 4; i++)  makeMatch('qf', 56 + i, null, null, null, null, null, null, null, null);
@@ -4076,31 +4113,31 @@ export default function App() {
 
     // Bracket visual component — symétrique gauche/droite
     function BracketView() {
-      // Split R1 in two halves: left (1-16) and right (17-32)
-      const leftR1  = r1.slice(0, 16);
-      const rightR1 = r1.slice(16, 32);
+      // R1: pos 1-16 = left half, pos 17-32 = right half
+      const leftR1  = r1.filter(m => m.bracketPos <= 16).sort((a,b) => a.bracketPos - b.bracketPos);
+      const rightR1 = r1.filter(m => m.bracketPos > 16).sort((a,b) => a.bracketPos - b.bracketPos);
       const leftR2  = r2.slice(0, 8);
       const rightR2 = r2.slice(8, 16);
       const leftR3  = r3.slice(0, 4);
       const rightR3 = r3.slice(4, 8);
       const leftQF  = qf.slice(0, 2);
       const rightQF = qf.slice(2, 4);
-      const leftSF  = sf.slice(0, 1);
-      const rightSF = sf.slice(1, 2);
+      const leftSF  = sf[0] ? [sf[0]] : [];
+      const rightSF = sf[1] ? [sf[1]] : [];
 
       // Card dimensions
       const CARD_W = 110;
-      const CARD_H = 105; // taller to fit stats
+      const CARD_H = 108;
       const MATCH_GAP = 3;
       const MATCH_H = CARD_H * 2 + MATCH_GAP;
-      const COL_GAP = 28;
+      const COL_GAP = 24;
 
       function getWinnerId(m) {
         if (!m || m.homeGoals === null) return null;
         return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
       }
 
-      function CarCard({ carId, isWinner, goals, mirror }) {
+      function CarCard({ carId, isWinner, goals }) {
         const IMG_H = 55;
         if (!carId) return (
           <div style={{ width:CARD_W, height:CARD_H, background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.3 }}>
@@ -4111,10 +4148,10 @@ export default function App() {
         const name = car?.name || '?';
         const photo = getCarPhoto(carId);
         const stats = getCarStats(carId, Object.values(league.groupResults || {}).flat());
-        const groupMatches = Object.values(league.groupResults || {}).flat();
         const carObj = league.cars?.find(c => c.id === carId);
         const groupCars = carObj ? (league.cars || []).filter(c => c.group === carObj.group) : [];
-        const groupStandings = computeStandings(groupCars, groupMatches.filter(m => groupCars.some(c => c.id === m.homeId)));
+        const groupMatches = (league.groupResults?.[carObj?.group] || []);
+        const groupStandings = computeStandings(groupCars, groupMatches);
         const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
         const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
@@ -4132,7 +4169,7 @@ export default function App() {
                   <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color: isWinner ? 'var(--green)' : 'var(--text-dim)', flexShrink:0 }}>{goals}</span>
                 )}
               </div>
-              <div style={{ display:'flex', gap:4, marginTop:1, flexWrap:'wrap' }}>
+              <div style={{ display:'flex', gap:3, marginTop:1, flexWrap:'wrap' }}>
                 {groupRank > 0 && <span style={{ fontSize:8, color:'var(--gold-dim)' }}>#{groupRank} G{(carObj?.group ?? 0)+1}</span>}
                 {groupPts > 0 && <span style={{ fontSize:8, color:'var(--gold)' }}>{groupPts}pts</span>}
                 <span style={{ fontSize:8, color:'var(--green)' }}>{stats.w}V</span>
@@ -4145,9 +4182,9 @@ export default function App() {
       }
 
       function MatchBlock({ m, onConfirm, mirror, rIdx, i, betweenGap, isLast }) {
+        if (!m) return null;
         const winnerId = getWinnerId(m);
         const lineColor = "rgba(201,168,76,0.35)";
-        const lineW = 1.5;
 
         return (
           <div style={{ position:'relative', marginTop: i === 0 ? betweenGap/2 : 0 }}>
@@ -4160,48 +4197,45 @@ export default function App() {
                 homeGoals: m?.homeGoals, awayGoals: m?.awayGoals,
                 onConfirm,
               })}>
-              <CarCard carId={m?.homeId} isWinner={winnerId === m?.homeId} goals={m?.homeGoals} mirror={mirror} />
-              <CarCard carId={m?.awayId} isWinner={winnerId === m?.awayId} goals={m?.awayGoals} mirror={mirror} />
+              <CarCard carId={m?.homeId} isWinner={winnerId === m?.homeId} goals={m?.homeGoals} />
+              <CarCard carId={m?.awayId} isWinner={winnerId === m?.awayId} goals={m?.awayGoals} />
             </div>
-
-            {/* Connecting lines */}
             {!isLast && (
               <svg style={{ position:'absolute', [mirror ? 'right' : 'left']: CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
-                <line x1={mirror ? COL_GAP : 0} y1={MATCH_H/2} x2={mirror ? COL_GAP/2 : COL_GAP/2} y2={MATCH_H/2} stroke={lineColor} strokeWidth={lineW} />
-                {i % 2 === 0 ? (
-                  <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H + betweenGap + MATCH_H/2} stroke={lineColor} strokeWidth={lineW} />
-                ) : (
-                  <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={-(betweenGap + MATCH_H/2)} stroke={lineColor} strokeWidth={lineW} />
-                )}
-                <line x1={COL_GAP/2} y1={MATCH_H/2} x2={mirror ? 0 : COL_GAP} y2={MATCH_H/2} stroke={lineColor} strokeWidth={lineW} />
+                <line x1={mirror ? COL_GAP : 0} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
+                {i % 2 === 0
+                  ? <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H + betweenGap + MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
+                  : <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={-(betweenGap + MATCH_H/2)} stroke={lineColor} strokeWidth="1.5" />
+                }
+                <line x1={COL_GAP/2} y1={MATCH_H/2} x2={mirror ? 0 : COL_GAP} y2={MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
               </svg>
             )}
           </div>
         );
       }
 
-      function HalfBracket({ matches16, matches8, matches4, matches2, matches1, mirror }) {
-        const roundSets = [matches16, matches8, matches4, matches2, matches1];
-        const roundLabels = ['R1', 'R2', 'R3', 'QF', 'SF'];
+      function HalfBracket({ roundSets, labels, mirror }) {
+        // mirror=false: R1 on left, SF on right (→ toward center)
+        // mirror=true:  SF on left, R1 on right (← toward center)
         const cols = mirror ? [...roundSets].reverse() : roundSets;
-        const labels = mirror ? [...roundLabels].reverse() : roundLabels;
+        const colLabels = mirror ? [...labels].reverse() : labels;
 
         return (
-          <div style={{ display:'flex', flexDirection: mirror ? 'row-reverse' : 'row', gap:0, alignItems:'flex-start' }}>
+          <div style={{ display:'flex', flexDirection:'row', gap:0 }}>
             {cols.map((roundMatches, colIdx) => {
               const rIdx = mirror ? roundSets.length - 1 - colIdx : colIdx;
               const spacing = Math.pow(2, rIdx);
               const betweenGap = (MATCH_H + MATCH_GAP) * spacing - MATCH_H;
-              const label = mirror ? labels[labels.length - 1 - colIdx] : labels[colIdx];
+              const isLast = mirror ? colIdx === 0 : colIdx === cols.length - 1;
 
               return (
-                <div key={colIdx} style={{ display:'flex', flexDirection:'column', alignItems:'center', marginLeft: mirror ? (colIdx < cols.length-1 ? COL_GAP : 0) : 0, marginRight: mirror ? 0 : (colIdx < cols.length-1 ? COL_GAP : 0) }}>
+                <div key={colIdx} style={{ display:'flex', flexDirection:'column', alignItems:'center', marginRight: !mirror && !isLast ? COL_GAP : 0, marginLeft: mirror && !isLast ? COL_GAP : 0 }}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold-dim)', letterSpacing:1, marginBottom:6, textAlign:'center', width:CARD_W }}>
-                    {label}
+                    {colLabels[colIdx]}
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
                     {roundMatches.map((m, i) => (
-                      <MatchBlock key={m.id} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={colIdx === cols.length - 1}
+                      <MatchBlock key={m?.id || i} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={isLast}
                         onConfirm={(hg, ag) => updatePlayoffMatch(leagueTab, m.id, hg, ag)} />
                     ))}
                   </div>
@@ -4212,15 +4246,19 @@ export default function App() {
         );
       }
 
+      const leftRounds = [leftR1, leftR2, leftR3, leftQF, leftSF];
+      const rightRounds = [rightR1, rightR2, rightR3, rightQF, rightSF];
+      const roundLabels = ['R1', 'R2', 'R3', 'QF', 'SF'];
+
       return (
         <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch', background:'var(--dark2)', borderRadius:8, padding:12 }}>
-          <div style={{ display:'flex', gap:0, alignItems:'center' }}>
-            {/* Left half — R1→SF, left to right */}
-            <HalfBracket matches16={leftR1} matches8={leftR2} matches4={leftR3} matches2={leftQF} matches1={leftSF} mirror={false} />
+          <div style={{ display:'flex', alignItems:'center', gap:0 }}>
+            {/* Left: R1→SF (left to right) */}
+            <HalfBracket roundSets={leftRounds} labels={roundLabels} mirror={false} />
 
-            {/* Center — Finale */}
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', margin:'0 16px', flexShrink:0 }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'var(--gold)', letterSpacing:2, marginBottom:8, textAlign:'center' }}>🏆 FINALE</div>
+            {/* Center: Finale */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', margin:`0 ${COL_GAP}px`, flexShrink:0 }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'var(--gold)', letterSpacing:2, marginBottom:6, textAlign:'center' }}>🏆 FINALE</div>
               {fin ? (
                 <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
                   onClick={() => openMatchModal({
@@ -4241,12 +4279,25 @@ export default function App() {
               )}
             </div>
 
-            {/* Right half — SF→R1, right to left (mirrored) */}
-            <HalfBracket matches16={rightR1} matches8={rightR2} matches4={rightR3} matches2={rightQF} matches1={rightSF} mirror={true} />
+            {/* Right: SF→R1 (mirrored, right to left) */}
+            <HalfBracket roundSets={rightRounds} labels={roundLabels} mirror={true} />
           </div>
         </div>
       );
     }
+
+      // Card dimensions
+      const CARD_W = 110;
+      const CARD_H = 105; // taller to fit stats
+      const MATCH_GAP = 3;
+      const MATCH_H = CARD_H * 2 + MATCH_GAP;
+      const COL_GAP = 28;
+
+      function getWinnerId(m) {
+        if (!m || m.homeGoals === null) return null;
+        return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
+      }
+
 
     function simPO(matchId) {
       let h, a;
