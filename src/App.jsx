@@ -1636,11 +1636,11 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, 
             { label:'V',  value:w ?? 0,   color:'var(--green)' },
             { label:'N',  value:d ?? 0,   color:'var(--text-dim)' },
             { label:'D',  value:l ?? 0,   color:'#e74c3c' },
-            { label:'BC', value:gf ?? 0,  color:'var(--text)' },
-            { label:'BE', value:ga ?? 0,  color:'var(--text)' },
             { label:'±',  value: diff > 0 ? `+${diff}` : diff, color: diff > 0 ? 'var(--green)' : diff < 0 ? '#e74c3c' : 'var(--text-dim)' },
+            { label:'BP', value:gf ?? 0,  color:'var(--text)' },
+            { label:'BC', value:ga ?? 0,  color:'var(--text)' },
             { label:'PJ', value:gp ?? 0,  color:'var(--text-dim)' },
-            ...(bp !== undefined ? [{ label:'BP', value:bp, color:'var(--gold-dim)' }] : []),
+            ...(bp !== undefined ? [{ label:'BPA', value:bp, color:'var(--gold-dim)' }] : []),
           ].map(({ label, value, color }) => (
             <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:44, flexShrink:0, borderLeft:'1px solid #1a1a1a' }}>
               <div style={{ fontSize:8, color:'var(--text-dim)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{label}</div>
