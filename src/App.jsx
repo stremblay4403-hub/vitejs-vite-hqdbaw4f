@@ -1675,6 +1675,78 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, 
   );
 }
 
+// Composant isolé pour la liste des journées — hors de App pour éviter les re-renders
+function DaysList({ days, allMatches, openMatchModal, isPublicMode, simDay, leagueName }) {
+  const [openDay, setOpenDay] = React.useState(null);
+  const containerRef = React.useRef(null);
+  const scrollPos = React.useRef(0);
+
+  React.useLayoutEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = scrollPos.current;
+    }
+  });
+
+  function toggleDay(day) {
+    if (containerRef.current) {
+      scrollPos.current = containerRef.current.scrollTop;
+    }
+    setOpenDay(d => d === day ? null : day);
+  }
+
+  return (
+    <div ref={containerRef} style={{ maxHeight: window.innerHeight - 200, overflowY: 'auto', overscrollBehavior: 'contain' }}>
+      {days.map(day => {
+        const dayMatches = allMatches.filter(m => m.day === day);
+        const played = dayMatches.filter(m => m.homeGoals !== null).length;
+        const complete = played === dayMatches.length;
+        const isOpen = openDay === day;
+        return (
+          <div key={day} style={{ marginBottom:4, borderRadius:4, border:'1px solid var(--border)', overflow:'hidden' }}>
+            <div style={{ display:'flex', alignItems:'center', padding:'8px 10px', background: complete ? 'rgba(39,174,96,0.08)' : 'var(--dark3)', cursor:'pointer' }}
+              onClick={() => toggleDay(day)}>
+              <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, letterSpacing:1, color: complete ? 'var(--green)' : 'var(--gold-dim)', flex:1 }}>
+                Journée {day}
+              </span>
+              <span style={{ fontSize:11, color:'var(--text-dim)', marginRight:8 }}>{played}/{dayMatches.length}</span>
+              {!isPublicMode && simDay && (
+                <button className="btn btn-xs btn-sim" style={{ marginRight:6 }}
+                  onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>
+              )}
+              <span style={{ color:'var(--text-dim)', fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
+            </div>
+            {isOpen && (
+              <div style={{ background:'var(--dark2)', padding:'4px 6px' }}>
+                {dayMatches.map(m => {
+                  const hWin = m.homeGoals !== null && m.homeGoals > m.awayGoals;
+                  const aWin = m.homeGoals !== null && m.awayGoals > m.homeGoals;
+                  return (
+                    <div key={`${m.homeId}-${m.awayId}`}
+                      style={{ display:'flex', alignItems:'center', gap:6, padding:'4px 0', borderBottom:'1px solid #111', cursor:'pointer' }}
+                      onClick={() => openMatchModal(m)}>
+                      <span style={{ flex:1, fontSize:13, fontWeight:600, color: hWin ? 'var(--green)' : 'var(--text)', textAlign:'right', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.homeName}</span>
+                      <div style={{ display:'flex', alignItems:'center', gap:4, flexShrink:0 }}>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: hWin ? 'var(--green)' : aWin ? '#e74c3c' : 'var(--gold)', minWidth:16, textAlign:'center' }}>
+                          {m.homeGoals ?? '—'}
+                        </span>
+                        <span style={{ color:'var(--text-dim)', fontSize:12 }}>:</span>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: aWin ? 'var(--green)' : hWin ? '#e74c3c' : 'var(--gold)', minWidth:16, textAlign:'center' }}>
+                          {m.awayGoals ?? '—'}
+                        </span>
+                      </div>
+                      <span style={{ flex:1, fontSize:13, fontWeight:600, color: aWin ? 'var(--green)' : 'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{m.awayName}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function App() {
   const [db, setDb] = useState(() => {
     const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
@@ -1714,6 +1786,7 @@ export default function App() {
   const [sectionTab, setSectionTab] = useState("groupes");
   const [ligueSubTab, setLigueSubTab] = useState('principales');
   const [succSubTab, setSuccSubTab] = useState('classement');
+  const [groupOpenDay, setGroupOpenDay] = useState(null);
   const [succOpenDay, setSuccOpenDay] = useState(null);
   const [sucSuccSubTab, setSucSuccSubTab] = useState('classement');
   const [sucSuccOpenDay, setSucSuccOpenDay] = useState(null);
@@ -3891,7 +3964,7 @@ export default function App() {
     const matches = getGroupMatches(leagueTab, activeGroup);
     const standings = getGroupStandings(leagueTab, activeGroup);
     const groupCars = getGroupCars(leagueTab, activeGroup);
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
     useEffect(() => {
       if (!league.groupResults[activeGroup]) {
@@ -3917,7 +3990,7 @@ export default function App() {
         <div className="group-tabs">
           {Array.from({ length: GROUPS }, (_, i) => (
             <button key={i} className={`group-tab ${activeGroup === i ? 'active' : ''}`}
-              onClick={() => { setActiveGroup(i); setOpenDay(null); }}>
+              onClick={() => { setActiveGroup(i); setGroupOpenDay(null); }}>
               Groupe {i + 1}
             </button>
           ))}
@@ -5419,7 +5492,7 @@ export default function App() {
     const cars = league?.cars || [];
     const playedMatches = league?.matches || []; // Seulement les joués
     const [subTab, setSubTab] = [succSubTab, setSuccSubTab];
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [succOpenDay, setSuccOpenDay];
     const [search, setSearch] = useState('');
     const [matchSearch, setMatchSearch] = useState('');
 
@@ -5707,7 +5780,7 @@ export default function App() {
   }
 
   function SucSuccView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [sucSuccOpenDay, setSucSuccOpenDay];
     const leagueName = 'Successeurs aux Successeurs';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -5937,7 +6010,7 @@ export default function App() {
   }
 
   function RemplacView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [remplacOpenDay, setRemplacOpenDay];
     const leagueName = 'Remplaçants des Successeurs';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6155,7 +6228,7 @@ export default function App() {
   }
 
   function AvantDernView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [avantDernOpenDay, setAvantDernOpenDay];
     const leagueName = 'Avant-dernière chance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6348,7 +6421,7 @@ export default function App() {
   }
 
   function DerniereView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [derniereOpenDay, setDerniereOpenDay];
     const leagueName = 'Dernière chance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6541,7 +6614,7 @@ export default function App() {
   }
 
   function PersevView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [persevOpenDay, setPersevOpenDay];
     const leagueName = 'Persévérance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6734,7 +6807,7 @@ export default function App() {
   }
 
   function DeterView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [deterOpenDay, setDeterOpenDay];
     const leagueName = 'Détermination';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6927,7 +7000,7 @@ export default function App() {
   }
 
   function AcharnView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [acharnOpenDay, setAcharnOpenDay];
     const leagueName = 'Acharnement';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7120,7 +7193,7 @@ export default function App() {
   }
 
   function ObstinView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [obstinOpenDay, setObstinOpenDay];
     const leagueName = 'Obstination';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7313,7 +7386,7 @@ export default function App() {
   }
 
   function InsistView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [insistOpenDay, setInsistOpenDay];
     const leagueName = 'Insistance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7506,7 +7579,7 @@ export default function App() {
   }
 
   function ComebackView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [comebackOpenDay, setComebackOpenDay];
     const leagueName = 'Comeback';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7699,7 +7772,7 @@ export default function App() {
   }
 
   function ImportView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [importOpenDay, setImportOpenDay];
     const leagueName = 'Importation';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7892,7 +7965,7 @@ export default function App() {
   }
 
   function OublView({ subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [oublOpenDay, setOublOpenDay];
     const leagueName = 'Oubliettes';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -8079,7 +8152,7 @@ export default function App() {
   }
 
   function ActuellesView({ leagueName, subTab, setSubTab }) {
-    const [openDay, setOpenDay] = useState(null);
+    const [openDay, setOpenDay] = [actOpenDay, setActOpenDay];
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
     const playedMatches = league?.matches || [];
