@@ -1482,11 +1482,15 @@ const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 const isLoadingFromFirebase = { current: false };
+const isPublicModeRef = { current: true }; // true par défaut jusqu'au login
 let firebaseSaveTimeout = null;
 
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+
+  // Ne jamais sauvegarder vers Firestore depuis la vue publique
+  if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
 
   // Ne pas sauvegarder vers Firestore si on vient de charger depuis Firestore
   if (isLoadingFromFirebase.current) return;
@@ -1594,7 +1598,7 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
-  const ROW_H = 88;
+  const ROW_H = 98;
   return (
     <div style={{ display:'flex', alignItems:'stretch', height:ROW_H, borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a' }}>
 
@@ -1670,6 +1674,11 @@ export default function App() {
     return sessionStorage.getItem('tdv_admin') === 'ok';
   });
   const isPublicMode = !isLoggedIn;
+
+  // Ref pour que storageSave (hors composant) puisse vérifier le mode public
+  React.useEffect(() => {
+    isPublicModeRef.current = isPublicMode;
+  }, [isPublicMode]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainTab, setMainTab] = useState("dashboard");
   const [allCarsSearch, setAllCarsSearch] = useState('');
