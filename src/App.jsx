@@ -1592,10 +1592,11 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
 
 // Composant réutilisable pour toutes les ligues — style leaderboard mobile
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
+  const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
-  const ROW_H = 72;
+  const ROW_H = 88;
   return (
-    <div style={{ display:'flex', alignItems:'stretch', height:ROW_H, borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a', overflow:'hidden' }}>
+    <div style={{ display:'flex', alignItems:'stretch', height:ROW_H, borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a' }}>
 
       {/* Rang */}
       <div style={{ width:28, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--dark2)' }}>
@@ -1614,36 +1615,41 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, 
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>🚗</div>}
       </div>
 
-      {/* Nom — flex:1, prend tout l'espace */}
-      <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
-        <div style={{ fontWeight:700, fontSize:19, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
-        {badge && (
-          <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
-        )}
-      </div>
-
-      {/* Zone droite scrollable — Points + Stats */}
-      <div style={{ display:'flex', alignItems:'stretch', overflowX:'auto', WebkitOverflowScrolling:'touch', flexShrink:0 }}>
-        {/* Points — toujours visible en premier */}
-        <div style={{ width:54, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background:'var(--dark2)' }}>
-          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:32, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
+      {/* Nom — flex:1 */}
+      {!showStats && (
+        <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
+          <div style={{ fontWeight:700, fontSize:22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
+          {badge && (
+            <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+          )}
         </div>
-        {/* Stats — accessibles en glissant */}
-        {[
-          { label:'V',  value:w ?? 0,   color:'var(--green)' },
-          { label:'N',  value:d ?? 0,   color:'var(--text-dim)' },
-          { label:'D',  value:l ?? 0,   color:'#e74c3c' },
-          { label:'BC', value:gf ?? 0,  color:'var(--text)' },
-          { label:'BE', value:ga ?? 0,  color:'var(--text)' },
-          { label:'±',  value: diff > 0 ? `+${diff}` : diff, color: diff > 0 ? 'var(--green)' : diff < 0 ? '#e74c3c' : 'var(--text-dim)' },
-          { label:'PJ', value:gp ?? 0,  color:'var(--text-dim)' },
-          ...(bp !== undefined ? [{ label:'BP', value:bp, color:'var(--gold-dim)' }] : []),
-        ].map(({ label, value, color }) => (
-          <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:44, flexShrink:0, borderLeft:'1px solid #1a1a1a' }}>
-            <div style={{ fontSize:8, color:'var(--text-dim)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{label}</div>
-            <div style={{ fontSize:20, fontWeight:700, color, fontFamily:"'Bebas Neue',sans-serif", lineHeight:1 }}>{value}</div>
-          </div>
-        ))}
+      )}
+
+      {/* Stats — visible quand showStats */}
+      {showStats && (
+        <div style={{ flex:1, display:'flex', alignItems:'stretch', overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+          {[
+            { label:'V',  value:w ?? 0,   color:'var(--green)' },
+            { label:'N',  value:d ?? 0,   color:'var(--text-dim)' },
+            { label:'D',  value:l ?? 0,   color:'#e74c3c' },
+            { label:'BC', value:gf ?? 0,  color:'var(--text)' },
+            { label:'BE', value:ga ?? 0,  color:'var(--text)' },
+            { label:'±',  value: diff > 0 ? `+${diff}` : diff, color: diff > 0 ? 'var(--green)' : diff < 0 ? '#e74c3c' : 'var(--text-dim)' },
+            { label:'PJ', value:gp ?? 0,  color:'var(--text-dim)' },
+            ...(bp !== undefined ? [{ label:'BP', value:bp, color:'var(--gold-dim)' }] : []),
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', minWidth:44, flexShrink:0, borderLeft:'1px solid #1a1a1a' }}>
+              <div style={{ fontSize:8, color:'var(--text-dim)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{label}</div>
+              <div style={{ fontSize:20, fontWeight:700, color, fontFamily:"'Bebas Neue',sans-serif", lineHeight:1 }}>{value}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Points — clic pour toggle stats */}
+      <div style={{ width:58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background: showStats ? 'rgba(201,168,76,0.1)' : 'var(--dark2)', cursor:'pointer' }}
+        onClick={() => setShowStats(s => !s)}>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:40, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
       </div>
     </div>
   );
