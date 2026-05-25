@@ -3966,25 +3966,6 @@ export default function App() {
     const groupCars = getGroupCars(leagueTab, activeGroup);
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
-    useEffect(() => {
-      if (!league.groupResults[activeGroup]) {
-        getOrCreateGroupMatches(leagueTab, activeGroup);
-      }
-    }, [leagueTab, activeGroup]);
-
-    // Initialiser groupOpenDay une seule fois par groupe/ligue
-    const initKey = `${leagueTab}-${activeGroup}`;
-    const initKeyRef = React.useRef(null);
-    if (initKeyRef.current !== initKey && matches.length > 0) {
-      initKeyRef.current = initKey;
-      const days = [...new Set(matches.map(m => m.day))].sort((a, b) => a - b);
-      const firstIncomplete = days.find(d => matches.filter(m => m.day === d).some(m => m.homeGoals === null));
-      const target = firstIncomplete ?? days[days.length - 1] ?? null;
-      if (groupOpenDay !== target) {
-        setTimeout(() => setGroupOpenDay(target), 0);
-      }
-    }
-
     const totalMatches = matches.length;
     const playedMatches = matches.filter(m => m.homeGoals !== null).length;
     const pct = totalMatches > 0 ? Math.round(playedMatches / totalMatches * 100) : 0;
