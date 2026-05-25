@@ -9533,10 +9533,55 @@ export default function App() {
             </label>
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
-              setDoc(tournoisDocRef, { data: JSON.stringify(db), updatedAt: Date.now() })
+              const fullData = storageLoad() || db;
+              setDoc(tournoisDocRef, { data: JSON.stringify(fullData), updatedAt: Date.now() })
                 .then(() => alert('✅ Sauvegardé sur Firebase !'))
                 .catch(e => alert('❌ Erreur: ' + e.message));
             }}>☁️ Sync Firebase</button>
+            <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(52,152,219,0.15)',borderColor:'#3498db',color:'#3498db' }} onClick={async () => {
+              const photos = {...(db.photos || {})};
+              const base64Entries = Object.entries(photos).filter(([, v]) => v && v.startsWith('data:'));
+              if (base64Entries.length === 0) { alert('✅ Toutes les photos sont déjà sur Cloudinary !'); return; }
+              
+              let done = 0;
+              let errors = 0;
+              const total = base64Entries.length;
+              
+              for (const [carId, base64] of base64Entries) {
+                try {
+                  // Convertir base64 en blob
+                  const res = await fetch(base64);
+                  const blob = await res.blob();
+                  
+                  // Upload sur Cloudinary
+                  const formData = new FormData();
+                  formData.append('file', blob, 'photo.jpg');
+                  formData.append('upload_preset', 'Tournois de Voitures');
+                  const upload = await fetch('https://api.cloudinary.com/v1_1/dty8if0h1/image/upload', {
+                    method: 'POST',
+                    body: formData
+                  });
+                  const data = await upload.json();
+                  if (data.secure_url) {
+                    photos[carId] = data.secure_url;
+                    done++;
+                  } else {
+                    errors++;
+                  }
+                } catch(e) {
+                  errors++;
+                }
+                
+                // Mise à jour progressive toutes les 10 photos
+                if (done % 10 === 0) {
+                  setDb(d => ({ ...d, photos }));
+                }
+              }
+              
+              // Sauvegarde finale
+              setDb(d => ({ ...d, photos }));
+              alert(`✅ Migration terminée !\n${done} photos migrées vers Cloudinary\n${errors} erreurs`);
+            }}>🖼️ Migrer vers Cloudinary</button>
             {!confirmReset
               ? <button className="btn btn-dark btn-sm" style={{ color:'#e74c3c',borderColor:'#c0392b',whiteSpace:'nowrap',flexShrink:0 }} onClick={() => setConfirmReset(true)}>🗑 Reset</button>
               : <div style={{ display:'flex',gap:6,alignItems:'center' }}>
