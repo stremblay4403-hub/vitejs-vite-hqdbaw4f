@@ -5181,8 +5181,7 @@ if (saved) {
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -5228,7 +5227,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -5487,8 +5485,7 @@ if (saved) {
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -5534,7 +5531,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -5725,8 +5721,7 @@ if (saved) {
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -5772,7 +5767,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -5955,8 +5949,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -5985,7 +5978,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -6168,8 +6160,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -6198,7 +6189,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -6381,8 +6371,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -6411,7 +6400,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -6594,8 +6582,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -6624,7 +6611,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -6807,8 +6793,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -6837,7 +6822,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -7020,8 +7004,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -7050,7 +7033,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -7233,8 +7215,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -7263,7 +7244,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -7446,8 +7426,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -7476,7 +7455,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -7659,8 +7637,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -7689,7 +7666,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -7865,8 +7841,7 @@ if (saved) {
                         {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -7895,7 +7870,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
@@ -8094,8 +8068,7 @@ if (saved) {
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
-                      {isOpen && (
-                        <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px' }}>
+                      <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
                           {filteredDay.map(m => {
                             const isPlayed = m.homeGoals !== null;
                             const hWin = isPlayed && m.homeGoals > m.awayGoals;
@@ -8141,7 +8114,6 @@ if (saved) {
                             );
                           })}
                         </div>
-                      )}
                     </div>
                   );
                 })}
