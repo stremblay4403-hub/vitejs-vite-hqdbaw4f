@@ -2191,47 +2191,22 @@ export default function App() {
       return id;
     }
 
-    for (let i = 1; i <= 32; i++) {
-      const h = seeded[i - 1];      // seed i (1-32)
-      const a = seeded[64 - i];     // seed 65-i (33-64)
-      makeMatch('r1', i, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
-    }
-    // Re-order R1 matches so seeds are spread evenly across the bracket
-    // Standard bracket distribution for 64 teams:
-    // Position order: 1,16,9,8,5,12,13,4, 3,14,11,6,7,10,15,2 (left half top→bottom)
-    //                 2,15,10,7,6,11,14,3, 4,13,12,5,8,9,16,1 (right half - mirror)
-    // Seeds in each quarter: Q1=[1,8,9,16], Q2=[4,5,12,13], Q3=[2,7,10,15], Q4=[3,6,11,14]
-    // Match ordering by seed position (bracketPos):
-    // Left top (Q1):    1vs64, 16vs49, 9vs56, 8vs57   → bracketPos 1,2,3,4
-    // Left bottom (Q2): 4vs61, 13vs52, 12vs53, 5vs60  → bracketPos 5,6,7,8
-    // Right top (Q3):   2vs63, 15vs50, 10vs55, 7vs58  → bracketPos 9,10,11,12 (mirrored)
-    // Right bottom (Q4):3vs62, 14vs51, 11vs54, 6vs59  → bracketPos 13,14,15,16 (mirrored)
-    // Seeds for left: 1,8,9,16,4,5,12,13 and right: 2,7,10,15,3,6,11,14
-    // Remap bracketPos to achieve proper distribution
-    const seedOrder = [
-      // Left half (pos 1-16): seeds paired top to bottom
-      1,16,9,8,5,12,13,4,  // Q1 and Q2 left
-      // Right half (pos 17-32): seeds paired — mirror order
-      2,15,10,7,6,11,14,3,  // Q3 and Q4 right top
-      32,17,24,25,28,21,20,29, // fillers
-      31,18,23,26,27,22,19,30  // fillers
+    // Distribution standard bracket 64 équipes
+    // Chaque quart contient un seed du top 8 différent
+    // Ordre des seeds dans le bracket (bracketPos 1→32):
+    // Gauche:  1,32,16,17,9,24,8,25, 5,28,12,21,4,29,13,20
+    // Droite:  2,31,15,18,10,23,7,26, 6,27,11,22,3,30,14,19
+    const bracketOrder = [
+      1,32, 16,17, 9,24, 8,25,   // Q1 gauche haut (seeds 1,8,9,16)
+      5,28, 12,21, 4,29, 13,20,  // Q2 gauche bas  (seeds 4,5,12,13)
+      2,31, 15,18, 10,23, 7,26,  // Q3 droite haut (seeds 2,7,10,15)
+      6,27, 11,22, 3,30, 14,19,  // Q4 droite bas  (seeds 3,6,11,14)
     ];
-    // Actually simplest: reorder the bracketPos assignments
-    // Left half seeds: 1,16,9,8,5,12,13,4 with opponents 64,49,56,57,60,53,52,61
-    // Right half seeds: 2,15,10,7,6,11,14,3 with opponents 63,50,55,58,59,54,51,62
-    const leftSeeds  = [1,16,9,8,5,12,13,4,  // top 8 left matches (Q1+Q2)
-                        32,17,24,25,28,21,20,29]; // bottom 8 left matches
-    const rightSeeds = [2,15,10,7,6,11,14,3,  // top 8 right matches (Q3+Q4)
-                        31,18,23,26,27,22,19,30]; // bottom 8 right matches
-    // Rebuild matches with proper bracketPos
-    const matchEntries = Object.entries(matches).filter(([,m]) => m.round === 'r1');
-    const byPos = {};
-    matchEntries.forEach(([id,m]) => { byPos[m.bracketPos] = id; });
-    // Reassign bracketPos based on seed order
-    const allR1Seeds = [...leftSeeds, ...rightSeeds]; // 32 seeds for left+right
-    allR1Seeds.forEach((seed, newPos) => {
-      const matchId = byPos[seed]; // original pos = seed index
-      if (matchId) matches[matchId] = { ...matches[matchId], bracketPos: newPos + 1 };
+
+    bracketOrder.forEach((seed, pos) => {
+      const h = seeded[seed - 1];       // top seed
+      const a = seeded[64 - seed];      // opponent
+      makeMatch('r1', pos + 1, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
     });
     for (let i = 1; i <= 16; i++) makeMatch('r2', 32 + i, null, null, null, null, null, null, null, null);
     for (let i = 1; i <= 8; i++)  makeMatch('r3', 48 + i, null, null, null, null, null, null, null, null);
