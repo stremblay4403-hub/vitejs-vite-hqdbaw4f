@@ -3966,6 +3966,12 @@ export default function App() {
     const groupCars = getGroupCars(leagueTab, activeGroup);
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
+    useEffect(() => {
+      if (!league.groupResults[activeGroup]) {
+        getOrCreateGroupMatches(leagueTab, activeGroup);
+      }
+    }, [leagueTab, activeGroup]);
+
     const totalMatches = matches.length;
     const playedMatches = matches.filter(m => m.homeGoals !== null).length;
     const pct = totalMatches > 0 ? Math.round(playedMatches / totalMatches * 100) : 0;
@@ -4076,8 +4082,17 @@ export default function App() {
               <div className="card-title">Matchs — Groupe {activeGroup + 1}</div>
               <span className="text-dim" style={{ fontSize:11,marginLeft:'auto' }}>17 journées · 9 matchs chacune</span>
             </div>
-            <ScrollKeeper maxHeight={600}>
-              {matches.length === 0 && <div className="text-dim text-center" style={{ padding:24 }}>Chargement...</div>}
+            {(() => {
+              const listRef = React.useRef(null);
+              const listScrollPos = React.useRef(0);
+              React.useLayoutEffect(() => {
+                if (listRef.current) listRef.current.scrollTop = listScrollPos.current;
+              });
+              return (
+                <div ref={listRef}
+                  onScroll={e => { listScrollPos.current = e.currentTarget.scrollTop; }}
+                  style={{ maxHeight:600, overflowY:'auto', padding:'6px' }}>
+                  {matches.length === 0 && <div className="text-dim text-center" style={{ padding:24 }}>Chargement...</div>}
               {days.map(day => {
                 const dayMatches = matches.filter(m => m.day === day);
                 const dayPlayed = dayMatches.filter(m => m.homeGoals !== null).length;
@@ -4186,7 +4201,9 @@ export default function App() {
                   </div>
                 );
               })}
-            </ScrollKeeper>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
