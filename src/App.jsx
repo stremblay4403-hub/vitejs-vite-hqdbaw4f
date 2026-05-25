@@ -3937,94 +3937,6 @@ export default function App() {
             </div>
           </div>
 
-          {/* Graphique évolution classement par journée */}
-          {(() => {
-            const league = currentSeason.leagues[leagueTab];
-            if (!league) return null;
-            const groupCars = (league.cars || []).filter(c => c.group === activeGroup);
-            const allMatches = league.groupResults?.[activeGroup] || [];
-            const days = [...new Set(allMatches.map(m => m.day))].sort((a,b) => a-b);
-            const playedDays = days.filter(d => allMatches.filter(m => m.day === d).every(m => m.homeGoals !== null));
-            if (playedDays.length < 2) return null;
-
-            // Calculer classement après chaque journée
-            const rankHistory = {}; // carId -> [rank après j1, j2, ...]
-            groupCars.forEach(c => { rankHistory[c.id] = []; });
-
-            playedDays.forEach(day => {
-              const played = allMatches.filter(m => m.day <= day && m.homeGoals !== null);
-              const stds = computeStandings(groupCars, played);
-              stds.forEach((s, i) => {
-                if (rankHistory[s.id]) rankHistory[s.id].push(i + 1);
-              });
-            });
-
-            const W = 340, H = 120, PAD = { t:8, r:8, b:20, l:24 };
-            const chartW = W - PAD.l - PAD.r;
-            const chartH = H - PAD.t - PAD.b;
-            const n = groupCars.length;
-            const xStep = playedDays.length > 1 ? chartW / (playedDays.length - 1) : chartW;
-
-            // Couleurs pour top cars
-            const colors = ['#c9a84c','#27ae60','#5dade2','#e74c3c','#9b59b6','#e67e22','#1abc9c','#e91e63','#ff9800','#607d8b','#795548','#00bcd4','#8bc34a','#ff5722','#3f51b5','#cddc39','#9c27b0','#00acc1','#f06292','#aed581'];
-
-            return (
-              <div className="card" style={{ marginTop:10 }}>
-                <div className="card-header">
-                  <div className="card-title">📈 Évolution Classement — Groupe {activeGroup+1}</div>
-                  <span className="text-dim" style={{ fontSize:11,marginLeft:'auto' }}>après {playedDays.length} journées</span>
-                </div>
-                <div className="card-body" style={{ padding:8 }}>
-                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:'auto',display:'block' }}>
-                    {/* Grilles horizontales */}
-                    {Array.from({length:n}, (_,i) => i+1).map(rank => (
-                      <line key={rank}
-                        x1={PAD.l} y1={PAD.t + (rank-1)/(n-1)*chartH}
-                        x2={W-PAD.r} y2={PAD.t + (rank-1)/(n-1)*chartH}
-                        stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                    ))}
-                    {/* Labels axe Y */}
-                    {[1, Math.ceil(n/2), n].map(rank => (
-                      <text key={rank} x={PAD.l-3} y={PAD.t + (rank-1)/(n-1)*chartH + 3}
-                        textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)">{rank}</text>
-                    ))}
-                    {/* Labels axe X */}
-                    {playedDays.map((day, i) => (
-                      (i === 0 || i === playedDays.length-1 || i % Math.ceil(playedDays.length/6) === 0) && (
-                        <text key={day} x={PAD.l + i*xStep} y={H-4}
-                          textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.3)">J{day}</text>
-                      )
-                    ))}
-                    {/* Lignes par voiture */}
-                    {groupCars.map((car, ci) => {
-                      const ranks = rankHistory[car.id];
-                      if (!ranks || ranks.length < 2) return null;
-                      const pts = ranks.map((r, i) => `${i===0?'M':'L'} ${PAD.l + i*xStep} ${PAD.t + (r-1)/(n-1)*chartH}`).join(' ');
-                      const lastRank = ranks[ranks.length-1];
-                      const color = colors[ci % colors.length];
-                      const isTop = lastRank <= 3;
-                      return (
-                        <g key={car.id}>
-                          <path d={pts} fill="none" stroke={color}
-                            strokeWidth={isTop ? 2 : 1}
-                            strokeOpacity={isTop ? 1 : 0.4}
-                            strokeLinejoin="round" strokeLinecap="round" />
-                          {isTop && (
-                            <text x={W-PAD.r+2} y={PAD.t + (lastRank-1)/(n-1)*chartH + 3}
-                              fontSize="7" fill={color} fontFamily="'Bebas Neue',sans-serif">{car.name.slice(0,8)}</text>
-                          )}
-                        </g>
-                      );
-                    })}
-                  </svg>
-                  <div style={{ fontSize:10,color:'var(--text-dim)',textAlign:'center',marginTop:2 }}>
-                    Les 3 premiers sont mis en évidence
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
           {/* Matchs par journée — accordion */}
           <div className="card">
             <div className="card-header">
@@ -4158,8 +4070,82 @@ export default function App() {
     const qf = allMatches.filter(m => m.round === 'qf').sort((a,b) => a.bracketPos - b.bracketPos);
     const sf = allMatches.filter(m => m.round === 'sf').sort((a,b) => a.bracketPos - b.bracketPos);
     const fin = allMatches.find(m => m.round === 'final');
+    const [showBracket, setShowBracket] = useState(false);
 
     const ROUND_LABELS = { r1: 'Ronde 1', r2: 'Ronde 2', r3: 'Ronde 3', qf: 'Quarts de Finale', sf: 'Demi-Finales', final: 'Finale' };
+
+    // Bracket visual component
+    function BracketView() {
+      const rounds = [r1, r2, r3, qf, sf, fin ? [fin] : []];
+      const roundNames = ['R1 (64)', 'R2 (32)', 'R3 (16)', 'QF (8)', 'SF (4)', '🏆 Finale'];
+      const CELL_H = 28;
+      const CELL_W = 130;
+      const GAP = 4;
+      const COL_W = CELL_W + 40;
+      const totalW = rounds.length * COL_W;
+      const totalH = r1.length * (CELL_H + GAP) + 60;
+
+      function getWinnerId(m) {
+        if (!m || m.homeGoals === null) return null;
+        return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
+      }
+
+      function CarCell({ carId, isWinner, goals, leagueName }) {
+        if (!carId) return (
+          <div style={{ height:CELL_H,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:3,display:'flex',alignItems:'center',paddingLeft:6,opacity:0.4,fontSize:10,color:'var(--text-dim)' }}>
+            En attente...
+          </div>
+        );
+        const car = leagueName ? null : getCar(leagueTab, carId);
+        const name = car?.name || getCar(leagueTab, carId)?.name || '?';
+        const photo = getCarPhoto(carId);
+        return (
+          <div style={{ height:CELL_H,background:isWinner ? 'rgba(201,168,76,0.15)' :'var(--dark3)',border:`1px solid ${isWinner ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:3,display:'flex',alignItems:'center',gap:4,paddingLeft:4,paddingRight:4,cursor:'pointer',overflow:'hidden' }}
+            onClick={() => setProfileCar({ leagueName: leagueTab, carId })}>
+            {photo && <img src={photo} alt="" style={{ width:20,height:16,objectFit:'cover',borderRadius:2,flexShrink:0 }} />}
+            <span style={{ fontSize:9,fontWeight:600,color:isWinner ? 'var(--gold)' :'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{name}</span>
+            {goals !== null && goals !== undefined && <span style={{ fontSize:10,fontFamily:"'Bebas Neue',sans-serif",color:isWinner ? 'var(--green)' :'var(--text-dim)',flexShrink:0 }}>{goals}</span>}
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch',background:'var(--dark2)',borderRadius:6,padding:12 }}>
+          <div style={{ display:'flex',gap:8,minWidth:totalW }}>
+            {rounds.map((roundMatches, rIdx) => {
+              const spacing = Math.pow(2, rIdx);
+              const topPad = ((CELL_H + GAP) * spacing - CELL_H) / 2;
+              return (
+                <div key={rIdx} style={{ width:CELL_W,flexShrink:0 }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:'var(--gold-dim)',letterSpacing:2,marginBottom:8,textAlign:'center' }}>
+                    {roundNames[rIdx]}
+                  </div>
+                  <div style={{ display:'flex',flexDirection:'column',gap:(CELL_H + GAP) * spacing - CELL_H }}>
+                    {roundMatches.map((m, i) => {
+                      const winnerId = getWinnerId(m);
+                      return (
+                        <div key={m.id} style={{ marginTop: i === 0 ? topPad : 0, display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
+                          onClick={() => openMatchModal({
+                            homeName: getCar(leagueTab, m.homeId)?.name,
+                            awayName: getCar(leagueTab, m.awayId)?.name,
+                            homePhoto: getCarPhoto(m.homeId),
+                            awayPhoto: getCarPhoto(m.awayId),
+                            homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+                            onConfirm: (hg, ag) => updatePlayoffMatch(leagueTab, m.id, hg, ag),
+                          })}>
+                          <CarCell carId={m.homeId} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
+                          <CarCell carId={m.awayId} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
 
     function simPO(matchId) {
       let h, a;
@@ -4299,6 +4285,21 @@ export default function App() {
                 ⚡⚡ Tous les playoffs
               </button>
             </div>
+            {/* Toggle bracket */}
+            <div style={{ marginBottom:12 }}>
+              <button className="btn btn-sm" style={{ background: showBracket ? 'rgba(201,168,76,0.2)' : 'var(--dark3)', borderColor: showBracket ? 'var(--gold)' : 'var(--border)', color: showBracket ? 'var(--gold)' : 'var(--text-dim)' }}
+                onClick={() => setShowBracket(b => !b)}>
+                🏆 {showBracket ? 'Masquer' : 'Voir'} le Bracket
+              </button>
+            </div>
+            {showBracket && (
+              <div className="card" style={{ marginBottom:12 }}>
+                <div className="card-header"><div className="card-title">🏆 Bracket — {leagueTab}</div></div>
+                <div className="card-body" style={{ padding:8 }}>
+                  <BracketView />
+                </div>
+              </div>
+            )}
             <RoundSection label="Ronde 1 (64→32)" matches={r1} round="r1" />
             <RoundSection label="Ronde 2 (32→16)" matches={r2} round="r2" />
             <RoundSection label="Ronde 3 (16→8)" matches={r3} round="r3" />
@@ -4828,91 +4829,6 @@ export default function App() {
                     Total général : <span style={{ color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",fontSize:20 }}>{grandTotal}</span> pts annexes
                   </div>
                 )}
-              </div>
-            );
-          })()}
-
-          {/* Graphique points annexes historiques */}
-          {(() => {
-            // Collecter tous les points par saison (toutes ligues principales confondues)
-            const ptsBySeason = {};
-            LEAGUES.forEach(l => {
-              const histData = getHistLeague(l);
-              const histLookupName = db.nameMap?.[l]?.[carId] || effectiveName;
-              const found = histData.find(c => namesMatch(c.name, histLookupName) || namesMatch(c.name, effectiveName));
-              if (found) {
-                Object.entries(found.bySeason || {}).forEach(([s, pts]) => {
-                  const sNum = parseInt(s);
-                  ptsBySeason[sNum] = (ptsBySeason[sNum] || 0) + pts;
-                });
-              }
-            });
-            db.seasons.forEach(s => {
-              LEAGUES.forEach(l => {
-                const league = s.leagues[l];
-                if (!league) return;
-                const car = league.cars.find(c => c.id === carId);
-                if (!car) return;
-                const bp = computeBonusPoints(s, l)[carId] || 0;
-                if (bp > 0) ptsBySeason[s.season] = (ptsBySeason[s.season] || 0) + bp;
-              });
-            });
-
-            const seasons = Object.keys(ptsBySeason).map(Number).sort((a,b) => a-b);
-            if (seasons.length < 2) return null;
-
-            const vals = seasons.map(s => ptsBySeason[s]);
-            const maxVal = Math.max(...vals, 1);
-            const W = 340, H = 100, PAD = 8;
-            const xStep = (W - PAD*2) / (seasons.length - 1);
-
-            const points = seasons.map((s, i) => {
-              const x = PAD + i * xStep;
-              const y = PAD + (1 - vals[i]/maxVal) * (H - PAD*2);
-              return { x, y, s, v: vals[i] };
-            });
-
-            const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-            const areaD = `${pathD} L ${points[points.length-1].x} ${H} L ${points[0].x} ${H} Z`;
-
-            return (
-              <div style={{ padding:'0 16px 12px' }}>
-                <div className="font-bebas" style={{ fontSize:13,color:'var(--gold-dim)',letterSpacing:2,marginBottom:6 }}>
-                  📈 Points Annexes — Évolution Historique
-                </div>
-                <div style={{ background:'var(--dark3)',borderRadius:6,padding:8,overflow:'hidden' }}>
-                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:'auto',display:'block' }}>
-                    <defs>
-                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#c9a84c" stopOpacity="0.3"/>
-                        <stop offset="100%" stopColor="#c9a84c" stopOpacity="0"/>
-                      </linearGradient>
-                    </defs>
-                    {/* Grille horizontale */}
-                    {[0.25,0.5,0.75].map(r => (
-                      <line key={r} x1={PAD} y1={PAD + r*(H-PAD*2)} x2={W-PAD} y2={PAD + r*(H-PAD*2)}
-                        stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
-                    ))}
-                    {/* Aire */}
-                    <path d={areaD} fill="url(#chartGrad)" />
-                    {/* Ligne */}
-                    <path d={pathD} fill="none" stroke="#c9a84c" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
-                    {/* Points */}
-                    {points.map((p, i) => (
-                      <g key={i}>
-                        <circle cx={p.x} cy={p.y} r="2.5" fill="#c9a84c" />
-                        {/* Label saison en bas */}
-                        {(i === 0 || i === points.length-1 || seasons.length <= 10 || i % Math.ceil(seasons.length/8) === 0) && (
-                          <text x={p.x} y={H-1} textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.35)">S{p.s}</text>
-                        )}
-                        {/* Valeur au dessus du point */}
-                        {p.v > 0 && (i === 0 || i === points.length-1 || p.v === maxVal) && (
-                          <text x={p.x} y={p.y-4} textAnchor="middle" fontSize="8" fill="#c9a84c">{p.v}</text>
-                        )}
-                      </g>
-                    ))}
-                  </svg>
-                </div>
               </div>
             );
           })()}
@@ -9448,6 +9364,109 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* Bracket visuel */}
+            {(() => {
+              const allTCMatches = Object.values(tc.matches);
+              const preRoundNames = ['r1','r2','r3','r4','r5'];
+              const existingPreRounds = preRoundNames.filter(r => allTCMatches.some(m => m.round === r));
+              const roundOrder = [...existingPreRounds, 'sf'];
+              const rounds = roundOrder.map(r => allTCMatches.filter(m => m.round === r).sort((a,b) => a.bracketPos - b.bracketPos));
+              const CELL_H = 30;
+              const CELL_W = 140;
+
+              function getWinnerId(m) {
+                if (!m || m.homeGoals === null) return null;
+                return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
+              }
+
+              function TCCell({ carId, league, isWinner, goals }) {
+                if (!carId) return (
+                  <div style={{ height:CELL_H,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:3,display:'flex',alignItems:'center',paddingLeft:6,opacity:0.4,fontSize:10,color:'var(--text-dim)' }}>En attente...</div>
+                );
+                const name = getCarName(carId, league);
+                const photo = getCarPhoto(carId);
+                const leagueShort = league?.replace('Voitures ','V') || '';
+                return (
+                  <div style={{ height:CELL_H,background:isWinner ? 'rgba(201,168,76,0.15)' :'var(--dark3)',border:`1px solid ${isWinner ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:3,display:'flex',alignItems:'center',gap:4,paddingLeft:4,paddingRight:4,overflow:'hidden' }}>
+                    {photo && <img src={photo} alt="" style={{ width:22,height:18,objectFit:'cover',borderRadius:2,flexShrink:0 }} />}
+                    <span style={{ fontSize:9,fontWeight:600,color:isWinner ? 'var(--gold)' :'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{name}</span>
+                    <span style={{ fontSize:8,color:'var(--text-dim)',flexShrink:0 }}>{leagueShort}</span>
+                    {goals !== null && goals !== undefined && <span style={{ fontSize:10,fontFamily:"'Bebas Neue',sans-serif",color:isWinner ? 'var(--green)' :'var(--text-dim)',flexShrink:0,marginLeft:2 }}>{goals}</span>}
+                  </div>
+                );
+              }
+
+              return (
+                <div className="card mb-16">
+                  <div className="card-header"><div className="card-title">🏆 Bracket — Tournoi des Champions</div></div>
+                  <div className="card-body" style={{ padding:8 }}>
+                    <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
+                      <div style={{ display:'flex',gap:8,minWidth:rounds.length * (CELL_W + 40) }}>
+                        {rounds.map((roundMatches, rIdx) => {
+                          const spacing = Math.pow(2, rIdx);
+                          const topPad = ((CELL_H * 2 + 6) * spacing - (CELL_H * 2 + 6)) / 2;
+                          const roundName = roundOrder[rIdx];
+                          const label = { r1:'Ronde 1',r2:'Ronde 2',r3:'Ronde 3',r4:'Ronde 4',r5:'Ronde 5',sf:'Demi-Finales' }[roundName] || roundName;
+                          return (
+                            <div key={rIdx} style={{ width:CELL_W,flexShrink:0 }}>
+                              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:10,color:'var(--gold-dim)',letterSpacing:2,marginBottom:6,textAlign:'center' }}>{label}</div>
+                              <div style={{ display:'flex',flexDirection:'column',gap:(CELL_H * 2 + 6) * spacing - (CELL_H * 2 + 6) }}>
+                                {roundMatches.map((m, i) => {
+                                  const winnerId = getWinnerId(m);
+                                  return (
+                                    <div key={m.id} style={{ marginTop: i === 0 ? topPad : 0, display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
+                                      onClick={() => openMatchModal({
+                                        homeName: getCarName(m.homeId, m.homeLeague),
+                                        awayName: getCarName(m.awayId, m.awayLeague),
+                                        homePhoto: getCarPhoto(m.homeId),
+                                        awayPhoto: getCarPhoto(m.awayId),
+                                        homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+                                        onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
+                                      })}>
+                                      <TCCell carId={m.homeId} league={m.homeLeague} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
+                                      <TCCell carId={m.awayId} league={m.awayLeague} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* SF + Finale + 3e place */}
+                        <div style={{ width:CELL_W,flexShrink:0 }}>
+                          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:10,color:'var(--gold-dim)',letterSpacing:2,marginBottom:6,textAlign:'center' }}>Finale & 3e place</div>
+                          {(() => {
+                            const finalM = allTCMatches.find(m => m.round === 'final');
+                            const thirdM = allTCMatches.find(m => m.round === 'third');
+                            return (
+                              <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
+                                {finalM && (
+                                  <div style={{ display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
+                                    onClick={() => openMatchModal({ homeName: getCarName(finalM.homeId, finalM.homeLeague), awayName: getCarName(finalM.awayId, finalM.awayLeague), homePhoto: getCarPhoto(finalM.homeId), awayPhoto: getCarPhoto(finalM.awayId), homeGoals: finalM.homeGoals, awayGoals: finalM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(finalM.id, hg, ag) })}>
+                                    <div style={{ fontSize:9,color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,marginBottom:2 }}>🏆 FINALE</div>
+                                    <TCCell carId={finalM.homeId} league={finalM.homeLeague} isWinner={finalM.homeGoals !== null && finalM.homeGoals > finalM.awayGoals} goals={finalM.homeGoals} />
+                                    <TCCell carId={finalM.awayId} league={finalM.awayLeague} isWinner={finalM.homeGoals !== null && finalM.awayGoals > finalM.homeGoals} goals={finalM.awayGoals} />
+                                  </div>
+                                )}
+                                {thirdM && (
+                                  <div style={{ display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
+                                    onClick={() => openMatchModal({ homeName: getCarName(thirdM.homeId, thirdM.homeLeague), awayName: getCarName(thirdM.awayId, thirdM.awayLeague), homePhoto: getCarPhoto(thirdM.homeId), awayPhoto: getCarPhoto(thirdM.awayId), homeGoals: thirdM.homeGoals, awayGoals: thirdM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(thirdM.id, hg, ag) })}>
+                                    <div style={{ fontSize:9,color:'#CD7F32',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,marginBottom:2 }}>🥉 3E PLACE</div>
+                                    <TCCell carId={thirdM.homeId} league={thirdM.homeLeague} isWinner={thirdM.homeGoals !== null && thirdM.homeGoals > thirdM.awayGoals} goals={thirdM.homeGoals} />
+                                    <TCCell carId={thirdM.awayId} league={thirdM.awayLeague} isWinner={thirdM.homeGoals !== null && thirdM.awayGoals > thirdM.homeGoals} goals={thirdM.awayGoals} />
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Bracket rounds */}
             {ROUND_ORDER.map(round => {
