@@ -1485,17 +1485,21 @@ function storageSave(data) {
 // ── Chargement : Firestore en priorité, localStorage en fallback ───
 async function storageLoadAsync() {
   try {
+    console.log('🔥 Tentative chargement Firebase...');
     const snap = await getDoc(tournoisDocRef);
+    console.log('🔥 Firebase snap exists:', snap.exists());
     if (snap.exists()) {
       const parsed = JSON.parse(snap.data().data);
+      console.log('🔥 Firebase data chargée, saisons:', parsed.seasons?.length, 'photos:', Object.keys(parsed.photos || {}).length);
       if (!parsed.photos) parsed.photos = {};
       if (!parsed.brands) parsed.brands = {};
-      // Sync localStorage avec les données Firebase
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch {}
       return parsed;
+    } else {
+      console.log('🔥 Firebase: document vide');
     }
   } catch (e) {
-    console.warn('Firebase load error, fallback to localStorage:', e);
+    console.warn('🔥 Firebase load error:', e.message);
   }
   // Fallback localStorage
   try {
