@@ -2136,7 +2136,7 @@ export default function App() {
   function updateGroupMatch(leagueName, group, matchId, homeGoals, awayGoals) {
     updateLeague(leagueName, l => {
       const matches = (l.groupResults[group] || []).map(m =>
-        m.id === matchId ? { ...m, homeGoals: +homeGoals, awayGoals: +awayGoals } : m
+        m.id === matchId ? { ...m, homeGoals: homeGoals === null ? null : +homeGoals, awayGoals: awayGoals === null ? null : +awayGoals } : m
       );
       return { ...l, groupResults: { ...l.groupResults, [group]: matches } };
     });
