@@ -4988,7 +4988,7 @@ if (saved) {
     const cars = league?.cars || [];
     const playedMatches = league?.matches || []; // Seulement les joués
     const [subTab, setSubTab] = [succSubTab, setSuccSubTab];
-    const [openDay, setOpenDay] = [succOpenDay, setSuccOpenDay];
+    const [openDay, setOpenDay] = useState(null);
     const [search, setSearch] = useState('');
     const [matchSearch, setMatchSearch] = useState('');
 
@@ -5294,7 +5294,8 @@ if (saved) {
     );
   }
 
-  function SucSuccView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function SucSuccView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Successeurs aux Successeurs';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -5542,7 +5543,8 @@ if (saved) {
     );
   }
 
-  function RemplacView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function RemplacView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Remplaçants des Successeurs';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -5778,7 +5780,8 @@ if (saved) {
     );
   }
 
-  function AvantDernView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function AvantDernView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Avant-dernière chance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -5989,7 +5992,8 @@ if (saved) {
     );
   }
 
-  function DerniereView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function DerniereView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Dernière chance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6200,7 +6204,8 @@ if (saved) {
     );
   }
 
-  function PersevView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function PersevView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Persévérance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6411,7 +6416,8 @@ if (saved) {
     );
   }
 
-  function DeterView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function DeterView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Détermination';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6622,7 +6628,8 @@ if (saved) {
     );
   }
 
-  function AcharnView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function AcharnView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Acharnement';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -6833,7 +6840,8 @@ if (saved) {
     );
   }
 
-  function ObstinView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function ObstinView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Obstination';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7044,7 +7052,8 @@ if (saved) {
     );
   }
 
-  function InsistView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function InsistView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Insistance';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7255,7 +7264,8 @@ if (saved) {
     );
   }
 
-  function ComebackView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function ComebackView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Comeback';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7466,7 +7476,8 @@ if (saved) {
     );
   }
 
-  function ImportView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function ImportView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Importation';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7677,7 +7688,8 @@ if (saved) {
     );
   }
 
-  function OublView({ subTab, setSubTab, openDay, setOpenDay }) {
+  function OublView({ subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const leagueName = 'Oubliettes';
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
@@ -7881,7 +7893,8 @@ if (saved) {
     );
   }
 
-  function ActuellesView({ leagueName, subTab, setSubTab, openDay, setOpenDay }) {
+  function ActuellesView({ leagueName, subTab, setSubTab }) {
+    const [openDay, setOpenDay] = useState(null);
     const league = currentSeason.leagues[leagueName];
     const cars = league?.cars || [];
     const playedMatches = league?.matches || [];
@@ -9409,24 +9422,24 @@ if (saved) {
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'relegation' && <RelegationView />}
           {mainTab === 'ligues' && ligueSubTab === 'champions' && <TournoiChampionsView />}
           {mainTab === 'ligues' && ligueSubTab === 'successeurs' && <SuccesseursView />}
-          {mainTab === 'ligues' && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} openDay={sucSuccOpenDay} setOpenDay={setSucSuccOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'remplac' && <RemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} openDay={remplacOpenDay} setOpenDay={setRemplacOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'avantdern' && <AvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} openDay={avantDernOpenDay} setOpenDay={setAvantDernOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'derniere' && <DerniereView subTab={derniereSubTab} setSubTab={setDerniereSubTab} openDay={derniereOpenDay} setOpenDay={setDerniereOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'persev' && <PersevView subTab={persevSubTab} setSubTab={setPersevSubTab} openDay={persevOpenDay} setOpenDay={setPersevOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'deter' && <DeterView subTab={deterSubTab} setSubTab={setDeterSubTab} openDay={deterOpenDay} setOpenDay={setDeterOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'acharn' && <AcharnView subTab={acharnSubTab} setSubTab={setAcharnSubTab} openDay={acharnOpenDay} setOpenDay={setAcharnOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'obstin' && <ObstinView subTab={obstinSubTab} setSubTab={setObstinSubTab} openDay={obstinOpenDay} setOpenDay={setObstinOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'insist' && <InsistView subTab={insistSubTab} setSubTab={setInsistSubTab} openDay={insistOpenDay} setOpenDay={setInsistOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} openDay={comebackOpenDay} setOpenDay={setComebackOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} openDay={importOpenDay} setOpenDay={setImportOpenDay} />}
-          {mainTab === 'ligues' && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} openDay={oublOpenDay} setOpenDay={setOublOpenDay} />}
+          {mainTab === 'ligues' && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'remplac' && <RemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'avantdern' && <AvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'derniere' && <DerniereView subTab={derniereSubTab} setSubTab={setDerniereSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'persev' && <PersevView subTab={persevSubTab} setSubTab={setPersevSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'deter' && <DeterView subTab={deterSubTab} setSubTab={setDeterSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'acharn' && <AcharnView subTab={acharnSubTab} setSubTab={setAcharnSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'obstin' && <ObstinView subTab={obstinSubTab} setSubTab={setObstinSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'insist' && <InsistView subTab={insistSubTab} setSubTab={setInsistSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
+          {mainTab === 'ligues' && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
               <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }} onClick={simAllActuelles}>⚡ Simuler toutes les Actuelles</button>
             </div>
           )}
-          {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} openDay={actOpenDay} setOpenDay={setActOpenDay} />}
+          {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
           {mainTab === 'bonus' && <BonusView />}
           {mainTab === 'voitures' && <AllCarsView />}
           {mainTab === 'historique' && histSubTab === 'historique' && <HistoriqueView />}
