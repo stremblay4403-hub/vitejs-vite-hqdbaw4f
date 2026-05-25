@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
 const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
@@ -1667,13 +1667,31 @@ export default function App() {
     // Chargement localStorage immédiat (évite l'écran blanc)
     const localSaved = storageLoad();
     if (localSaved) applyLoadedData(localSaved);
-    else setLoaded(true);
 
-    // Chargement Firebase en arrière-plan (override si plus récent)
-    storageLoadAsync().then(saved => {
-      if (saved) applyLoadedData(saved, true);
+    // Listener temps réel Firebase — se met à jour automatiquement
+    let photosData = {};
+    const unsubPhotos = onSnapshot(photosDocRef, (photosSnap) => {
+      if (photosSnap.exists()) {
+        photosData = JSON.parse(photosSnap.data().data);
+      }
+    });
+
+    const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
+      if (dataSnap.exists()) {
+        try {
+          const parsed = JSON.parse(dataSnap.data().data);
+          parsed.photos = photosData;
+          if (!parsed.brands) parsed.brands = {};
+          if (!parsed.histOverrides) parsed.histOverrides = {};
+          applyLoadedData(parsed, true);
+        } catch(e) {
+          console.warn('Firebase parse error:', e);
+        }
+      }
       setLoaded(true);
-    }).catch(() => setLoaded(true));
+    }, () => setLoaded(true));
+
+    return () => { unsubData(); unsubPhotos(); };
   }, []);
 
   function applyLoadedData(saved, isFromFirebase = false) {
