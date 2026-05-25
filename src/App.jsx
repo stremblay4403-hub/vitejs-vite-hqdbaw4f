@@ -1482,8 +1482,24 @@ const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 const isLoadingFromFirebase = { current: false };
-const isPublicModeRef = { current: true }; // true par défaut jusqu'au login
+const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
+
+// Scroll lock — empêche le navigateur mobile de remonter pendant les re-renders
+function lockScroll() {
+  const sy = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${sy}px`;
+  document.body.style.width = '100%';
+  document.body.dataset.scrollY = sy;
+}
+function unlockScroll() {
+  const sy = parseInt(document.body.dataset.scrollY || '0');
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  window.scrollTo(0, sy);
+}
 
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
@@ -1729,9 +1745,9 @@ export default function App() {
   const [activeGroup, setActiveGroup] = useState(0);
   const [profileCar, setProfileCar] = useState(null);
   function openProfileCar(config) {
-    const sy = window.scrollY;
+    lockScroll();
     setProfileCar(config);
-    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy)));
+    requestAnimationFrame(() => unlockScroll());
   }
   const [notifications, setNotifications] = useState([]);
   const [matchModal, setMatchModal] = useState(null);
@@ -1740,11 +1756,11 @@ export default function App() {
 
   function openMatchModal(config) {
     if (isPublicMode) return;
-    const sy = window.scrollY;
+    lockScroll();
     setMatchHg(config.homeGoals ?? null);
     setMatchAg(config.awayGoals ?? null);
     setMatchModal({ ...config, wasPlayed: config.homeGoals !== null && config.homeGoals !== undefined });
-    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy)));
+    requestAnimationFrame(() => unlockScroll());
   }
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
@@ -2084,11 +2100,11 @@ export default function App() {
     function reset() { setHg(0); setAg(0); }
 
     function closeModal() { 
-      const sy = window.scrollY;
+      lockScroll();
       setMatchModal(null); 
       setMatchHg(null); 
       setMatchAg(null);
-      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy)));
+      requestAnimationFrame(() => unlockScroll());
     }
 
     const imgW = 140;
@@ -4015,7 +4031,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -4035,7 +4051,7 @@ export default function App() {
                         : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/9</span>}
                       {!dayComplete && (
                         <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                          style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ const sy = window.scrollY; simulateDay(leagueTab, activeGroup); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); } }}>
+                          style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ lockScroll(); simulateDay(leagueTab, activeGroup); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); } }}>
                           🎲
                         </button>
                       )}
@@ -4659,7 +4675,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -5553,7 +5569,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -5571,7 +5587,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }} style={{ display: isPublicMode ? 'none' : undefined }}>
                             🎲
                           </button>
                         )}
@@ -5839,7 +5855,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -5857,7 +5873,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }} style={{ display: isPublicMode ? 'none' : undefined }}>
                             🎲
                           </button>
                         )}
@@ -6061,7 +6077,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -6077,7 +6093,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
@@ -6276,7 +6292,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -6288,7 +6304,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6469,7 +6485,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -6481,7 +6497,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6662,7 +6678,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -6674,7 +6690,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6855,7 +6871,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -6867,7 +6883,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7048,7 +7064,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -7060,7 +7076,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7241,7 +7257,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -7253,7 +7269,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7434,7 +7450,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -7446,7 +7462,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7627,7 +7643,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -7639,7 +7655,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7820,7 +7836,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -7832,7 +7848,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -8007,7 +8023,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -8019,7 +8035,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -8207,7 +8223,7 @@ export default function App() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${scrollY}px`;
   document.body.style.width = '100%';
-  setOpenDay(isOpen ? null : day);
+  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
   requestAnimationFrame(() => {
     document.body.style.position = '';
     document.body.style.top = '';
@@ -8225,7 +8241,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }} style={{ display: isPublicMode ? 'none' : undefined }}>
                             🎲
                           </button>
                         )}
