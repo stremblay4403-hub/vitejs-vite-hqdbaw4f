@@ -1477,7 +1477,10 @@ const tournoisDocRef = doc(firestoreDb, 'tournois', FIREBASE_DOC_ID);
 // ── Sauvegarde localStorage (backup local) ─────────────────────────
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
-  // Sauvegarde Firestore en arrière-plan (sans bloquer l'UI)
+  // Ne sauvegarder sur Firestore que si on a de vraies données
+  const hasRealData = data?.seasons?.length > 0 && 
+    data.seasons.some(s => Object.values(s.leagues || {}).some(l => l?.cars?.length > 0));
+  if (!hasRealData) return;
   setDoc(tournoisDocRef, { data: JSON.stringify(data), updatedAt: Date.now() })
     .catch(e => console.warn('Firebase save error:', e));
 }
@@ -9529,6 +9532,11 @@ export default function App() {
               <input type="file" accept=".json" onChange={importData} style={{ display:'none' }} />
             </label>
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
+            <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
+              setDoc(tournoisDocRef, { data: JSON.stringify(db), updatedAt: Date.now() })
+                .then(() => alert('✅ Sauvegardé sur Firebase !'))
+                .catch(e => alert('❌ Erreur: ' + e.message));
+            }}>☁️ Sync Firebase</button>
             {!confirmReset
               ? <button className="btn btn-dark btn-sm" style={{ color:'#e74c3c',borderColor:'#c0392b',whiteSpace:'nowrap',flexShrink:0 }} onClick={() => setConfirmReset(true)}>🗑 Reset</button>
               : <div style={{ display:'flex',gap:6,alignItems:'center' }}>
