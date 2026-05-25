@@ -9542,103 +9542,141 @@ export default function App() {
               </div>
             )}
 
-            {/* Bracket visuel */}
+            {/* Bracket visuel — même style que playoffs */}
             {(() => {
               const allTCMatches = Object.values(tc.matches);
               const preRoundNames = ['r1','r2','r3','r4','r5'];
               const existingPreRounds = preRoundNames.filter(r => allTCMatches.some(m => m.round === r));
               const roundOrder = [...existingPreRounds, 'sf'];
               const rounds = roundOrder.map(r => allTCMatches.filter(m => m.round === r).sort((a,b) => a.bracketPos - b.bracketPos));
-              const CELL_H = 30;
-              const CELL_W = 140;
+              const finalM = allTCMatches.find(m => m.round === 'final');
+              const thirdM = allTCMatches.find(m => m.round === 'third');
+
+              const CARD_W = 110;
+              const CARD_H = 108;
+              const MATCH_GAP = 3;
+              const MATCH_H = CARD_H * 2 + MATCH_GAP;
+              const COL_GAP = 24;
 
               function getWinnerId(m) {
                 if (!m || m.homeGoals === null) return null;
                 return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
               }
 
-              function TCCell({ carId, league, isWinner, goals }) {
+              function TCBracketCard({ carId, league, isWinner, goals }) {
+                const IMG_H = 55;
                 if (!carId) return (
-                  <div style={{ height:CELL_H,background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:3,display:'flex',alignItems:'center',paddingLeft:6,opacity:0.4,fontSize:10,color:'var(--text-dim)' }}>En attente...</div>
+                  <div style={{ width:CARD_W, height:CARD_H, background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.3 }}>
+                    <span style={{ fontSize:9, color:'var(--text-dim)' }}>En attente</span>
+                  </div>
                 );
                 const name = getCarName(carId, league);
                 const photo = getCarPhoto(carId);
                 const leagueShort = league?.replace('Voitures ','V') || '';
+                const stats = getGroupStatsForCar(carId, league);
+                const carObj = league ? currentSeason.leagues[league]?.cars?.find(c => c.id === carId) : null;
+                const groupCars = carObj ? (currentSeason.leagues[league]?.cars || []).filter(c => c.group === carObj.group) : [];
+                const groupMatches = currentSeason.leagues[league]?.groupResults?.[carObj?.group] || [];
+                const groupStandings = computeStandings(groupCars, groupMatches);
+                const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
+                const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
                 return (
-                  <div style={{ height:CELL_H,background:isWinner ? 'rgba(201,168,76,0.15)' :'var(--dark3)',border:`1px solid ${isWinner ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:3,display:'flex',alignItems:'center',gap:4,paddingLeft:4,paddingRight:4,overflow:'hidden' }}>
-                    {photo && <img src={photo} alt="" style={{ width:22,height:18,objectFit:'cover',borderRadius:2,flexShrink:0 }} />}
-                    <span style={{ fontSize:9,fontWeight:600,color:isWinner ? 'var(--gold)' :'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{name}</span>
-                    <span style={{ fontSize:8,color:'var(--text-dim)',flexShrink:0 }}>{leagueShort}</span>
-                    {goals !== null && goals !== undefined && <span style={{ fontSize:10,fontFamily:"'Bebas Neue',sans-serif",color:isWinner ? 'var(--green)' :'var(--text-dim)',flexShrink:0,marginLeft:2 }}>{goals}</span>}
+                  <div style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0 }}
+                    onClick={e => { e.stopPropagation(); if(carId && league) setProfileCar({ leagueName: league, carId }); }}>
+                    <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      {photo ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} /> : <span style={{ fontSize:22 }}>🚗</span>}
+                    </div>
+                    <div style={{ padding:'2px 5px' }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                        <span style={{ fontSize:9, fontWeight:700, color: isWinner ? 'var(--gold)' : 'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
+                        {goals !== null && goals !== undefined && <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color: isWinner ? 'var(--green)' : 'var(--text-dim)', flexShrink:0 }}>{goals}</span>}
+                      </div>
+                      <div style={{ display:'flex', gap:3, marginTop:1, flexWrap:'wrap' }}>
+                        <span style={{ fontSize:8, color:'var(--gold-dim)' }}>{leagueShort}</span>
+                        {groupRank > 0 && <span style={{ fontSize:8, color:'var(--text-dim)' }}>#{groupRank} G{(carObj?.group ?? 0)+1}</span>}
+                        {groupPts > 0 && <span style={{ fontSize:8, color:'var(--gold)' }}>{groupPts}pts</span>}
+                        {stats && <><span style={{ fontSize:8, color:'var(--green)' }}>{stats.w}V</span><span style={{ fontSize:8, color:'var(--text-dim)' }}>{stats.d}N</span><span style={{ fontSize:8, color:'#e74c3c' }}>{stats.l}D</span></>}
+                      </div>
+                    </div>
                   </div>
                 );
               }
+
+              function TCMatchBlock({ m, rIdx, i, betweenGap, isLast }) {
+                if (!m) return null;
+                const winnerId = getWinnerId(m);
+                const lineColor = "rgba(201,168,76,0.35)";
+                return (
+                  <div style={{ position:'relative', marginTop: i === 0 ? betweenGap/2 : 0 }}>
+                    <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
+                      onClick={() => openMatchModal({
+                        homeName: getCarName(m.homeId, m.homeLeague), awayName: getCarName(m.awayId, m.awayLeague),
+                        homePhoto: getCarPhoto(m.homeId), awayPhoto: getCarPhoto(m.awayId),
+                        homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+                        onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
+                      })}>
+                      <TCBracketCard carId={m.homeId} league={m.homeLeague} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
+                      <TCBracketCard carId={m.awayId} league={m.awayLeague} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
+                    </div>
+                    {!isLast && (
+                      <svg style={{ position:'absolute', left:CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
+                        <line x1={0} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
+                        {i % 2 === 0
+                          ? <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H + betweenGap + MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
+                          : <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={-(betweenGap + MATCH_H/2)} stroke={lineColor} strokeWidth="1.5" />}
+                        <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP} y2={MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
+                      </svg>
+                    )}
+                  </div>
+                );
+              }
+
+              const roundLabels = { r1:'R1', r2:'R2', r3:'R3', r4:'R4', r5:'R5', sf:'SF' };
 
               return (
                 <div className="card mb-16">
                   <div className="card-header"><div className="card-title">🏆 Bracket — Tournoi des Champions</div></div>
                   <div className="card-body" style={{ padding:8 }}>
-                    <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                      <div style={{ display:'flex',gap:8,minWidth:rounds.length * (CELL_W + 40) }}>
+                    <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch', background:'var(--dark2)', borderRadius:8, padding:12 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:0 }}>
+                        {/* Rounds gauche → droite */}
                         {rounds.map((roundMatches, rIdx) => {
                           const spacing = Math.pow(2, rIdx);
-                          const matchH = CELL_H * 2 + 6; // height of one match (2 cells + gap)
-                          const betweenGap = matchH * spacing - matchH;
-                          const topPad = betweenGap / 2;
-                          const roundName = roundOrder[rIdx];
-                          const label = { r1:'Ronde 1',r2:'Ronde 2',r3:'Ronde 3',r4:'Ronde 4',r5:'Ronde 5',sf:'Demi-Finales' }[roundName] || roundName;
+                          const betweenGap = (MATCH_H + MATCH_GAP) * spacing - MATCH_H;
+                          const label = roundLabels[roundOrder[rIdx]] || roundOrder[rIdx];
                           return (
-                            <div key={rIdx} style={{ width:CELL_W,flexShrink:0 }}>
-                              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:10,color:'var(--gold-dim)',letterSpacing:2,marginBottom:6,textAlign:'center' }}>{label}</div>
-                              <div style={{ display:'flex',flexDirection:'column',gap:betweenGap }}>
-                                {roundMatches.map((m, i) => {
-                                  const winnerId = getWinnerId(m);
-                                  return (
-                                    <div key={m.id} style={{ marginTop: i === 0 ? topPad : 0, display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
-                                      onClick={() => openMatchModal({
-                                        homeName: getCarName(m.homeId, m.homeLeague),
-                                        awayName: getCarName(m.awayId, m.awayLeague),
-                                        homePhoto: getCarPhoto(m.homeId),
-                                        awayPhoto: getCarPhoto(m.awayId),
-                                        homeGoals: m.homeGoals, awayGoals: m.awayGoals,
-                                        onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
-                                      })}>
-                                      <TCCell carId={m.homeId} league={m.homeLeague} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
-                                      <TCCell carId={m.awayId} league={m.awayLeague} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
-                                    </div>
-                                  );
-                                })}
+                            <div key={rIdx} style={{ display:'flex', flexDirection:'column', alignItems:'center', marginRight: COL_GAP }}>
+                              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold-dim)', letterSpacing:1, marginBottom:6, textAlign:'center', width:CARD_W }}>{label}</div>
+                              <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
+                                {roundMatches.map((m, i) => (
+                                  <TCMatchBlock key={m.id} m={m} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={false} />
+                                ))}
                               </div>
                             </div>
                           );
                         })}
-                        {/* SF + Finale + 3e place */}
-                        <div style={{ width:CELL_W,flexShrink:0 }}>
-                          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:10,color:'var(--gold-dim)',letterSpacing:2,marginBottom:6,textAlign:'center' }}>Finale & 3e place</div>
-                          {(() => {
-                            const finalM = allTCMatches.find(m => m.round === 'final');
-                            const thirdM = allTCMatches.find(m => m.round === 'third');
-                            return (
-                              <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
-                                {finalM && (
-                                  <div style={{ display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
-                                    onClick={() => openMatchModal({ homeName: getCarName(finalM.homeId, finalM.homeLeague), awayName: getCarName(finalM.awayId, finalM.awayLeague), homePhoto: getCarPhoto(finalM.homeId), awayPhoto: getCarPhoto(finalM.awayId), homeGoals: finalM.homeGoals, awayGoals: finalM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(finalM.id, hg, ag) })}>
-                                    <div style={{ fontSize:9,color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,marginBottom:2 }}>🏆 FINALE</div>
-                                    <TCCell carId={finalM.homeId} league={finalM.homeLeague} isWinner={finalM.homeGoals !== null && finalM.homeGoals > finalM.awayGoals} goals={finalM.homeGoals} />
-                                    <TCCell carId={finalM.awayId} league={finalM.awayLeague} isWinner={finalM.homeGoals !== null && finalM.awayGoals > finalM.homeGoals} goals={finalM.awayGoals} />
-                                  </div>
-                                )}
-                                {thirdM && (
-                                  <div style={{ display:'flex',flexDirection:'column',gap:2,cursor:'pointer' }}
-                                    onClick={() => openMatchModal({ homeName: getCarName(thirdM.homeId, thirdM.homeLeague), awayName: getCarName(thirdM.awayId, thirdM.awayLeague), homePhoto: getCarPhoto(thirdM.homeId), awayPhoto: getCarPhoto(thirdM.awayId), homeGoals: thirdM.homeGoals, awayGoals: thirdM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(thirdM.id, hg, ag) })}>
-                                    <div style={{ fontSize:9,color:'#CD7F32',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,marginBottom:2 }}>🥉 3E PLACE</div>
-                                    <TCCell carId={thirdM.homeId} league={thirdM.homeLeague} isWinner={thirdM.homeGoals !== null && thirdM.homeGoals > thirdM.awayGoals} goals={thirdM.homeGoals} />
-                                    <TCCell carId={thirdM.awayId} league={thirdM.awayLeague} isWinner={thirdM.homeGoals !== null && thirdM.awayGoals > thirdM.homeGoals} goals={thirdM.awayGoals} />
-                                  </div>
-                                )}
+                        {/* Finale + 3e place */}
+                        <div style={{ display:'flex', flexDirection:'column', gap:16, flexShrink:0 }}>
+                          {finalM && (
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold)', letterSpacing:1, marginBottom:6 }}>🏆 FINALE</div>
+                              <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
+                                onClick={() => openMatchModal({ homeName: getCarName(finalM.homeId, finalM.homeLeague), awayName: getCarName(finalM.awayId, finalM.awayLeague), homePhoto: getCarPhoto(finalM.homeId), awayPhoto: getCarPhoto(finalM.awayId), homeGoals: finalM.homeGoals, awayGoals: finalM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(finalM.id, hg, ag) })}>
+                                <TCBracketCard carId={finalM.homeId} league={finalM.homeLeague} isWinner={getWinnerId(finalM) === finalM.homeId} goals={finalM.homeGoals} />
+                                <TCBracketCard carId={finalM.awayId} league={finalM.awayLeague} isWinner={getWinnerId(finalM) === finalM.awayId} goals={finalM.awayGoals} />
                               </div>
-                            );
-                          })()}
+                            </div>
+                          )}
+                          {thirdM && (
+                            <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
+                              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'#CD7F32', letterSpacing:1, marginBottom:6 }}>🥉 3E PLACE</div>
+                              <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
+                                onClick={() => openMatchModal({ homeName: getCarName(thirdM.homeId, thirdM.homeLeague), awayName: getCarName(thirdM.awayId, thirdM.awayLeague), homePhoto: getCarPhoto(thirdM.homeId), awayPhoto: getCarPhoto(thirdM.awayId), homeGoals: thirdM.homeGoals, awayGoals: thirdM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(thirdM.id, hg, ag) })}>
+                                <TCBracketCard carId={thirdM.homeId} league={thirdM.homeLeague} isWinner={getWinnerId(thirdM) === thirdM.homeId} goals={thirdM.homeGoals} />
+                                <TCBracketCard carId={thirdM.awayId} league={thirdM.awayLeague} isWinner={getWinnerId(thirdM) === thirdM.awayId} goals={thirdM.awayGoals} />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
