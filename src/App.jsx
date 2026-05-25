@@ -3976,8 +3976,9 @@ export default function App() {
       if (matches.length === 0) return;
       const days = [...new Set(matches.map(m => m.day))].sort((a, b) => a - b);
       const firstIncomplete = days.find(d => matches.filter(m => m.day === d).some(m => m.homeGoals === null));
+      // Seulement initialiser si openDay est null — ne jamais écraser une journée ouverte
       setOpenDay(prev => prev === null ? (firstIncomplete ?? days[days.length - 1]) : prev);
-    }, [matches.length]);
+    }, [leagueTab, activeGroup]); // Dépend du groupe/ligue, pas de matches.length
 
     const totalMatches = matches.length;
     const playedMatches = matches.filter(m => m.homeGoals !== null).length;
