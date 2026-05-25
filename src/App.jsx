@@ -3937,6 +3937,94 @@ export default function App() {
             </div>
           </div>
 
+          {/* Graphique évolution classement par journée */}
+          {(() => {
+            const league = currentSeason.leagues[leagueTab];
+            if (!league) return null;
+            const groupCars = (league.cars || []).filter(c => c.group === activeGroup);
+            const allMatches = league.groupResults?.[activeGroup] || [];
+            const days = [...new Set(allMatches.map(m => m.day))].sort((a,b) => a-b);
+            const playedDays = days.filter(d => allMatches.filter(m => m.day === d).every(m => m.homeGoals !== null));
+            if (playedDays.length < 2) return null;
+
+            // Calculer classement après chaque journée
+            const rankHistory = {}; // carId -> [rank après j1, j2, ...]
+            groupCars.forEach(c => { rankHistory[c.id] = []; });
+
+            playedDays.forEach(day => {
+              const played = allMatches.filter(m => m.day <= day && m.homeGoals !== null);
+              const stds = computeStandings(groupCars, played);
+              stds.forEach((s, i) => {
+                if (rankHistory[s.id]) rankHistory[s.id].push(i + 1);
+              });
+            });
+
+            const W = 340, H = 120, PAD = { t:8, r:8, b:20, l:24 };
+            const chartW = W - PAD.l - PAD.r;
+            const chartH = H - PAD.t - PAD.b;
+            const n = groupCars.length;
+            const xStep = playedDays.length > 1 ? chartW / (playedDays.length - 1) : chartW;
+
+            // Couleurs pour top cars
+            const colors = ['#c9a84c','#27ae60','#5dade2','#e74c3c','#9b59b6','#e67e22','#1abc9c','#e91e63','#ff9800','#607d8b','#795548','#00bcd4','#8bc34a','#ff5722','#3f51b5','#cddc39','#9c27b0','#00acc1','#f06292','#aed581'];
+
+            return (
+              <div className="card" style={{ marginTop:10 }}>
+                <div className="card-header">
+                  <div className="card-title">📈 Évolution Classement — Groupe {activeGroup+1}</div>
+                  <span className="text-dim" style={{ fontSize:11,marginLeft:'auto' }}>après {playedDays.length} journées</span>
+                </div>
+                <div className="card-body" style={{ padding:8 }}>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:'auto',display:'block' }}>
+                    {/* Grilles horizontales */}
+                    {Array.from({length:n}, (_,i) => i+1).map(rank => (
+                      <line key={rank}
+                        x1={PAD.l} y1={PAD.t + (rank-1)/(n-1)*chartH}
+                        x2={W-PAD.r} y2={PAD.t + (rank-1)/(n-1)*chartH}
+                        stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                    ))}
+                    {/* Labels axe Y */}
+                    {[1, Math.ceil(n/2), n].map(rank => (
+                      <text key={rank} x={PAD.l-3} y={PAD.t + (rank-1)/(n-1)*chartH + 3}
+                        textAnchor="end" fontSize="8" fill="rgba(255,255,255,0.3)">{rank}</text>
+                    ))}
+                    {/* Labels axe X */}
+                    {playedDays.map((day, i) => (
+                      (i === 0 || i === playedDays.length-1 || i % Math.ceil(playedDays.length/6) === 0) && (
+                        <text key={day} x={PAD.l + i*xStep} y={H-4}
+                          textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.3)">J{day}</text>
+                      )
+                    ))}
+                    {/* Lignes par voiture */}
+                    {groupCars.map((car, ci) => {
+                      const ranks = rankHistory[car.id];
+                      if (!ranks || ranks.length < 2) return null;
+                      const pts = ranks.map((r, i) => `${i===0?'M':'L'} ${PAD.l + i*xStep} ${PAD.t + (r-1)/(n-1)*chartH}`).join(' ');
+                      const lastRank = ranks[ranks.length-1];
+                      const color = colors[ci % colors.length];
+                      const isTop = lastRank <= 3;
+                      return (
+                        <g key={car.id}>
+                          <path d={pts} fill="none" stroke={color}
+                            strokeWidth={isTop ? 2 : 1}
+                            strokeOpacity={isTop ? 1 : 0.4}
+                            strokeLinejoin="round" strokeLinecap="round" />
+                          {isTop && (
+                            <text x={W-PAD.r+2} y={PAD.t + (lastRank-1)/(n-1)*chartH + 3}
+                              fontSize="7" fill={color} fontFamily="'Bebas Neue',sans-serif">{car.name.slice(0,8)}</text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
+                  <div style={{ fontSize:10,color:'var(--text-dim)',textAlign:'center',marginTop:2 }}>
+                    Les 3 premiers sont mis en évidence
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Matchs par journée — accordion */}
           <div className="card">
             <div className="card-header">
@@ -4740,6 +4828,91 @@ export default function App() {
                     Total général : <span style={{ color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",fontSize:20 }}>{grandTotal}</span> pts annexes
                   </div>
                 )}
+              </div>
+            );
+          })()}
+
+          {/* Graphique points annexes historiques */}
+          {(() => {
+            // Collecter tous les points par saison (toutes ligues principales confondues)
+            const ptsBySeason = {};
+            LEAGUES.forEach(l => {
+              const histData = getHistLeague(l);
+              const histLookupName = db.nameMap?.[l]?.[carId] || effectiveName;
+              const found = histData.find(c => namesMatch(c.name, histLookupName) || namesMatch(c.name, effectiveName));
+              if (found) {
+                Object.entries(found.bySeason || {}).forEach(([s, pts]) => {
+                  const sNum = parseInt(s);
+                  ptsBySeason[sNum] = (ptsBySeason[sNum] || 0) + pts;
+                });
+              }
+            });
+            db.seasons.forEach(s => {
+              LEAGUES.forEach(l => {
+                const league = s.leagues[l];
+                if (!league) return;
+                const car = league.cars.find(c => c.id === carId);
+                if (!car) return;
+                const bp = computeBonusPoints(s, l)[carId] || 0;
+                if (bp > 0) ptsBySeason[s.season] = (ptsBySeason[s.season] || 0) + bp;
+              });
+            });
+
+            const seasons = Object.keys(ptsBySeason).map(Number).sort((a,b) => a-b);
+            if (seasons.length < 2) return null;
+
+            const vals = seasons.map(s => ptsBySeason[s]);
+            const maxVal = Math.max(...vals, 1);
+            const W = 340, H = 100, PAD = 8;
+            const xStep = (W - PAD*2) / (seasons.length - 1);
+
+            const points = seasons.map((s, i) => {
+              const x = PAD + i * xStep;
+              const y = PAD + (1 - vals[i]/maxVal) * (H - PAD*2);
+              return { x, y, s, v: vals[i] };
+            });
+
+            const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+            const areaD = `${pathD} L ${points[points.length-1].x} ${H} L ${points[0].x} ${H} Z`;
+
+            return (
+              <div style={{ padding:'0 16px 12px' }}>
+                <div className="font-bebas" style={{ fontSize:13,color:'var(--gold-dim)',letterSpacing:2,marginBottom:6 }}>
+                  📈 Points Annexes — Évolution Historique
+                </div>
+                <div style={{ background:'var(--dark3)',borderRadius:6,padding:8,overflow:'hidden' }}>
+                  <svg viewBox={`0 0 ${W} ${H}`} style={{ width:'100%',height:'auto',display:'block' }}>
+                    <defs>
+                      <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#c9a84c" stopOpacity="0.3"/>
+                        <stop offset="100%" stopColor="#c9a84c" stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
+                    {/* Grille horizontale */}
+                    {[0.25,0.5,0.75].map(r => (
+                      <line key={r} x1={PAD} y1={PAD + r*(H-PAD*2)} x2={W-PAD} y2={PAD + r*(H-PAD*2)}
+                        stroke="rgba(255,255,255,0.05)" strokeWidth="1" />
+                    ))}
+                    {/* Aire */}
+                    <path d={areaD} fill="url(#chartGrad)" />
+                    {/* Ligne */}
+                    <path d={pathD} fill="none" stroke="#c9a84c" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+                    {/* Points */}
+                    {points.map((p, i) => (
+                      <g key={i}>
+                        <circle cx={p.x} cy={p.y} r="2.5" fill="#c9a84c" />
+                        {/* Label saison en bas */}
+                        {(i === 0 || i === points.length-1 || seasons.length <= 10 || i % Math.ceil(seasons.length/8) === 0) && (
+                          <text x={p.x} y={H-1} textAnchor="middle" fontSize="7" fill="rgba(255,255,255,0.35)">S{p.s}</text>
+                        )}
+                        {/* Valeur au dessus du point */}
+                        {p.v > 0 && (i === 0 || i === points.length-1 || p.v === maxVal) && (
+                          <text x={p.x} y={p.y-4} textAnchor="middle" fontSize="8" fill="#c9a84c">{p.v}</text>
+                        )}
+                      </g>
+                    ))}
+                  </svg>
+                </div>
               </div>
             );
           })()}
