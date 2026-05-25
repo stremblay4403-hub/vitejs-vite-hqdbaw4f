@@ -3825,7 +3825,19 @@ if (saved) {
                 return (
                   <div key={day} style={{ marginBottom:3 }}>
                     {/* Journée header */}
-                    <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                    <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                       style={{
                         display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none'
                       }}>
@@ -4251,7 +4263,19 @@ if (saved) {
                     const isOpen = openDay === day;
                     return (
                       <div key={day} style={{ marginBottom:3 }}>
-                        <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                        <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                           style={{
                             display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,userSelect:'none'
                           }}>
@@ -5164,7 +5188,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -5469,7 +5505,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -5710,7 +5758,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -5944,7 +6004,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6156,7 +6228,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6368,7 +6452,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6580,7 +6676,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6792,7 +6900,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7004,7 +7124,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7216,7 +7348,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7428,7 +7572,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7640,7 +7796,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7845,7 +8013,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -8064,7 +8244,19 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={e => { const el = e.currentTarget; const rect = el.getBoundingClientRect(); const offset = rect.top; setOpenDay(isOpen ? null : day); requestAnimationFrame(() => { const newRect = el.getBoundingClientRect(); window.scrollBy(0, newRect.top - offset); }); }}
+                      <div onClick={() => {
+  const scrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${scrollY}px`;
+  document.body.style.width = '100%';
+  setOpenDay(isOpen ? null : day);
+  requestAnimationFrame(() => {
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
+    window.scrollTo(0, scrollY);
+  });
+}}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
