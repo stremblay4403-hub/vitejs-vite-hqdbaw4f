@@ -3825,7 +3825,7 @@ if (saved) {
                 return (
                   <div key={day} style={{ marginBottom:3 }}>
                     {/* Journée header */}
-                    <div onClick={() => setOpenDay(isOpen ? null : day)}
+                    <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                       style={{
                         display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none'
                       }}>
@@ -4251,7 +4251,7 @@ if (saved) {
                     const isOpen = openDay === day;
                     return (
                       <div key={day} style={{ marginBottom:3 }}>
-                        <div onClick={() => setOpenDay(isOpen ? null : day)}
+                        <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                           style={{
                             display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,userSelect:'none'
                           }}>
@@ -5164,7 +5164,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -5469,7 +5469,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
@@ -5710,7 +5710,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -5944,7 +5944,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6156,7 +6156,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6368,7 +6368,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6580,7 +6580,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -6792,7 +6792,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7004,7 +7004,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7216,7 +7216,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7428,7 +7428,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7640,7 +7640,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -7845,7 +7845,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
@@ -8064,7 +8064,7 @@ if (saved) {
                   const isOpen = openDay === day;
                   return (
                     <div key={day} style={{ marginBottom:3 }}>
-                      <div onClick={() => setOpenDay(isOpen ? null : day)}
+                      <div onTouchStart={e => { e.preventDefault(); setOpenDay(isOpen ? null : day); }} onClick={() => setOpenDay(isOpen ? null : day)}
                         style={{ display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none' }}>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>
                           Journée {day}
