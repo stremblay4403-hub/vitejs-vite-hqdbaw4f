@@ -1592,7 +1592,11 @@ export default function App() {
   });
   const [loaded, setLoaded] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
-  const isPublicMode = new URLSearchParams(window.location.search).get('public') === 'true';
+  const ADMIN_PASSWORD = 'Yoshi2003';
+  const [isLoggedIn, setIsLoggedIn] = useState(() => {
+    return sessionStorage.getItem('tdv_admin') === 'ok';
+  });
+  const isPublicMode = !isLoggedIn;
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainTab, setMainTab] = useState("dashboard");
   const [allCarsSearch, setAllCarsSearch] = useState('');
@@ -9575,8 +9579,20 @@ export default function App() {
             {isPublicMode ? (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                 <span style={{ background:'rgba(39,174,96,0.2)',border:'1px solid var(--green)',color:'var(--green)',borderRadius:4,padding:'4px 10px',fontSize:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>
-                  👁 VUE PUBLIQUE — LECTURE SEULE
+                  👁 VUE PUBLIQUE
                 </span>
+                <button className="btn btn-sm" style={{ background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }}
+                  onClick={() => {
+                    const pwd = prompt('Mot de passe admin :');
+                    if (pwd === ADMIN_PASSWORD) {
+                      sessionStorage.setItem('tdv_admin', 'ok');
+                      setIsLoggedIn(true);
+                    } else if (pwd !== null) {
+                      alert('❌ Mot de passe incorrect');
+                    }
+                  }}>
+                  🔒 Connexion
+                </button>
               </div>
             ) : (
               <React.Fragment>
@@ -9584,6 +9600,10 @@ export default function App() {
               <span style={{ width:6,height:6,borderRadius:'50%',background:'var(--green)',display:'inline-block',flexShrink:0 }} />
               Sauvegarde auto
             </div>
+            <button className="btn btn-sm btn-dark" style={{ whiteSpace:'nowrap',flexShrink:0,fontSize:11 }}
+              onClick={() => { sessionStorage.removeItem('tdv_admin'); setIsLoggedIn(false); }}>
+              🔓 Déconnexion
+            </button>
             <label className="btn btn-outline btn-sm" style={{ cursor:'pointer',whiteSpace:'nowrap',flexShrink:0 }}>
               📥 Importer
               <input type="file" accept=".json" onChange={importData} style={{ display:'none' }} />
