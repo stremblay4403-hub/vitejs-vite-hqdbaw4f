@@ -2057,16 +2057,16 @@ export default function App() {
           </div>
 
           {/* ── Boutons ── */}
-          <div style={{ display:'flex',gap:8,padding:'14px 16px',background:'var(--dark2)' }}>
+          <div style={{ display:'flex',gap:8,padding:'14px 16px',background:'var(--dark2)',flexWrap:'wrap' }}>
             <button className="btn btn-dark" style={{ flex:1,padding:'12px 8px' }} onClick={closeModal}>Annuler</button>
             <button className="btn btn-sim" style={{ flex:1,padding:'12px 8px' }} onClick={simulate}>🎲 Simuler</button>
             {hg !== null && ag !== null && (
               <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.2)',border:'1px solid rgba(192,57,43,0.4)',color:'#e74c3c',padding:'12px 10px' }} onClick={reset} title="Remettre à 0-0">✕</button>
             )}
-            {hg === null && matchModal?.homeGoals !== null && matchModal?.homeGoals !== undefined && (
-              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.3)',border:'1px solid rgba(192,57,43,0.6)',color:'#e74c3c',padding:'12px 10px',fontSize:11 }} onClick={() => { onConfirm(null, null); closeModal(); }} title="Effacer le résultat">🗑 Effacer</button>
+            {matchModal?.homeGoals !== null && matchModal?.homeGoals !== undefined && (
+              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.3)',border:'1px solid rgba(192,57,43,0.6)',color:'#e74c3c',padding:'12px 10px' }} onClick={() => { onConfirm(null, null); closeModal(); }} title="Effacer le résultat">🗑</button>
             )}
-            <button className="btn btn-gold" style={{ flex:1,padding:'12px 8px', opacity: hg === null && (matchModal?.homeGoals === null || matchModal?.homeGoals === undefined) ? 0.4 : 1 }}
+            <button className="btn btn-gold" style={{ flex:1,padding:'12px 8px', opacity: hg === null ? 0.4 : 1 }}
               onClick={() => { if (hg !== null && ag !== null) { onConfirm(hg, ag); closeModal(); } }}>
               ✓ Confirmer
             </button>
