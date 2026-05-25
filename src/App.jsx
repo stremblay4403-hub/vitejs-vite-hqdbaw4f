@@ -2063,8 +2063,11 @@ export default function App() {
             {hg !== null && ag !== null && (
               <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.2)',border:'1px solid rgba(192,57,43,0.4)',color:'#e74c3c',padding:'12px 10px' }} onClick={reset} title="Remettre à 0-0">✕</button>
             )}
-            <button className="btn btn-gold" style={{ flex:1,padding:'12px 8px' }}
-              onClick={() => { if (hg !== null && ag !== null) { onConfirm(hg, ag); closeModal(); } else { onConfirm(null, null); closeModal(); } }}>
+            {hg === null && matchModal?.homeGoals !== null && matchModal?.homeGoals !== undefined && (
+              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.3)',border:'1px solid rgba(192,57,43,0.6)',color:'#e74c3c',padding:'12px 10px',fontSize:11 }} onClick={() => { onConfirm(null, null); closeModal(); }} title="Effacer le résultat">🗑 Effacer</button>
+            )}
+            <button className="btn btn-gold" style={{ flex:1,padding:'12px 8px', opacity: hg === null && (matchModal?.homeGoals === null || matchModal?.homeGoals === undefined) ? 0.4 : 1 }}
+              onClick={() => { if (hg !== null && ag !== null) { onConfirm(hg, ag); closeModal(); } }}>
               ✓ Confirmer
             </button>
           </div>
