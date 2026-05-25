@@ -4072,6 +4072,8 @@ export default function App() {
     );
   }
 
+  const [showBracket, setShowBracket] = useState(false);
+
   function PlayoffsView() {
     const league = getLeague(leagueTab);
     const pm = league.playoffResults || {};
@@ -4082,7 +4084,7 @@ export default function App() {
     const qf = allMatches.filter(m => m.round === 'qf').sort((a,b) => a.bracketPos - b.bracketPos);
     const sf = allMatches.filter(m => m.round === 'sf').sort((a,b) => a.bracketPos - b.bracketPos);
     const fin = allMatches.find(m => m.round === 'final');
-    const [showBracket, setShowBracket] = useState(false);
+    // showBracket lives in App state to persist across re-renders
 
     const ROUND_LABELS = { r1: 'Ronde 1', r2: 'Ronde 2', r3: 'Ronde 3', qf: 'Quarts de Finale', sf: 'Demi-Finales', final: 'Finale' };
 
@@ -4312,6 +4314,12 @@ export default function App() {
       const aWin = isPlayed && m.awayGoals > m.homeGoals;
 
       function TeamRow({ carId, photo, car, seed, groupRank, fromGroup, goals, isWinner }) {
+        const stats = carId ? getCarStats(carId, Object.values(currentSeason.leagues[leagueTab]?.groupResults || {}).flat()) : null;
+        const carObj = currentSeason.leagues[leagueTab]?.cars?.find(c => c.id === carId);
+        const groupCars = carObj ? (currentSeason.leagues[leagueTab]?.cars || []).filter(c => c.group === carObj.group) : [];
+        const groupMatches = currentSeason.leagues[leagueTab]?.groupResults?.[carObj?.group] || [];
+        const groupStandings = computeStandings(groupCars, groupMatches);
+        const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
           <div style={{
             display:'flex',alignItems:'center',gap:compact ? 6 :10,padding:compact ? '8px 10px' :'12px 14px',borderBottom:'1px solid #1a1a1a',background:isWinner ? 'rgba(201,168,76,0.12)' :'transparent',}}>
@@ -4321,12 +4329,20 @@ export default function App() {
             </div>
             {/* Photo */}
             <CarThumb photo={photo} size={compact ? 52 : 64} />
-            {/* Name + group info */}
+            {/* Name + stats */}
             <div style={{ flex:1,minWidth:0 }}>
               <div style={{ fontSize:compact ? 17 :20,fontWeight:700,color:isWinner ? 'var(--gold)' :'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
                 {car?.name || '?'}
               </div>
-              <div style={{ fontSize:13,color:'var(--text-dim)' }}>G{fromGroup + 1} · {groupRank}e</div>
+              <div style={{ display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:2 }}>
+                <span style={{ fontSize:11,color:'var(--text-dim)' }}>G{fromGroup + 1} · {groupRank}e</span>
+                {groupPts > 0 && <span style={{ fontSize:11,color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif" }}>{groupPts}pts</span>}
+                {stats && <>
+                  <span style={{ fontSize:11,color:'var(--green)' }}>{stats.w}V</span>
+                  <span style={{ fontSize:11,color:'var(--text-dim)' }}>{stats.d}N</span>
+                  <span style={{ fontSize:11,color:'#e74c3c' }}>{stats.l}D</span>
+                </>}
+              </div>
             </div>
             {/* Score */}
             {isPlayed && (
@@ -9377,8 +9393,8 @@ export default function App() {
 
     function TCMatchCard({ m }) {
       if (!m || !m.homeId) return (
-        <div style={{ background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:4,padding:'8px 10px',opacity:0.4,marginBottom:4 }}>
-          <div style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' }}>En attente...</div>
+        <div style={{ background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',opacity:0.4,marginBottom:4,minHeight:80,display:'flex',alignItems:'center',justifyContent:'center' }}>
+          <div style={{ fontSize:11,color:'var(--text-dim)' }}>En attente...</div>
         </div>
       );
       const homeName = getCarName(m.homeId, m.homeLeague);
@@ -9390,25 +9406,59 @@ export default function App() {
       const aWin = isPlayed && m.awayGoals > m.homeGoals;
       const homeStats = getGroupStatsForCar(m.homeId, m.homeLeague);
       const awayStats = getGroupStatsForCar(m.awayId, m.awayLeague);
+
+      function TCTeamRow({ carId, photo, name, league, goals, win, stats }) {
+        const leagueShort = league?.replace('Voitures ','V') || '';
+        const carObj = carId && league ? currentSeason.leagues[league]?.cars?.find(c => c.id === carId) : null;
+        const groupCars = carObj ? (currentSeason.leagues[league]?.cars || []).filter(c => c.group === carObj.group) : [];
+        const groupMatches = currentSeason.leagues[league]?.groupResults?.[carObj?.group] || [];
+        const groupStandings = computeStandings(groupCars, groupMatches);
+        const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
+        const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
+        const IMG_H = 80;
+        return (
+          <div style={{ background: win ? 'rgba(201,168,76,0.12)' : 'var(--dark3)', border:`2px solid ${win ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer' }}
+            onClick={e => { e.stopPropagation(); if(carId && league) setProfileCar({ leagueName: league, carId }); }}>
+            {/* Photo */}
+            <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              {photo
+                ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} />
+                : <span style={{ fontSize:28 }}>🚗</span>}
+            </div>
+            {/* Name + stats */}
+            <div style={{ padding:'4px 6px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                <span style={{ fontSize:10, fontWeight:700, color: win ? 'var(--gold)' : 'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
+                {isPlayed && <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: win ? 'var(--green)' : 'var(--text-dim)', flexShrink:0 }}>{goals}</span>}
+                {win && <span style={{ fontSize:11, flexShrink:0 }}>🏆</span>}
+              </div>
+              <div style={{ display:'flex', gap:5, marginTop:1, flexWrap:'wrap' }}>
+                <span style={{ fontSize:8, color:'var(--gold-dim)' }}>{leagueShort}</span>
+                {groupRank > 0 && <span style={{ fontSize:8, color:'var(--text-dim)' }}>#{groupRank} G{(carObj?.group ?? 0)+1}</span>}
+                {groupPts > 0 && <span style={{ fontSize:8, color:'var(--gold)' }}>{groupPts}pts</span>}
+                {stats && <>
+                  <span style={{ fontSize:8, color:'var(--green)' }}>{stats.w}V</span>
+                  <span style={{ fontSize:8, color:'var(--text-dim)' }}>{stats.d}N</span>
+                  <span style={{ fontSize:8, color:'#e74c3c' }}>{stats.l}D</span>
+                </>}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
       return (
-        <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:4,cursor:'pointer' }}
+        <div style={{ background:'var(--dark2)', border:`1px solid ${isPlayed ? 'var(--gold-dim)' : 'var(--border)'}`, borderRadius:8, overflow:'hidden', marginBottom:4, cursor:'pointer', padding:6 }}
           onClick={() => openMatchModal({
             homeName, awayName, homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
             homeStats, awayStats,
             onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
           })}>
-          {[{ name: homeName, photo: homePhoto, goals: m.homeGoals, win: hWin, league: m.homeLeague, id: m.homeId },
-            { name: awayName, photo: awayPhoto, goals: m.awayGoals, win: aWin, league: m.awayLeague, id: m.awayId }
-          ].map((team, ti) => (
-            <div key={ti} style={{ display:'flex',alignItems:'center',gap:6,padding:'5px 8px',borderBottom:ti===0 ? '1px solid #1a1a1a' :'none',background:team.win ? 'rgba(201,168,76,0.1)' :'transparent' }}>
-              <CarThumb photo={team.photo} />
-              <div style={{ flex:1,fontSize:20,fontWeight:700,color:team.win ? 'var(--green)' :'var(--text)' }}>{team.name}</div>
-              <div style={{ fontSize:14,color:'var(--text-dim)' }}>{team.league.replace('Voitures ','V')}</div>
-              {isPlayed && <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:team.win ? 'var(--green)' :'var(--text-dim)' }}>{team.goals}</span>}
-              {team.win && <span style={{ fontSize:12 }}>🏆</span>}
-            </div>
-          ))}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
+            <TCTeamRow carId={m.homeId} photo={homePhoto} name={homeName} league={m.homeLeague} goals={m.homeGoals} win={hWin} stats={homeStats} />
+            <TCTeamRow carId={m.awayId} photo={awayPhoto} name={awayName} league={m.awayLeague} goals={m.awayGoals} win={aWin} stats={awayStats} />
+          </div>
         </div>
       );
     }
