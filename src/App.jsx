@@ -3812,14 +3812,14 @@ export default function App() {
           <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
           <button className="btn btn-sm btn-sim"
             style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1 }}
-            onClick={() => { simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); }}>
+            style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); } }}>
             ▶ Journée {(nextUnplayedDay ?? '—')} (9 matchs)
           </button>
           <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateGroup(leagueTab, activeGroup); }}>
             ⚡ Groupe complet
           </button>
           <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd' }}
-            onClick={() => simulateLeagueComplete(leagueTab)}>
+            style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateLeagueComplete(leagueTab); }}>
             ⚡⚡ Toute la ligue
           </button>
           <span className="text-dim" style={{ fontSize:12,marginLeft:8 }}>
@@ -3978,7 +3978,7 @@ export default function App() {
                         : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/9</span>}
                       {!dayComplete && (
                         <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                          onClick={e => { e.stopPropagation(); simulateDay(leagueTab, activeGroup); setOpenDay(day); }}>
+                          style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ simulateDay(leagueTab, activeGroup); setOpenDay(day); } }}>
                           🎲
                         </button>
                       )}
@@ -4207,7 +4207,7 @@ export default function App() {
             <div className="sim-bar" style={{ marginBottom:12 }}>
               <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
               <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd' }}
-                onClick={() => simulatePlayoffsComplete(leagueTab)}>
+                style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulatePlayoffsComplete(leagueTab); }}>
                 ⚡⚡ Tous les playoffs
               </button>
             </div>
@@ -4311,7 +4311,7 @@ export default function App() {
               <button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelDay(); }}>▶ Journée {(nextUnplayedDay ?? '—')}</button>
               <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Barrage complet</button>
               <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd' }}
-                onClick={() => simulateRelegationComplete(leagueTab)}>
+                style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelegationComplete(leagueTab); }}>
                 ⚡⚡ Tout simuler + confirmer
               </button>
             </div>
@@ -4377,7 +4377,7 @@ export default function App() {
                 <div className="sim-bar" style={{ marginBottom:8 }}>
                   <button className="btn btn-sm btn-sim"
                     style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1 }}
-                    onClick={() => { simulateRelDay(); setOpenDay(nextUnplayedDay); }}>
+                    style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ simulateRelDay(); setOpenDay(nextUnplayedDay); } }}>
                     ▶ Journée {(nextUnplayedDay ?? '—')}
                   </button>
                   <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Tout simuler</button>
@@ -4416,7 +4416,7 @@ export default function App() {
                             : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/4</span>}
                           {!dayComplete && (
                             <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                              onClick={e => { e.stopPropagation(); simulateRelDay(); setOpenDay(day); }}>🎲</button>
+                              style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ simulateRelDay(); setOpenDay(day); } }}>🎲</button>
                           )}
                           <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                         </div>
