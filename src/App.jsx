@@ -1592,7 +1592,7 @@ export default function App() {
   });
   const [loaded, setLoaded] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
-  const ADMIN_PASSWORD = 'Yoshi2003';
+  const ADMIN_PASSWORD = 'Tungtungtung440';
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     return sessionStorage.getItem('tdv_admin') === 'ok';
   });
