@@ -1728,16 +1728,23 @@ export default function App() {
   const [actuellesLeague, setActuellesLeague] = useState('Actuelles 1');
   const [activeGroup, setActiveGroup] = useState(0);
   const [profileCar, setProfileCar] = useState(null);
+  function openProfileCar(config) {
+    const sy = window.scrollY;
+    setProfileCar(config);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy)));
+  }
   const [notifications, setNotifications] = useState([]);
   const [matchModal, setMatchModal] = useState(null);
   const [matchHg, setMatchHg] = useState(null);
   const [matchAg, setMatchAg] = useState(null);
 
   function openMatchModal(config) {
-    if (isPublicMode) return; // Bloqué en mode public
+    if (isPublicMode) return;
+    const sy = window.scrollY;
     setMatchHg(config.homeGoals ?? null);
     setMatchAg(config.awayGoals ?? null);
     setMatchModal({ ...config, wasPlayed: config.homeGoals !== null && config.homeGoals !== undefined });
+    requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy)));
   }
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
@@ -2076,7 +2083,13 @@ export default function App() {
 
     function reset() { setHg(0); setAg(0); }
 
-    function closeModal() { setMatchModal(null); setMatchHg(null); setMatchAg(null); }
+    function closeModal() { 
+      const sy = window.scrollY;
+      setMatchModal(null); 
+      setMatchHg(null); 
+      setMatchAg(null);
+      requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy)));
+    }
 
     const imgW = 140;
     const imgH = Math.round(imgW * 0.73);
@@ -3685,7 +3698,7 @@ export default function App() {
                     {champ ? (
                       <>
                         <div style={{ width:'100%',borderRadius:6,overflow:'hidden',background:'var(--dark2)',border:'2px solid var(--gold-dim)',marginBottom:8,cursor:'pointer' }}
-                          onClick={() => setProfileCar({ leagueName: l, carId: champId })}>
+                          onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
                           {getCarPhoto(champId)
                             ? <img src={getCarPhoto(champId)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
                             : <div style={{ height:180,display:'flex',alignItems:'center',justifyContent:'center',fontSize:64 }}>🚗</div>}
@@ -3720,7 +3733,7 @@ export default function App() {
                       </div>
                       {zCar ? (
                         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',width:'100%' }}
-                          onClick={() => setProfileCar({ leagueName: l, carId: zCar.id })}>
+                          onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
                           <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                             {getCarPhoto(zCar.id)
                               ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'auto',maxHeight:200,objectFit:'contain',display:'block' }} />
@@ -3738,7 +3751,7 @@ export default function App() {
                       <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>⬇ Relégué</div>
                       {rel ? (
                         <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',width:'100%' }}
-                          onClick={() => setProfileCar({ leagueName: l, carId: relId })}>
+                          onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
                           <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                             {getCarPhoto(relId)
                               ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'auto',maxHeight:200,objectFit:'contain',display:'block' }} />
@@ -3763,7 +3776,7 @@ export default function App() {
                         <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
                           {snap.map((e, i) => (
                             <div key={e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id ? 'pointer' :'default' }}
-                              onClick={() => { if (e.id) setProfileCar({ leagueName: l, carId: e.id }); }}>
+                              onClick={() => { if (e.id) openProfileCar({ leagueName: l, carId: e.id }); }}>
                               <span style={{ color:'var(--gold-dim)',fontSize:11,width:16,textAlign:'right',flexShrink:0 }}>{i + 1}.</span>
                               <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
                               <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
@@ -3960,7 +3973,7 @@ export default function App() {
                             pts={s.pts} w={s.w} d={s.d} l={s.l}
                             gf={s.gf} ga={s.ga} gp={s.gp}
                             borderColor={borderColor}
-                            onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })}
+                            onClick={() => openProfileCar({ leagueName: leagueTab, carId: s.id })}
                           />
                         );
                       })}
@@ -4022,7 +4035,7 @@ export default function App() {
                         : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/9</span>}
                       {!dayComplete && (
                         <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                          style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ simulateDay(leagueTab, activeGroup); setOpenDay(day); } }}>
+                          style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ const sy = window.scrollY; simulateDay(leagueTab, activeGroup); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); } }}>
                           🎲
                         </button>
                       )}
@@ -4165,7 +4178,7 @@ export default function App() {
         const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
           <div style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0 }}
-            onClick={e => { e.stopPropagation(); setProfileCar({ leagueName: leagueTab, carId }); }}>
+            onClick={e => { e.stopPropagation(); openProfileCar({ leagueName: leagueTab, carId }); }}>
             <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {photo
                 ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} />
@@ -4600,7 +4613,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={isLast ? '#e74c3c' : 'transparent'}
-                          onClick={() => setProfileCar({ leagueName: leagueTab, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: leagueTab, carId: s.id })}
                         />
                       );
                     })}
@@ -4777,7 +4790,7 @@ export default function App() {
       for (const s of db.seasons) {
         for (const l of LEAGUES) {
           const f = s.leagues[l]?.cars.find(c => c.id === carId);
-          if (f) { setProfileCar({ leagueName: l, carId }); return null; }
+          if (f) { openProfileCar({ leagueName: l, carId }); return null; }
         }
       }
       return null;
@@ -5187,7 +5200,7 @@ export default function App() {
         const found = findInLeague(l);
         if (found) { setProfileCar(found); return; }
       }
-      setProfileCar({ leagueName: leagueTab, carId: entry.id, histName: entry.name });
+      openProfileCar({ leagueName: leagueTab, carId: entry.id, histName: entry.name });
     }
 
     return (
@@ -5500,7 +5513,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })}
@@ -5558,7 +5571,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }} style={{ display: isPublicMode ? 'none' : undefined }}>
                             🎲
                           </button>
                         )}
@@ -5788,7 +5801,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -5844,7 +5857,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }} style={{ display: isPublicMode ? 'none' : undefined }}>
                             🎲
                           </button>
                         )}
@@ -6010,7 +6023,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6064,7 +6077,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
@@ -6227,7 +6240,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6275,7 +6288,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6420,7 +6433,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6468,7 +6481,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6613,7 +6626,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6661,7 +6674,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6806,7 +6819,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6854,7 +6867,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6999,7 +7012,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7047,7 +7060,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7192,7 +7205,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7240,7 +7253,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7385,7 +7398,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7433,7 +7446,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7578,7 +7591,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7626,7 +7639,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7771,7 +7784,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7819,7 +7832,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7960,7 +7973,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8006,7 +8019,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -8157,7 +8170,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => setProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })}
@@ -8212,7 +8225,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; const sy = window.scrollY; simDay(day); setOpenDay(day); requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, sy))); }} style={{ display: isPublicMode ? 'none' : undefined }}>
                             🎲
                           </button>
                         )}
@@ -8360,7 +8373,7 @@ export default function App() {
               return (
                 <div key={i}
                   style={{ display:'flex',alignItems:'center',gap:6,padding:'4px 8px',background:'var(--dark3)',borderRadius:6,border:`1px solid var(--border)`,borderLeft:`3px solid ${leagueColors[c.league]}`,minWidth:160 }}>
-                  <div onClick={() => !isEditing && c.carId && setProfileCar({ leagueName: c.league, carId: c.carId })}
+                  <div onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}
                     style={{ width:28,height:28,borderRadius:3,background:'var(--dark2)',cursor:c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden' }}>
                     {photo
                       ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain' }} />
@@ -8377,7 +8390,7 @@ export default function App() {
                   ) : (
                     <>
                       <span style={{ fontSize:12,fontWeight:600,flex:1,cursor:c.carId ? 'pointer' :'default' }}
-                        onClick={() => c.carId && setProfileCar({ leagueName: c.league, carId: c.carId })}>
+                        onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                         {c.name}
                       </span>
                       <button className="btn btn-dark btn-xs" style={{ padding:'1px 5px',fontSize:10, display: isPublicMode ? 'none' : 'inline-flex' }}
@@ -8415,9 +8428,9 @@ export default function App() {
         <tr style={{ cursor:'pointer' }}
           onClick={() => {
             if (mainLeague) {
-              setProfileCar({ leagueName: mainLeague.leagueName, carId: mainLeague.carId });
+              openProfileCar({ leagueName: mainLeague.leagueName, carId: mainLeague.carId });
             } else {
-              setProfileCar({ leagueName: entry.lastRelLeague || LEAGUES[0], carId: `hist-${entry.name}`, histName: entry.name });
+              openProfileCar({ leagueName: entry.lastRelLeague || LEAGUES[0], carId: `hist-${entry.name}`, histName: entry.name });
             }
           }}>
           <td style={{ width:60,padding:'4px 6px' }}>
@@ -8608,10 +8621,10 @@ export default function App() {
     function openProfile(name, carId) {
       if (carId) {
         const l = findLeagueByCarId(carId);
-        if (l) { setProfileCar({ leagueName: l, carId }); return; }
+        if (l) { openProfileCar({ leagueName: l, carId }); return; }
       }
       const found = findCarByName(name);
-      if (found) setProfileCar({ leagueName: found.leagueName, carId: found.carId });
+      if (found) openProfileCar({ leagueName: found.leagueName, carId: found.carId });
     }
 
     const champCount = {};
@@ -9003,7 +9016,7 @@ export default function App() {
         const IMG_H = 80;
         return (
           <div style={{ background: win ? 'rgba(201,168,76,0.12)' : 'var(--dark3)', border:`2px solid ${win ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer' }}
-            onClick={e => { e.stopPropagation(); if(carId && league) setProfileCar({ leagueName: league, carId }); }}>
+            onClick={e => { e.stopPropagation(); if(carId && league) openProfileCar({ leagueName: league, carId }); }}>
             {/* Photo */}
             <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {photo
@@ -9126,7 +9139,7 @@ export default function App() {
                       if (!entry) return null;
                       return (
                         <div key={rank} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:12 }}>
-                       <div style={{ width:'min(220px,28vw)',height:'min(160px,20vw)',borderRadius:10,overflow:'hidden',border:'4px solid '+color }} onClick={() => setProfileCar({ leagueName: entry.league, carId: entry.id })}>
+                       <div style={{ width:'min(220px,28vw)',height:'min(160px,20vw)',borderRadius:10,overflow:'hidden',border:'4px solid '+color }} onClick={() => openProfileCar({ leagueName: entry.league, carId: entry.id })}>
                             {entry.photo ? <img src={entry.photo} style={{ width:'100%',height:'100%',objectFit:'contain',background:'#f5f5f5' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:64,background:'#f5f5f5' }}>🚗</div>}
                           </div>
                           <div style={{ fontSize:'min(28px,4vw)',fontWeight:700,color:'#111',textAlign:'center',maxWidth:'min(220px,28vw)',fontFamily:"'Bebas Neue',sans-serif" }}>{entry.name}</div>
@@ -9189,7 +9202,7 @@ export default function App() {
                 const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
                 return (
                   <div style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0 }}
-                    onClick={e => { e.stopPropagation(); if(carId && league) setProfileCar({ leagueName: league, carId }); }}>
+                    onClick={e => { e.stopPropagation(); if(carId && league) openProfileCar({ leagueName: league, carId }); }}>
                     <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       {photo ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} /> : <span style={{ fontSize:22 }}>🚗</span>}
                     </div>
@@ -9434,7 +9447,7 @@ export default function App() {
                         <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>
                           {champ && (
                             <div style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(201,168,76,0.1)',borderRadius:4,padding:'6px 10px',cursor:'pointer' }}
-                              onClick={() => setProfileCar({ leagueName: l, carId: champId })}>
+                              onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
                               <CarThumb photo={getCarPhoto(champId)} size={36} />
                               <div>
                                 <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>🏆 CHAMPION</div>
@@ -9445,7 +9458,7 @@ export default function App() {
                           )}
                           {zCar && zCar.id !== champId && (
                             <div style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(201,168,76,0.06)',borderRadius:4,padding:'6px 10px',cursor:'pointer' }}
-                              onClick={() => setProfileCar({ leagueName: l, carId: zCar.id })}>
+                              onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
                               <CarThumb photo={getCarPhoto(zCar.id)} size={36} />
                               <div>
                                 <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}><span style={{ background:'#c9a84c',color:'#000',borderRadius:2,padding:'0 3px',marginRight:3,fontSize:9 }}>Z</span>MEILLEUR LIGUE</div>
@@ -9455,7 +9468,7 @@ export default function App() {
                           )}
                           {rel && (
                             <div style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(192,57,43,0.08)',borderRadius:4,padding:'6px 10px',cursor:'pointer' }}
-                              onClick={() => setProfileCar({ leagueName: l, carId: relId })}>
+                              onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
                               <CarThumb photo={getCarPhoto(relId)} size={36} />
                               <div>
                                 <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>⬇ RELÉGUÉ</div>
@@ -9521,9 +9534,9 @@ export default function App() {
                                                   <tr key={row.id} style={{ borderLeft:isTop8 ? '3px solid var(--green)' :isLast ? '3px solid #e74c3c' :'3px solid transparent' }}>
                                                     <td style={{ padding:'6px',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:isTop8 ? 'var(--green)' :isLast ? '#e74c3c' :'var(--gold-dim)',borderBottom:'1px solid #1a1a1a' }}>{ri+1}</td>
                                                     <td style={{ padding:'4px',borderBottom:'1px solid #1a1a1a',width:48 }}>
-                                                      <CarThumb photo={getCarPhoto(row.id)} size={40} onClick={() => setProfileCar({ leagueName: l, carId: row.id })} />
+                                                      <CarThumb photo={getCarPhoto(row.id)} size={40} onClick={() => openProfileCar({ leagueName: l, carId: row.id })} />
                                                     </td>
-                                                    <td style={{ padding:'6px',borderBottom:'1px solid #1a1a1a',fontSize:15,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer' }} onClick={() => setProfileCar({ leagueName: l, carId: row.id })}>{car?.name}</td>
+                                                    <td style={{ padding:'6px',borderBottom:'1px solid #1a1a1a',fontSize:15,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer' }} onClick={() => openProfileCar({ leagueName: l, carId: row.id })}>{car?.name}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)',borderBottom:'1px solid #1a1a1a' }}>{row.pts}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,color:'var(--green)',fontWeight:700,borderBottom:'1px solid #1a1a1a' }}>{row.w}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,color:'var(--text-dim)',borderBottom:'1px solid #1a1a1a' }}>{row.d}</td>
