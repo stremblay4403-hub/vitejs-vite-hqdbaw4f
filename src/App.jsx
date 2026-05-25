@@ -1660,12 +1660,22 @@ export default function App() {
 
     // Chargement Firebase en arrière-plan (override si plus récent)
     storageLoadAsync().then(saved => {
-      if (saved) applyLoadedData(saved);
+      if (saved) applyLoadedData(saved, true);
       setLoaded(true);
     }).catch(() => setLoaded(true));
   }, []);
 
-  function applyLoadedData(saved) {
+  function applyLoadedData(saved, isFromFirebase = false) {
+    // Si les données viennent de Firebase et que le localStorage local a plus de photos, garder les photos locales
+    if (isFromFirebase) {
+      const localData = storageLoad();
+      const localPhotoCount = Object.keys(localData?.photos || {}).length;
+      const firebasePhotoCount = Object.keys(saved?.photos || {}).length;
+      if (localPhotoCount > firebasePhotoCount) {
+        saved.photos = localData.photos;
+      }
+    }
+
     if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
       const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, brands: saved.brands || {}, histOverrides: saved.histOverrides || {} };
       fresh.seasons.push(initSeason(33));
@@ -1679,12 +1689,8 @@ export default function App() {
             if (migrations[car.name]) car.name = migrations[car.name];
           });
         });
-        let migrated = false;
         AUXILIARY_LEAGUES.forEach(l => {
-          if (!s.leagues[l]) {
-            s.leagues[l] = initAuxLeague(l, null);
-            migrated = true;
-          }
+          if (!s.leagues[l]) s.leagues[l] = initAuxLeague(l, null);
         });
       });
       setDb(saved);
@@ -9534,8 +9540,14 @@ export default function App() {
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
               const fullData = storageLoad() || db;
-              setDoc(tournoisDocRef, { data: JSON.stringify(fullData), updatedAt: Date.now() })
-                .then(() => alert('✅ Sauvegardé sur Firebase !'))
+              // Fusionner les photos locales avec le state React (prendre le plus grand)
+              const localPhotos = fullData.photos || {};
+              const reactPhotos = db.photos || {};
+              const mergedPhotos = Object.keys(localPhotos).length >= Object.keys(reactPhotos).length ? localPhotos : reactPhotos;
+              const dataToSync = { ...fullData, photos: mergedPhotos };
+              console.log('🔥 Sync Firebase - photos:', Object.keys(mergedPhotos).length);
+              setDoc(tournoisDocRef, { data: JSON.stringify(dataToSync), updatedAt: Date.now() })
+                .then(() => alert(`✅ Sauvegardé sur Firebase !\n${Object.keys(mergedPhotos).length} photos synchronisées`))
                 .catch(e => alert('❌ Erreur: ' + e.message));
             }}>☁️ Sync Firebase</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(52,152,219,0.15)',borderColor:'#3498db',color:'#3498db' }} onClick={async () => {
