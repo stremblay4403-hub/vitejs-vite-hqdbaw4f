@@ -4415,7 +4415,7 @@ export default function App() {
                 return played >= expected && expected > 0;
               }).every(Boolean);
               return allGroupsDone
-                ? <button className="btn btn-gold" onClick={() => initPlayoffs(leagueTab)}>Générer le Bracket (64 voitures)</button>
+                ? (!isPublicMode && <button className="btn btn-gold" onClick={() => initPlayoffs(leagueTab)}>Générer le Bracket (64 voitures)</button>)
                 : <div style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>⛔ Tous les matchs de groupes doivent être joués avant de générer les playoffs.</div>;
             })()}
           </div>
@@ -4532,7 +4532,7 @@ export default function App() {
                 return played >= expected && expected > 0;
               }).every(Boolean);
               return allGroupsDone
-                ? <button className="btn btn-gold" onClick={() => initRelegation(leagueTab)}>Générer le Barrage Relégation</button>
+                ? (!isPublicMode && <button className="btn btn-gold" onClick={() => initRelegation(leagueTab)}>Générer le Barrage Relégation</button>)
                 : <div style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>⛔ Tous les matchs de groupes doivent être joués avant de générer le barrage.</div>;
             })()}
           </div>
@@ -9393,8 +9393,8 @@ export default function App() {
 
     function TCMatchCard({ m }) {
       if (!m || !m.homeId) return (
-        <div style={{ background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:6,padding:'8px 10px',opacity:0.4,marginBottom:4,minHeight:80,display:'flex',alignItems:'center',justifyContent:'center' }}>
-          <div style={{ fontSize:11,color:'var(--text-dim)' }}>En attente...</div>
+        <div style={{ background:'var(--dark3)',border:'1px solid var(--border)',borderRadius:4,padding:'8px 10px',opacity:0.4,marginBottom:4 }}>
+          <div style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center' }}>En attente...</div>
         </div>
       );
       const homeName = getCarName(m.homeId, m.homeLeague);
@@ -9448,17 +9448,39 @@ export default function App() {
       }
 
       return (
-        <div style={{ background:'var(--dark2)', border:`1px solid ${isPlayed ? 'var(--gold-dim)' : 'var(--border)'}`, borderRadius:8, overflow:'hidden', marginBottom:4, cursor:'pointer', padding:6 }}
+        <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:4,cursor:'pointer' }}
           onClick={() => openMatchModal({
             homeName, awayName, homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
             homeStats, awayStats,
             onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
           })}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:6 }}>
-            <TCTeamRow carId={m.homeId} photo={homePhoto} name={homeName} league={m.homeLeague} goals={m.homeGoals} win={hWin} stats={homeStats} />
-            <TCTeamRow carId={m.awayId} photo={awayPhoto} name={awayName} league={m.awayLeague} goals={m.awayGoals} win={aWin} stats={awayStats} />
-          </div>
+          {[{ name: homeName, photo: homePhoto, goals: m.homeGoals, win: hWin, league: m.homeLeague, id: m.homeId, stats: homeStats },
+            { name: awayName, photo: awayPhoto, goals: m.awayGoals, win: aWin, league: m.awayLeague, id: m.awayId, stats: awayStats }
+          ].map((team, ti) => {
+            const carObj = team.id && team.league ? currentSeason.leagues[team.league]?.cars?.find(c => c.id === team.id) : null;
+            const groupCars = carObj ? (currentSeason.leagues[team.league]?.cars || []).filter(c => c.group === carObj.group) : [];
+            const groupMatches = currentSeason.leagues[team.league]?.groupResults?.[carObj?.group] || [];
+            const groupStandings = computeStandings(groupCars, groupMatches);
+            const groupRank = groupStandings.findIndex(s => s.id === team.id) + 1;
+            const groupPts = groupStandings.find(s => s.id === team.id)?.pts ?? 0;
+            return (
+              <div key={ti} style={{ display:'flex',alignItems:'center',gap:6,padding:'5px 8px',borderBottom:ti===0 ? '1px solid #1a1a1a' :'none',background:team.win ? 'rgba(201,168,76,0.1)' :'transparent' }}>
+                <CarThumb photo={team.photo} />
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontSize:16,fontWeight:700,color:team.win ? 'var(--green)' :'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>{team.name}</div>
+                  <div style={{ display:'flex',gap:5,marginTop:1,flexWrap:'wrap' }}>
+                    <span style={{ fontSize:10,color:'var(--gold-dim)' }}>{team.league?.replace('Voitures ','V')}</span>
+                    {groupRank > 0 && <span style={{ fontSize:10,color:'var(--text-dim)' }}>#{groupRank} G{(carObj?.group ?? 0)+1}</span>}
+                    {groupPts > 0 && <span style={{ fontSize:10,color:'var(--gold)' }}>{groupPts}pts</span>}
+                    {team.stats && <><span style={{ fontSize:10,color:'var(--green)' }}>{team.stats.w}V</span><span style={{ fontSize:10,color:'var(--text-dim)' }}>{team.stats.d}N</span><span style={{ fontSize:10,color:'#e74c3c' }}>{team.stats.l}D</span></>}
+                  </div>
+                </div>
+                {isPlayed && <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:team.win ? 'var(--green)' :'var(--text-dim)',flexShrink:0 }}>{team.goals}</span>}
+                {team.win && <span style={{ fontSize:12 }}>🏆</span>}
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -9487,9 +9509,9 @@ export default function App() {
                 return <span key={l} style={{ marginLeft:12,color:cnt === 8 ? 'var(--green)' :'var(--gold)' }}>{l}: {cnt}/8</span>;
               })}
             </div>
-            <button className="btn btn-gold" onClick={initTournoi} disabled={qualifiers.length < 2}>
+            {!isPublicMode && <button className="btn btn-gold" onClick={initTournoi} disabled={qualifiers.length < 2}>
               🎲 Générer le Bracket ({qualifiers.length} voitures)
-            </button>
+            </button>}
             {qualifiers.length < 2 && (
               <div style={{ marginTop:10,fontSize:11,color:'#e74c3c' }}>
                 Générez d'abord les playoffs dans au moins une ligue
