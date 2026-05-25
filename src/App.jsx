@@ -4076,7 +4076,7 @@ export default function App() {
               <div className="card-title">Matchs — Groupe {activeGroup + 1}</div>
               <span className="text-dim" style={{ fontSize:11,marginLeft:'auto' }}>17 journées · 9 matchs chacune</span>
             </div>
-            <div className="card-body" style={{ maxHeight:600,overflowY:'auto',padding:'6px' }}>
+            <ScrollKeeper maxHeight={600}>
               {matches.length === 0 && <div className="text-dim text-center" style={{ padding:24 }}>Chargement...</div>}
               {days.map(day => {
                 const dayMatches = matches.filter(m => m.day === day);
@@ -4186,7 +4186,7 @@ export default function App() {
                   </div>
                 );
               })}
-            </div>
+            </ScrollKeeper>
           </div>
         </div>
       </div>
