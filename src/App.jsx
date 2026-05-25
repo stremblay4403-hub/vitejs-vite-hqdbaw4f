@@ -1474,6 +1474,7 @@ const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 const isLoadingFromFirebase = { current: false };
+let firebaseSaveTimeout = null;
 
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
@@ -1488,14 +1489,18 @@ function storageSave(data) {
   );
   if (!hasData) return;
 
-  setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() })
-    .catch(e => console.warn('Firebase data save error:', e));
+  // Debounce — attendre 2s avant de sauvegarder pour éviter le spam
+  if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+  firebaseSaveTimeout = setTimeout(() => {
+    setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() })
+      .catch(e => console.warn('Firebase data save error:', e));
 
-  const photoCount = Object.keys(photos || {}).length;
-  if (photoCount > 0) {
-    setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
-      .catch(e => console.warn('Firebase photos save error:', e));
-  }
+    const photoCount = Object.keys(photos || {}).length;
+    if (photoCount > 0) {
+      setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
+        .catch(e => console.warn('Firebase photos save error:', e));
+    }
+  }, 2000);
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -1587,6 +1592,7 @@ export default function App() {
   });
   const [loaded, setLoaded] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
+  const isPublicMode = new URLSearchParams(window.location.search).get('public') === 'true';
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainTab, setMainTab] = useState("dashboard");
   const [allCarsSearch, setAllCarsSearch] = useState('');
@@ -9563,7 +9569,15 @@ export default function App() {
           </div>
           <div className="header-divider" />
           <div className="header-actions">
-            <div style={{ fontSize:10,color:'var(--green)',letterSpacing:1,display:'flex',alignItems:'center',gap:4,whiteSpace:'nowrap' }}>
+            {isPublicMode ? (
+              <div style={{ display:'flex',alignItems:'center',gap:8 }}>
+                <span style={{ background:'rgba(39,174,96,0.2)',border:'1px solid var(--green)',color:'var(--green)',borderRadius:4,padding:'4px 10px',fontSize:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>
+                  👁 VUE PUBLIQUE — LECTURE SEULE
+                </span>
+              </div>
+            ) : (
+              <React.Fragment>
+              <div style={{ fontSize:10,color:'var(--green)',letterSpacing:1,display:'flex',alignItems:'center',gap:4,whiteSpace:'nowrap' }}>
               <span style={{ width:6,height:6,borderRadius:'50%',background:'var(--green)',display:'inline-block',flexShrink:0 }} />
               Sauvegarde auto
             </div>
@@ -9635,6 +9649,8 @@ export default function App() {
                   <button className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => setConfirmReset(false)}>✕ Non</button>
                 </div>
             }
+            </React.Fragment>
+            )}
           </div>
         </div>
 
@@ -9645,12 +9661,12 @@ export default function App() {
             <button key={idx}
               className={`btn btn-sm ${db.currentSeasonIdx === idx ? 'btn-gold' : 'btn-dark'}`}
               style={{ flexShrink:0 }}
-              onClick={() => switchSeason(idx)}>
+              onClick={() => !isPublicMode && switchSeason(idx)}>
               S{s.season}
             </button>
           ))}
-          <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }} onClick={simTout}>⚡ Simuler Tout</button>
-          {seasonReady && (
+          {!isPublicMode && <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }} onClick={simTout}>⚡ Simuler Tout</button>}
+          {!isPublicMode && seasonReady && (
             <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(39,174,96,0.2)',borderColor:'var(--green)',color:'var(--green)',opacity:isProcessing ? 0.5 :1 }} onClick={handleNextSeason} disabled={isProcessing}>
               {isProcessing ? '⏳ En cours...' : '🏁 Saison Suivante'}
             </button>
