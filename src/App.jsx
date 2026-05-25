@@ -1650,7 +1650,7 @@ export default function App() {
   function openMatchModal(config) {
     setMatchHg(config.homeGoals ?? null);
     setMatchAg(config.awayGoals ?? null);
-    setMatchModal(config);
+    setMatchModal({ ...config, wasPlayed: config.homeGoals !== null && config.homeGoals !== undefined });
   }
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
@@ -2063,7 +2063,7 @@ export default function App() {
             {hg !== null && ag !== null && (
               <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.2)',border:'1px solid rgba(192,57,43,0.4)',color:'#e74c3c',padding:'12px 10px' }} onClick={reset} title="Remettre à 0-0">✕</button>
             )}
-            {matchModal?.homeGoals !== null && matchModal?.homeGoals !== undefined && (
+            {matchModal?.wasPlayed && (
               <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.3)',border:'1px solid rgba(192,57,43,0.6)',color:'#e74c3c',padding:'12px 10px' }} onClick={() => { onConfirm(null, null); closeModal(); }} title="Effacer le résultat">🗑</button>
             )}
             <button className="btn btn-gold" style={{ flex:1,padding:'12px 8px', opacity: hg === null ? 0.4 : 1 }}
