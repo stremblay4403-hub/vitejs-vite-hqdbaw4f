@@ -1457,10 +1457,8 @@ const css = `
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
-const FIREBASE_DOC_ID = 'main';
 
 // ── Firebase init ──────────────────────────────────────────────────
-
 const firebaseConfig = {
   apiKey:            import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain:        import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -1472,39 +1470,52 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-const tournoisDocRef = doc(firestoreDb, 'tournois', FIREBASE_DOC_ID);
+const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
+const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
-// ── Sauvegarde localStorage (backup local) ─────────────────────────
+// ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
-  // Ne sauvegarder sur Firestore que si on a de vraies données
-  const hasRealData = data?.seasons?.length > 0 && 
-    data.seasons.some(s => Object.values(s.leagues || {}).some(l => l?.cars?.length > 0));
-  if (!hasRealData) return;
-  setDoc(tournoisDocRef, { data: JSON.stringify(data), updatedAt: Date.now() })
-    .catch(e => console.warn('Firebase save error:', e));
+
+  const { photos, ...dataWithoutPhotos } = data;
+  const hasData = dataWithoutPhotos?.seasons?.some(s =>
+    Object.values(s.leagues || {}).some(l => l?.cars?.length > 0)
+  );
+  if (!hasData) return;
+
+  // Données légères sans photos
+  setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() })
+    .catch(e => console.warn('Firebase data save error:', e));
+
+  // Photos dans document séparé
+  const photoCount = Object.keys(photos || {}).length;
+  if (photoCount > 0) {
+    setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
+      .catch(e => console.warn('Firebase photos save error:', e));
+  }
 }
 
-// ── Chargement : Firestore en priorité, localStorage en fallback ───
+// ── Chargement async ───────────────────────────────────────────────
 async function storageLoadAsync() {
   try {
-    console.log('🔥 Tentative chargement Firebase...');
-    const snap = await getDoc(tournoisDocRef);
-    console.log('🔥 Firebase snap exists:', snap.exists());
-    if (snap.exists()) {
-      const parsed = JSON.parse(snap.data().data);
-      console.log('🔥 Firebase data chargée, saisons:', parsed.seasons?.length, 'photos:', Object.keys(parsed.photos || {}).length);
-      if (!parsed.photos) parsed.photos = {};
+    console.log('🔥 Chargement Firebase...');
+    const [dataSnap, photosSnap] = await Promise.all([
+      getDoc(dataDocRef),
+      getDoc(photosDocRef)
+    ]);
+    console.log('🔥 data:', dataSnap.exists(), 'photos:', photosSnap.exists());
+    if (dataSnap.exists()) {
+      const parsed = JSON.parse(dataSnap.data().data);
+      parsed.photos = photosSnap.exists() ? JSON.parse(photosSnap.data().data) : {};
+      console.log('🔥 Chargé — saisons:', parsed.seasons?.length, 'photos:', Object.keys(parsed.photos).length);
       if (!parsed.brands) parsed.brands = {};
+      if (!parsed.histOverrides) parsed.histOverrides = {};
       try { localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); } catch {}
       return parsed;
-    } else {
-      console.log('🔥 Firebase: document vide');
     }
   } catch (e) {
     console.warn('🔥 Firebase load error:', e.message);
   }
-  // Fallback localStorage
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
@@ -9540,14 +9551,13 @@ export default function App() {
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
               const fullData = storageLoad() || db;
-              // Fusionner les photos locales avec le state React (prendre le plus grand)
-              const localPhotos = fullData.photos || {};
-              const reactPhotos = db.photos || {};
-              const mergedPhotos = Object.keys(localPhotos).length >= Object.keys(reactPhotos).length ? localPhotos : reactPhotos;
-              const dataToSync = { ...fullData, photos: mergedPhotos };
-              console.log('🔥 Sync Firebase - photos:', Object.keys(mergedPhotos).length);
-              setDoc(tournoisDocRef, { data: JSON.stringify(dataToSync), updatedAt: Date.now() })
-                .then(() => alert(`✅ Sauvegardé sur Firebase !\n${Object.keys(mergedPhotos).length} photos synchronisées`))
+              const { photos, ...dataWithoutPhotos } = fullData;
+              const photoCount = Object.keys(photos || {}).length;
+              Promise.all([
+                setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() }),
+                photoCount > 0 ? setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() }) : Promise.resolve()
+              ])
+                .then(() => alert(`✅ Sauvegardé sur Firebase !\n${photoCount} photos synchronisées`))
                 .catch(e => alert('❌ Erreur: ' + e.message));
             }}>☁️ Sync Firebase</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(52,152,219,0.15)',borderColor:'#3498db',color:'#3498db' }} onClick={async () => {
