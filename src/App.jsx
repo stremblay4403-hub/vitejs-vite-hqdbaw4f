@@ -1593,12 +1593,13 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
 // Composant réutilisable pour toutes les ligues — style leaderboard mobile
 function LeaderboardRow({ rank, rankDiff, carId, leagueName, name, photo, badge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
   const diff = (gf ?? 0) - (ga ?? 0);
+  const THUMB_W = 62, THUMB_H = 46;
   return (
-    <div style={{ display:'flex', alignItems:'stretch', borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a', minHeight:72, background: rank <= 8 ? 'rgba(39,174,96,0.05)' : rank <= 10 ? 'rgba(201,168,76,0.05)' : 'transparent' }}>
+    <div style={{ display:'flex', alignItems:'stretch', borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a', minHeight:72 }}>
       {/* Rang — fixe */}
       <div style={{ width:36, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', paddingLeft:4 }}>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color: borderColor || 'var(--gold-dim)', lineHeight:1 }}>{rank}</div>
-        {rankDiff !== null && rankDiff !== 0 && (
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color: borderColor && borderColor !== 'transparent' ? borderColor : 'var(--gold-dim)', lineHeight:1 }}>{rank}</div>
+        {rankDiff !== null && rankDiff !== undefined && rankDiff !== 0 && (
           <div style={{ fontSize:9, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, marginTop:2 }}>
             {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
           </div>
@@ -1606,28 +1607,30 @@ function LeaderboardRow({ rank, rankDiff, carId, leagueName, name, photo, badge,
         {rankDiff === 0 && <div style={{ fontSize:9, color:'var(--text-dim)', lineHeight:1, marginTop:2 }}>—</div>}
       </div>
 
-      {/* Photo — fixe */}
-      <div style={{ width:62, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', padding:'4px 0' }} onClick={onClick}>
-        <CarThumb photo={photo} size={54} onClick={onClick} />
+      {/* Photo — inline, pas de CarThumb */}
+      <div style={{ width:THUMB_W, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', padding:'4px 2px', cursor:'pointer' }} onClick={onClick}>
+        <div style={{ width:THUMB_W-8, height:THUMB_H, borderRadius:3, border:'1px solid var(--border)', background:'var(--dark3)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18 }}>
+          {photo ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'contain', objectPosition:'center', display:'block' }} /> : '🚗'}
+        </div>
       </div>
 
-      {/* Nom + badge — fixe, flex:1 mais avec overflow hidden */}
-      <div style={{ flex:'0 0 auto', width:'calc(100% - 36px - 62px - 64px)', minWidth:0, display:'flex', alignItems:'center', paddingRight:6, overflow:'hidden', cursor:'pointer' }} onClick={onClick}>
-        <div style={{ minWidth:0 }}>
+      {/* Nom + badge */}
+      <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', paddingRight:4, overflow:'hidden', cursor:'pointer' }} onClick={onClick}>
+        <div style={{ minWidth:0, width:'100%' }}>
           <div style={{ fontWeight:700, fontSize:18, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
-            <span style={{ display:'inline-block', marginTop:3, padding:'1px 7px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+            <span style={{ display:'inline-block', marginTop:2, padding:'1px 6px', borderRadius:3, fontSize:10, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
           )}
         </div>
       </div>
 
-      {/* Points — visible immédiatement, fixe */}
-      <div style={{ width:64, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:10 }}>
-        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:36, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
+      {/* Points — visible immédiatement */}
+      <div style={{ width:60, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'flex-end', paddingRight:8 }}>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
       </div>
 
       {/* Stats scrollables */}
-      <div style={{ display:'flex', alignItems:'center', gap:0, overflowX:'auto', WebkitOverflowScrolling:'touch', flexShrink:0, maxWidth:220, borderLeft:'1px solid #1a1a1a' }}>
+      <div style={{ display:'flex', alignItems:'center', overflowX:'auto', WebkitOverflowScrolling:'touch', flexShrink:0, borderLeft:'1px solid #1a1a1a' }}>
         {[
           { label:'V', value:w ?? 0, color:'var(--green)' },
           { label:'N', value:d ?? 0, color:'var(--text-dim)' },
