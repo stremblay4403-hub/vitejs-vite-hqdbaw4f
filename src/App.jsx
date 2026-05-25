@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
 
+const PublicModeContext = React.createContext(false);
+
 const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
 const GROUPS = 8;
@@ -1652,6 +1654,7 @@ export default function App() {
   const [matchAg, setMatchAg] = useState(null);
 
   function openMatchModal(config) {
+    if (isPublicMode) return; // Bloqué en mode public
     setMatchHg(config.homeGoals ?? null);
     setMatchAg(config.awayGoals ?? null);
     setMatchModal({ ...config, wasPlayed: config.homeGoals !== null && config.homeGoals !== undefined });
@@ -3601,7 +3604,7 @@ export default function App() {
                         )}
                         <button className="btn btn-dark btn-sm" style={{ marginTop:8,fontSize:11 }}
                           onClick={() => setBrandModal({ carId: champId, carName: champ.name, photo: getCarPhoto(champId) })}>
-                          ✏️ {getCarBrand(champId) ? 'Modifier' : 'Ajouter la marque'}
+                          {!isPublicMode && <>✏️ {getCarBrand(champId) ? 'Modifier' : 'Ajouter la marque'}</>}
                         </button>
                       </>
                     ) : (
@@ -4587,7 +4590,7 @@ export default function App() {
       const file = e.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      uploadToCloudinary(file).then(url => setCarPhoto(carId, url));
+      if (!isPublicMode) uploadToCloudinary(file).then(url => setCarPhoto(carId, url));
     }
 
     return (
@@ -4595,12 +4598,12 @@ export default function App() {
         <div className="car-profile-card" onClick={e => e.stopPropagation()}>
           {/* Header */}
           <div className="car-profile-header">
-            <label className="car-photo-box" title="Cliquer pour changer la photo">
+            <label className="car-photo-box" title={isPublicMode ? '' : "Cliquer pour changer la photo"} style={{ cursor: isPublicMode ? 'default' : 'pointer' }}>
               {photo
                 ? <img src={photo} alt={effectiveName} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'center' }} />
                 : <span style={{ fontSize:28,color:'var(--text-dim)' }}>🚗</span>}
-              <div className="car-photo-overlay">📷</div>
-              <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />
+              {!isPublicMode && <div className="car-photo-overlay">📷</div>}
+              {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />}
             </label>
             <div style={{ flex:1 }}>
               <div className="font-bebas" style={{ fontSize:22,color:'var(--gold)',letterSpacing:3 }}>{effectiveName}</div>
@@ -5207,7 +5210,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {/* CLASSEMENT */}
@@ -5330,7 +5333,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>
                             🎲
                           </button>
                         )}
@@ -5428,7 +5431,7 @@ export default function App() {
 
     if (!adding) {
       return (
-        <button className="btn btn-sm" onClick={() => setAdding(true)} style={{ marginLeft:'auto',fontSize:12 }}>
+        <button className="btn btn-sm" onClick={() => { if(!isPublicMode) setAdding(true); }} style={{ marginLeft:'auto',fontSize:12, display: isPublicMode ? 'none' : 'inline-flex' }}>
           ➕ Ajouter une voiture
         </button>
       );
@@ -5529,7 +5532,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -5647,7 +5650,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>
                             🎲
                           </button>
                         )}
@@ -5782,7 +5785,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simRemplac}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -5898,7 +5901,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>
                         )}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
@@ -6030,7 +6033,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAvantDern}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6140,7 +6143,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6254,7 +6257,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simDerniere}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6364,7 +6367,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6478,7 +6481,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simPersev}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6588,7 +6591,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6702,7 +6705,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simDeter}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6812,7 +6815,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -6926,7 +6929,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAcharn}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7036,7 +7039,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7150,7 +7153,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simObstin}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7260,7 +7263,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7374,7 +7377,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simInsist}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7484,7 +7487,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7598,7 +7601,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simComeback}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7708,7 +7711,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -7822,7 +7825,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simImport}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7932,7 +7935,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -8046,7 +8049,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simOubl}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8149,7 +8152,7 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,color:isOpen ? 'var(--gold)' :'var(--text-dim)' }}>Journée {day}</span>
                         <span style={{ flex:1 }} />
                         {dayComplete ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span> : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
-                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>}
+                        {!dayComplete && <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }} onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>🎲</button>}
                         <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                       </div>
                       <div style={{ border:'1px solid var(--gold-dim)',borderTop:'none',borderRadius:'0 0 3px 3px',background:'var(--dark2)',padding:'4px 6px',display:isOpen?'block':'none' }}>
@@ -8271,7 +8274,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={simAll}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px' }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0' }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8386,7 +8389,7 @@ export default function App() {
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
                           <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; simDay(day); setOpenDay(day); }}>
                             🎲
                           </button>
                         )}
@@ -8554,8 +8557,8 @@ export default function App() {
                         onClick={() => c.carId && setProfileCar({ leagueName: c.league, carId: c.carId })}>
                         {c.name}
                       </span>
-                      <button className="btn btn-dark btn-xs" style={{ padding:'1px 5px',fontSize:10 }}
-                        onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
+                      <button className="btn btn-dark btn-xs" style={{ padding:'1px 5px',fontSize:10, display: isPublicMode ? 'none' : 'inline-flex' }}
+                        onClick={e => { e.stopPropagation(); if(!isPublicMode) startEdit(c); }}>✏️</button>
                     </>
                   )}
                 </div>
@@ -8602,7 +8605,7 @@ export default function App() {
               {mainLeague && <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
-                reader.onload = ev => setCarPhoto(mainLeague.carId, ev.target.result);
+                reader.onload = ev => { if (!isPublicMode) setCarPhoto(mainLeague.carId, ev.target.result); };
                 reader.readAsDataURL(file);
               }} />}
             </label>
@@ -9253,7 +9256,7 @@ export default function App() {
                           )}
                           <button className="btn btn-dark" style={{ fontSize:12,padding:'4px 10px' }}
                             onClick={() => setBrandModal({ carId: entry.id, carName: entry.name, photo: entry.photo })}>
-                            ✏️ {getCarBrand(entry.id) ? 'Modifier' : 'Marque'}
+                            {!isPublicMode && <>✏️ {getCarBrand(entry.id) ? 'Modifier' : 'Marque'}</>}
                           </button>
                           <div style={{ fontSize:15,color:color,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{entry.league.replace('Voitures ','V')}</div>
                           <div style={{ background:color,width:220,height,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'10px 10px 0 0' }}>
@@ -9533,6 +9536,7 @@ export default function App() {
   const leagueTabs = (mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus';
 
   return (
+    <PublicModeContext.Provider value={isPublicMode}>
     <>
       <style>{css}</style>
       <div className="app">
@@ -9764,12 +9768,6 @@ export default function App() {
 
         {/* Content */}
         <div className="content" style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
-          {isPublicMode && (
-            <div style={{
-              position:'absolute', inset:0, zIndex:4000,
-              cursor:'default', background:'transparent'
-            }} />
-          )}
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
@@ -9802,5 +9800,6 @@ export default function App() {
         </div>
       </div>
     </>
+    </PublicModeContext.Provider>
   );
 };
