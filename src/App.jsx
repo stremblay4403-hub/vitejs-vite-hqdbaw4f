@@ -4074,115 +4074,175 @@ export default function App() {
 
     const ROUND_LABELS = { r1: 'Ronde 1', r2: 'Ronde 2', r3: 'Ronde 3', qf: 'Quarts de Finale', sf: 'Demi-Finales', final: 'Finale' };
 
-    // Bracket visual component
+    // Bracket visual component — symétrique gauche/droite
     function BracketView() {
-      const rounds = [r1, r2, r3, qf, sf, fin ? [fin] : []];
-      const roundNames = ['R1 (64→32)', 'R2 (32→16)', 'R3 (16→8)', 'Quarts (8→4)', 'Demies (4→2)', '🏆 Finale'];
+      // Split R1 in two halves: left (1-16) and right (17-32)
+      const leftR1  = r1.slice(0, 16);
+      const rightR1 = r1.slice(16, 32);
+      const leftR2  = r2.slice(0, 8);
+      const rightR2 = r2.slice(8, 16);
+      const leftR3  = r3.slice(0, 4);
+      const rightR3 = r3.slice(4, 8);
+      const leftQF  = qf.slice(0, 2);
+      const rightQF = qf.slice(2, 4);
+      const leftSF  = sf.slice(0, 1);
+      const rightSF = sf.slice(1, 2);
 
       // Card dimensions
-      const CARD_W = 110;  // width of each car card
-      const CARD_H = 90;   // height of each car card (photo + name)
-      const MATCH_GAP = 4; // gap between 2 cards in a match
-      const MATCH_H = CARD_H * 2 + MATCH_GAP; // total match height
-      const COL_GAP = 32;  // horizontal gap between columns
-      const COL_W = CARD_W + COL_GAP;
+      const CARD_W = 110;
+      const CARD_H = 105; // taller to fit stats
+      const MATCH_GAP = 3;
+      const MATCH_H = CARD_H * 2 + MATCH_GAP;
+      const COL_GAP = 28;
 
       function getWinnerId(m) {
         if (!m || m.homeGoals === null) return null;
         return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
       }
 
-      function CarCard({ carId, isWinner, goals }) {
-        const IMG_H = 58;
+      function CarCard({ carId, isWinner, goals, mirror }) {
+        const IMG_H = 55;
         if (!carId) return (
-          <div style={{ width:CARD_W, height:CARD_H, background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.35 }}>
-            <span style={{ fontSize:10, color:'var(--text-dim)' }}>En attente</span>
+          <div style={{ width:CARD_W, height:CARD_H, background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.3 }}>
+            <span style={{ fontSize:9, color:'var(--text-dim)' }}>En attente</span>
           </div>
         );
         const car = getCar(leagueTab, carId);
         const name = car?.name || '?';
         const photo = getCarPhoto(carId);
+        const stats = getCarStats(carId, Object.values(league.groupResults || {}).flat());
+        const groupMatches = Object.values(league.groupResults || {}).flat();
+        const carObj = league.cars?.find(c => c.id === carId);
+        const groupCars = carObj ? (league.cars || []).filter(c => c.group === carObj.group) : [];
+        const groupStandings = computeStandings(groupCars, groupMatches.filter(m => groupCars.some(c => c.id === m.homeId)));
+        const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
+        const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
           <div style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0 }}
             onClick={e => { e.stopPropagation(); setProfileCar({ leagueName: leagueTab, carId }); }}>
-            {/* Photo */}
             <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {photo
                 ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} />
-                : <span style={{ fontSize:24 }}>🚗</span>}
+                : <span style={{ fontSize:22 }}>🚗</span>}
             </div>
-            {/* Name + score */}
-            <div style={{ padding:'3px 5px', display:'flex', alignItems:'center', gap:4 }}>
-              <span style={{ fontSize:9, fontWeight:700, color: isWinner ? 'var(--gold)' : 'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', lineHeight:1.2 }}>{name}</span>
-              {goals !== null && goals !== undefined && (
-                <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color: isWinner ? 'var(--green)' : 'var(--text-dim)', flexShrink:0 }}>{goals}</span>
-              )}
+            <div style={{ padding:'2px 5px' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                <span style={{ fontSize:9, fontWeight:700, color: isWinner ? 'var(--gold)' : 'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
+                {goals !== null && goals !== undefined && (
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color: isWinner ? 'var(--green)' : 'var(--text-dim)', flexShrink:0 }}>{goals}</span>
+                )}
+              </div>
+              <div style={{ display:'flex', gap:4, marginTop:1, flexWrap:'wrap' }}>
+                {groupRank > 0 && <span style={{ fontSize:8, color:'var(--gold-dim)' }}>#{groupRank} G{(carObj?.group ?? 0)+1}</span>}
+                {groupPts > 0 && <span style={{ fontSize:8, color:'var(--gold)' }}>{groupPts}pts</span>}
+                <span style={{ fontSize:8, color:'var(--green)' }}>{stats.w}V</span>
+                <span style={{ fontSize:8, color:'var(--text-dim)' }}>{stats.d}N</span>
+                <span style={{ fontSize:8, color:'#e74c3c' }}>{stats.l}D</span>
+              </div>
             </div>
           </div>
         );
       }
 
-      // Calculate total SVG height based on R1 matches
-      const r1Count = r1.length; // 32 matches
-      const totalH = r1Count * MATCH_H + (r1Count - 1) * 2 + 60; // all R1 + gaps + header
+      function MatchBlock({ m, onConfirm, mirror, rIdx, i, betweenGap, isLast }) {
+        const winnerId = getWinnerId(m);
+        const lineColor = "rgba(201,168,76,0.35)";
+        const lineW = 1.5;
 
-      return (
-        <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch', background:'var(--dark2)', borderRadius:8, padding:12 }}>
-          <div style={{ display:'flex', gap:0, alignItems:'flex-start', position:'relative' }}>
-            {rounds.map((roundMatches, rIdx) => {
+        return (
+          <div style={{ position:'relative', marginTop: i === 0 ? betweenGap/2 : 0 }}>
+            <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
+              onClick={() => openMatchModal({
+                homeName: getCar(leagueTab, m?.homeId)?.name,
+                awayName: getCar(leagueTab, m?.awayId)?.name,
+                homePhoto: getCarPhoto(m?.homeId),
+                awayPhoto: getCarPhoto(m?.awayId),
+                homeGoals: m?.homeGoals, awayGoals: m?.awayGoals,
+                onConfirm,
+              })}>
+              <CarCard carId={m?.homeId} isWinner={winnerId === m?.homeId} goals={m?.homeGoals} mirror={mirror} />
+              <CarCard carId={m?.awayId} isWinner={winnerId === m?.awayId} goals={m?.awayGoals} mirror={mirror} />
+            </div>
+
+            {/* Connecting lines */}
+            {!isLast && (
+              <svg style={{ position:'absolute', [mirror ? 'right' : 'left']: CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
+                <line x1={mirror ? COL_GAP : 0} y1={MATCH_H/2} x2={mirror ? COL_GAP/2 : COL_GAP/2} y2={MATCH_H/2} stroke={lineColor} strokeWidth={lineW} />
+                {i % 2 === 0 ? (
+                  <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H + betweenGap + MATCH_H/2} stroke={lineColor} strokeWidth={lineW} />
+                ) : (
+                  <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={-(betweenGap + MATCH_H/2)} stroke={lineColor} strokeWidth={lineW} />
+                )}
+                <line x1={COL_GAP/2} y1={MATCH_H/2} x2={mirror ? 0 : COL_GAP} y2={MATCH_H/2} stroke={lineColor} strokeWidth={lineW} />
+              </svg>
+            )}
+          </div>
+        );
+      }
+
+      function HalfBracket({ matches16, matches8, matches4, matches2, matches1, mirror }) {
+        const roundSets = [matches16, matches8, matches4, matches2, matches1];
+        const roundLabels = ['R1', 'R2', 'R3', 'QF', 'SF'];
+        const cols = mirror ? [...roundSets].reverse() : roundSets;
+        const labels = mirror ? [...roundLabels].reverse() : roundLabels;
+
+        return (
+          <div style={{ display:'flex', flexDirection: mirror ? 'row-reverse' : 'row', gap:0, alignItems:'flex-start' }}>
+            {cols.map((roundMatches, colIdx) => {
+              const rIdx = mirror ? roundSets.length - 1 - colIdx : colIdx;
               const spacing = Math.pow(2, rIdx);
-              const betweenGap = (MATCH_H + 2) * spacing - MATCH_H;
-              const topPad = betweenGap / 2;
+              const betweenGap = (MATCH_H + MATCH_GAP) * spacing - MATCH_H;
+              const label = mirror ? labels[labels.length - 1 - colIdx] : labels[colIdx];
 
               return (
-                <div key={rIdx} style={{ display:'flex', flexDirection:'column', alignItems:'center', marginRight: rIdx < rounds.length - 1 ? COL_GAP : 0 }}>
-                  {/* Round label */}
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:10, color:'var(--gold-dim)', letterSpacing:2, marginBottom:8, textAlign:'center', width:CARD_W }}>
-                    {roundNames[rIdx]}
+                <div key={colIdx} style={{ display:'flex', flexDirection:'column', alignItems:'center', marginLeft: mirror ? (colIdx < cols.length-1 ? COL_GAP : 0) : 0, marginRight: mirror ? 0 : (colIdx < cols.length-1 ? COL_GAP : 0) }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold-dim)', letterSpacing:1, marginBottom:6, textAlign:'center', width:CARD_W }}>
+                    {label}
                   </div>
-
-                  {/* Matches */}
-                  <div style={{ display:'flex', flexDirection:'column', gap:betweenGap, position:'relative' }}>
-                    {roundMatches.map((m, i) => {
-                      const winnerId = getWinnerId(m);
-                      return (
-                        <div key={m.id} style={{ marginTop: i === 0 ? topPad : 0, position:'relative' }}>
-                          {/* Match card — clickable */}
-                          <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP, position:'relative' }}
-                            onClick={() => openMatchModal({
-                              homeName: getCar(leagueTab, m.homeId)?.name,
-                              awayName: getCar(leagueTab, m.awayId)?.name,
-                              homePhoto: getCarPhoto(m.homeId),
-                              awayPhoto: getCarPhoto(m.awayId),
-                              homeGoals: m.homeGoals, awayGoals: m.awayGoals,
-                              onConfirm: (hg, ag) => updatePlayoffMatch(leagueTab, m.id, hg, ag),
-                            })}>
-                            <CarCard carId={m.homeId} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
-                            <CarCard carId={m.awayId} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
-                          </div>
-
-                          {/* Connecting line to next round */}
-                          {rIdx < rounds.length - 1 && (
-                            <svg style={{ position:'absolute', left:CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
-                              {/* Horizontal line from middle of match to right */}
-                              <line x1={0} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H/2} stroke="rgba(201,168,76,0.3)" strokeWidth="1.5" />
-                              {/* Vertical line connecting to paired match */}
-                              {i % 2 === 0 ? (
-                                <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H + betweenGap + MATCH_H/2} stroke="rgba(201,168,76,0.3)" strokeWidth="1.5" />
-                              ) : (
-                                <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={-(betweenGap + MATCH_H/2)} stroke="rgba(201,168,76,0.3)" strokeWidth="1.5" />
-                              )}
-                              {/* Horizontal line to next column */}
-                              <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP} y2={MATCH_H/2} stroke="rgba(201,168,76,0.3)" strokeWidth="1.5" />
-                            </svg>
-                          )}
-                        </div>
-                      );
-                    })}
+                  <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
+                    {roundMatches.map((m, i) => (
+                      <MatchBlock key={m.id} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={colIdx === cols.length - 1}
+                        onConfirm={(hg, ag) => updatePlayoffMatch(leagueTab, m.id, hg, ag)} />
+                    ))}
                   </div>
                 </div>
               );
             })}
+          </div>
+        );
+      }
+
+      return (
+        <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch', background:'var(--dark2)', borderRadius:8, padding:12 }}>
+          <div style={{ display:'flex', gap:0, alignItems:'center' }}>
+            {/* Left half — R1→SF, left to right */}
+            <HalfBracket matches16={leftR1} matches8={leftR2} matches4={leftR3} matches2={leftQF} matches1={leftSF} mirror={false} />
+
+            {/* Center — Finale */}
+            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', margin:'0 16px', flexShrink:0 }}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'var(--gold)', letterSpacing:2, marginBottom:8, textAlign:'center' }}>🏆 FINALE</div>
+              {fin ? (
+                <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
+                  onClick={() => openMatchModal({
+                    homeName: getCar(leagueTab, fin.homeId)?.name,
+                    awayName: getCar(leagueTab, fin.awayId)?.name,
+                    homePhoto: getCarPhoto(fin.homeId),
+                    awayPhoto: getCarPhoto(fin.awayId),
+                    homeGoals: fin.homeGoals, awayGoals: fin.awayGoals,
+                    onConfirm: (hg, ag) => updatePlayoffMatch(leagueTab, fin.id, hg, ag),
+                  })}>
+                  <CarCard carId={fin.homeId} isWinner={getWinnerId(fin) === fin.homeId} goals={fin.homeGoals} />
+                  <CarCard carId={fin.awayId} isWinner={getWinnerId(fin) === fin.awayId} goals={fin.awayGoals} />
+                </div>
+              ) : (
+                <div style={{ width:CARD_W, height:MATCH_H, background:'var(--dark3)', border:'1px solid var(--gold-dim)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.4 }}>
+                  <span style={{ fontSize:10, color:'var(--gold-dim)' }}>En attente</span>
+                </div>
+              )}
+            </div>
+
+            {/* Right half — SF→R1, right to left (mirrored) */}
+            <HalfBracket matches16={rightR1} matches8={rightR2} matches4={rightR3} matches2={rightQF} matches1={rightSF} mirror={true} />
           </div>
         </div>
       );
