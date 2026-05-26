@@ -3552,22 +3552,25 @@ export default function App() {
 
         if (seeded.length < 64) return; // pas assez de voitures qualifiées
 
-        const pm = {};
-        const mk = (round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank) => {
-          const id = genId();
-          pm[id] = { id, round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank, homeGoals: null, awayGoals: null };
-        };
-        for (let i = 1; i <= 32; i++) {
-          const h = seeded[i-1]; const a = seeded[64-i];
-          mk('r1', i, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
+        // Si les playoffs existent déjà, ne pas les recréer — juste simuler les matchs manquants
+        if (!l.playoffResults || Object.keys(l.playoffResults).length === 0) {
+          const pm = {};
+          const mk = (round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank) => {
+            const id = genId();
+            pm[id] = { id, round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank, homeGoals: null, awayGoals: null };
+          };
+          for (let i = 1; i <= 32; i++) {
+            const h = seeded[i-1]; const a = seeded[64-i];
+            mk('r1', i, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
+          }
+          for (let i = 1; i <= 16; i++) mk('r2', 32+i, null, null, null, null, null, null, null, null);
+          for (let i = 1; i <= 8; i++)  mk('r3', 48+i, null, null, null, null, null, null, null, null);
+          for (let i = 1; i <= 4; i++)  mk('qf', 56+i, null, null, null, null, null, null, null, null);
+          for (let i = 1; i <= 2; i++)  mk('sf', 60+i, null, null, null, null, null, null, null, null);
+          mk('final', 63, null, null, null, null, null, null, null, null);
+          l.playoffResults = pm;
+          l.playoffSeeds = seeded.map(q => ({ id: q.id, seed: q.seed, groupRank: q.groupRank, fromGroup: q.fromGroup }));
         }
-        for (let i = 1; i <= 16; i++) mk('r2', 32+i, null, null, null, null, null, null, null, null);
-        for (let i = 1; i <= 8; i++)  mk('r3', 48+i, null, null, null, null, null, null, null, null);
-        for (let i = 1; i <= 4; i++)  mk('qf', 56+i, null, null, null, null, null, null, null, null);
-        for (let i = 1; i <= 2; i++)  mk('sf', 60+i, null, null, null, null, null, null, null, null);
-        mk('final', 63, null, null, null, null, null, null, null, null);
-        l.playoffResults = pm;
-        l.playoffSeeds = seeded.map(q => ({ id: q.id, seed: q.seed, groupRank: q.groupRank, fromGroup: q.fromGroup }));
 
         const roundOrder = ['r1','r2','r3','qf','sf','final'];
         const rounds = [
@@ -3617,11 +3620,14 @@ export default function App() {
           if (carObj) lastPerGroup.push(carObj);
         }
         if (lastPerGroup.length > 0) {
-          const relMatches = {};
-          const rms = roundRobinMatchups(lastPerGroup);
-          rms.forEach(m => { m.round = 'relegation'; relMatches[m.id] = m; });
-          l.relegationResults = relMatches;
-          l.relegationCars = lastPerGroup.map(c => c.id);
+          // Ne recréer le barrage que s'il n'existe pas encore
+          if (!l.relegationResults || Object.keys(l.relegationResults).length === 0) {
+            const relMatches = {};
+            const rms = roundRobinMatchups(lastPerGroup);
+            rms.forEach(m => { m.round = 'relegation'; relMatches[m.id] = m; });
+            l.relegationResults = relMatches;
+            l.relegationCars = lastPerGroup.map(c => c.id);
+          }
           Object.values(l.relegationResults).forEach(m => {
             if (m.homeGoals !== null) return;
             const sc = simScore();
