@@ -3954,7 +3954,7 @@ export default function App() {
 
                   {/* Top 5 pts annexes cumulatif — calculé en direct */}
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
-                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
+                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
                     {(() => {
                       const allBonus = computeAllSeasonsBonus(l);
                       const top5 = allBonus.slice(0, 5);
@@ -3978,26 +3978,37 @@ export default function App() {
                       }
 
                       return (
-                        <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
+                        <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
                           {top5.map((e, i) => {
                             const prevRank = prevRankMap[e.name];
                             const diff = prevRank != null ? prevRank - (i + 1) : null;
+                            const photo = getCarPhoto(e.id) || getCarPhotoByName(e.name);
                             return (
-                              <div key={e.id || e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id && !e.historicalOnly ? 'pointer' :'default' }}
+                              <div key={e.id || e.name}
+                                style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
                                 onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
-                                <span style={{ color:'var(--gold-dim)',fontSize:11,width:16,textAlign:'right',flexShrink:0 }}>{i + 1}.</span>
-                                <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
-                                <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
+                                {/* Photo */}
+                                <div style={{ width:90,height:60,flexShrink:0,background:'var(--dark3)',overflow:'hidden' }}>
+                                  {photo
+                                    ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                                    : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
+                                </div>
+                                {/* Rang */}
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
+                                {/* Nom */}
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1,letterSpacing:1,color:'var(--text)' }}>{e.name}</span>
+                                {/* Flèche */}
                                 {diff !== null && diff !== 0 && (
-                                  <span style={{ fontSize:10,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',display:'flex',alignItems:'center',gap:1,flexShrink:0 }}>
+                                  <span style={{ fontSize:12,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',flexShrink:0 }}>
                                     {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
                                   </span>
                                 )}
-                                {diff === 0 && <span style={{ fontSize:10,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
-                                {diff === null && prevRank == null && db.currentSeasonIdx > 0 && (
-                                  <span style={{ fontSize:9,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
+                                {diff === 0 && <span style={{ fontSize:12,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
+                                {diff === null && db.currentSeasonIdx > 0 && (
+                                  <span style={{ fontSize:10,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
                                 )}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{e.total}</span>
+                                {/* Points */}
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',paddingRight:12,flexShrink:0 }}>{e.total}</span>
                               </div>
                             );
                           })}
