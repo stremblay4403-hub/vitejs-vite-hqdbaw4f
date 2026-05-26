@@ -3964,6 +3964,13 @@ export default function App() {
     const matches = getGroupMatches(leagueTab, activeGroup);
     const standings = getGroupStandings(leagueTab, activeGroup);
     const groupCars = getGroupCars(leagueTab, activeGroup);
+    const listRef = React.useRef(null);
+    const listScrollPos = React.useRef(0);
+
+    React.useLayoutEffect(() => {
+      if (listRef.current) listRef.current.scrollTop = listScrollPos.current;
+    });
+
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
     useEffect(() => {
@@ -4082,17 +4089,10 @@ export default function App() {
               <div className="card-title">Matchs — Groupe {activeGroup + 1}</div>
               <span className="text-dim" style={{ fontSize:11,marginLeft:'auto' }}>17 journées · 9 matchs chacune</span>
             </div>
-            {(() => {
-              const listRef = React.useRef(null);
-              const listScrollPos = React.useRef(0);
-              React.useLayoutEffect(() => {
-                if (listRef.current) listRef.current.scrollTop = listScrollPos.current;
-              });
-              return (
-                <div ref={listRef}
-                  onScroll={e => { listScrollPos.current = e.currentTarget.scrollTop; }}
-                  style={{ maxHeight:600, overflowY:'auto', padding:'6px' }}>
-                  {matches.length === 0 && <div className="text-dim text-center" style={{ padding:24 }}>Chargement...</div>}
+            <div ref={listRef}
+              onScroll={e => { listScrollPos.current = e.currentTarget.scrollTop; }}
+              style={{ maxHeight:600, overflowY:'auto', padding:'6px' }}>
+              {matches.length === 0 && <div className="text-dim text-center" style={{ padding:24 }}>Chargement...</div>}
               {days.map(day => {
                 const dayMatches = matches.filter(m => m.day === day);
                 const dayPlayed = dayMatches.filter(m => m.homeGoals !== null).length;
@@ -4201,9 +4201,7 @@ export default function App() {
                   </div>
                 );
               })}
-                </div>
-              );
-            })()}
+            </div>
           </div>
         </div>
       </div>
