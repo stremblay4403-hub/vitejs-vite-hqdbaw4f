@@ -3290,7 +3290,7 @@ export default function App() {
           .sort((a, b) => b.pts - a.pts)
           .slice(0, 5);
       });
-      ns.bonusSnapshot = bonusSnapshot;
+      seasons[si] = { ...seasons[si], bonusSnapshot };
 
       return { ...d, seasons: [...seasons, ns], currentSeasonIdx: seasons.length, succPromotions: {} };
     });
@@ -3956,8 +3956,7 @@ export default function App() {
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
                     {(() => {
-                      const prevIdx = db.currentSeasonIdx > 0 ? db.currentSeasonIdx - 1 : 0;
-                      const snap = db.seasons[prevIdx]?.bonusSnapshot?.[l];
+                      const snap = currentSeason.bonusSnapshot?.[l];
                       if (!snap || snap.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
