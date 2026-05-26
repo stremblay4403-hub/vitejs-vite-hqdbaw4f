@@ -8447,15 +8447,15 @@ export default function App() {
               </button>
             ))}
           </div>
-          <div style={{ padding:'8px',display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))',gap:8 }}>
+          <div style={{ padding:'8px',display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
             {filtered.map((c, i) => {
               const photo = c.carId ? getCarPhoto(c.carId) : null;
               const key = `${c.league}||${c.name}`;
               const isEditing = editKey === key;
               return (
                 <div key={i} style={{ borderRadius:8, border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`, background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
-                  {/* Grande photo */}
-                  <div style={{ width:'100%', aspectRatio:'4/3', background:'var(--dark2)', overflow:'hidden', cursor: c.carId ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}
+                  {/* Grande photo rectangulaire */}
+                  <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', cursor: c.carId ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}
                     onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                     {photo
                       ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
