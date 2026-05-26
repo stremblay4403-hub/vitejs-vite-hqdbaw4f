@@ -1924,7 +1924,9 @@ export default function App() {
   const prevChampionsRef = React.useRef({});
   useEffect(() => {
     if (!loaded) return;
-    const champions = currentSeason.champions || {};
+    const season = db.seasons[db.currentSeasonIdx];
+    if (!season) return;
+    const champions = season.champions || {};
     LEAGUES.forEach(l => {
       const champId = champions[l];
       if (champId && prevChampionsRef.current[l] !== champId) {
@@ -1933,8 +1935,7 @@ export default function App() {
         setCelebrationModal({ carId: champId, leagueName: l, type: 'playoff' });
       }
     });
-    // TC champion
-    const tcFinal = Object.values(currentSeason.tournoiChampions?.matches || {}).find(m => m.round === 'final' && m.homeGoals !== null);
+    const tcFinal = Object.values(season.tournoiChampions?.matches || {}).find(m => m.round === 'final' && m.homeGoals !== null);
     if (tcFinal) {
       const tcChampId = tcFinal.homeGoals > tcFinal.awayGoals ? tcFinal.homeId : tcFinal.awayId;
       const tcKey = 'tc';
@@ -1945,7 +1946,7 @@ export default function App() {
         setCelebrationModal({ carId: tcChampId, leagueName: champLeague, type: 'tc' });
       }
     }
-  }, [currentSeason.champions, currentSeason.tournoiChampions]);
+  }, [loaded, db.currentSeasonIdx, db.seasons]);
 
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
