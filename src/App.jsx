@@ -1163,9 +1163,9 @@ const css = `
     --blue: #2980b9;
   }
   
-  body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; min-height: 100vh; overflow-x: clip; }
+  body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; overflow-x: clip; }
   
-  .app { display: flex; flex-direction: column; min-height: 100vh; max-width: 100vw; overflow-x: clip; }
+  .app { display: flex; flex-direction: column; max-width: 100vw; overflow-x: clip; }
   
   /* Header */
   .header {
