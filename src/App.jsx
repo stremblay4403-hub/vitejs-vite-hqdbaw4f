@@ -8447,38 +8447,45 @@ export default function App() {
               </button>
             ))}
           </div>
-          <div style={{ padding:'8px 12px',display:'flex',flexWrap:'wrap',gap:6 }}>
+          <div style={{ padding:'8px',display:'grid',gridTemplateColumns:'repeat(auto-fill, minmax(120px, 1fr))',gap:8 }}>
             {filtered.map((c, i) => {
               const photo = c.carId ? getCarPhoto(c.carId) : null;
               const key = `${c.league}||${c.name}`;
               const isEditing = editKey === key;
               return (
-                <div key={i}
-                  style={{ display:'flex',alignItems:'center',gap:6,padding:'4px 8px',background:'var(--dark3)',borderRadius:6,border:`1px solid var(--border)`,borderLeft:`3px solid ${leagueColors[c.league]}`,minWidth:160 }}>
-                  <div onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}
-                    style={{ width:28,height:28,borderRadius:3,background:'var(--dark2)',cursor:c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden' }}>
+                <div key={i} style={{ borderRadius:8, border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`, background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                  {/* Grande photo */}
+                  <div style={{ width:'100%', aspectRatio:'4/3', background:'var(--dark2)', overflow:'hidden', cursor: c.carId ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}
+                    onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                     {photo
-                      ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain' }} />
-                      : <span style={{ fontSize:14 }}>🚗</span>}
+                      ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                      : <span style={{ fontSize:36 }}>🚗</span>}
                   </div>
-                  {isEditing ? (
-                    <>
-                      <input value={editName} onChange={e => setEditName(e.target.value)}
-                        autoFocus style={{ width:110,fontSize:12 }}
-                        onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
-                      <button className="btn btn-gold btn-xs" onClick={() => confirmEdit(c)}>✓</button>
-                      <button className="btn btn-dark btn-xs" onClick={() => setEditKey(null)}>✕</button>
-                    </>
-                  ) : (
-                    <>
-                      <span style={{ fontSize:12,fontWeight:600,flex:1,cursor:c.carId ? 'pointer' :'default' }}
-                        onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                        {c.name}
-                      </span>
-                      <button className="btn btn-dark btn-xs" style={{ padding:'1px 5px',fontSize:10, display: isPublicMode ? 'none' : 'inline-flex' }}
-                        onClick={e => { e.stopPropagation(); if(!isPublicMode) startEdit(c); }}>✏️</button>
-                    </>
-                  )}
+                  {/* Nom + crayon */}
+                  <div style={{ padding:'4px 6px', borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
+                    {isEditing ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                        <input value={editName} onChange={e => setEditName(e.target.value)}
+                          autoFocus style={{ width:'100%', fontSize:11 }}
+                          onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
+                        <div style={{ display:'flex', gap:3 }}>
+                          <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
+                          <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor: c.carId ? 'pointer' : 'default' }}
+                          onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                          {c.name}
+                        </span>
+                        {!isPublicMode && (
+                          <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px', fontSize:10, flexShrink:0 }}
+                            onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
