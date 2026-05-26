@@ -1620,10 +1620,11 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, 
       <div style={{ width:28, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--dark2)' }}>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color: borderColor && borderColor !== 'transparent' ? borderColor : 'var(--gold-dim)', lineHeight:1 }}>{rank}</div>
         {rankDiff !== null && rankDiff !== undefined && rankDiff !== 0 && (
-          <div style={{ fontSize:7, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1 }}>
+          <div style={{ fontSize:9, fontWeight:700, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, background: rankDiff > 0 ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', borderRadius:2, padding:'0 2px' }}>
             {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
           </div>
         )}
+        {rankDiff === 0 && <div style={{ fontSize:9, color:'var(--text-dim)', lineHeight:1 }}>—</div>}
       </div>
 
       {/* Image */}
@@ -1745,6 +1746,29 @@ function DaysList({ days, allMatches, openMatchModal, isPublicMode, simDay, leag
   );
 }
 
+// ── Confettis ──────────────────────────────────────────────────────
+function launchConfetti() {
+  const colors = ['#c9a84c','#27ae60','#e74c3c','#3498db','#9b59b6','#f39c12','#fff'];
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;inset:0;pointer-events:none;z-index:99999;overflow:hidden;';
+  document.body.appendChild(container);
+  for (let i = 0; i < 120; i++) {
+    const el = document.createElement('div');
+    const color = colors[Math.floor(Math.random() * colors.length)];
+    const size = Math.random() * 10 + 6;
+    const left = Math.random() * 100;
+    const delay = Math.random() * 1.5;
+    const duration = Math.random() * 2 + 2;
+    const rotation = Math.random() * 720 - 360;
+    el.style.cssText = `position:absolute;width:${size}px;height:${size}px;background:${color};border-radius:${Math.random() > 0.5 ? '50%' : '2px'};left:${left}%;top:-20px;opacity:1;animation:confettiFall ${duration}s ${delay}s ease-in forwards;transform:rotate(0deg);`;
+    container.appendChild(el);
+  }
+  const style = document.createElement('style');
+  style.textContent = `@keyframes confettiFall { to { top:110%; opacity:0; transform:rotate(${Math.random()*720}deg) translateX(${Math.random()*200-100}px); } }`;
+  document.head.appendChild(style);
+  setTimeout(() => { container.remove(); style.remove(); }, 5000);
+}
+
 export default function App() {
   const [db, setDb] = useState(() => {
     const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
@@ -1833,10 +1857,65 @@ export default function App() {
     setMatchModal({ ...config, wasPlayed: config.homeGoals !== null && config.homeGoals !== undefined });
     requestAnimationFrame(() => unlockScroll());
   }
-  const [brandModal, setBrandModal] = useState(null);
+  const [celebrationModal, setCelebrationModal] = useState(null); // { carId, leagueName, type: 'playoff'|'tc' }
   const [histSubTab, setHistSubTab] = useState('historique');
 
   // Fonctions scroll par onglet — définies après tous les états
+  // ── Modal de célébration ───────────────────────────────────────
+  function CelebrationModal() {
+    if (!celebrationModal) return null;
+    const { carId, leagueName, type } = celebrationModal;
+    const photo = getCarPhoto(carId);
+    const car = currentSeason.leagues[leagueName]?.cars?.find(c => c.id === carId);
+    const name = car?.name || '?';
+    return (
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
+        onClick={() => setCelebrationModal(null)}>
+        <div style={{ width:'100%', maxWidth:380, textAlign:'center' }} onClick={e => e.stopPropagation()}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:48, color:'var(--gold)', letterSpacing:4, lineHeight:1, marginBottom:8 }}>
+            🏆 CHAMPION 🏆
+          </div>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'var(--text-dim)', letterSpacing:3, marginBottom:24 }}>
+            {type === 'tc' ? 'TOURNOI DES CHAMPIONS' : leagueName.toUpperCase()}
+          </div>
+          {photo && (
+            <div style={{ width:'100%', aspectRatio:'16/9', borderRadius:12, overflow:'hidden', border:'3px solid var(--gold)', marginBottom:16, boxShadow:'0 0 60px rgba(201,168,76,0.4)' }}>
+              <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+            </div>
+          )}
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:42, color:'var(--gold)', letterSpacing:3, marginBottom:24 }}>{name}</div>
+          <button className="btn btn-gold" style={{ width:'100%', padding:'14px', fontSize:16, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}
+            onClick={() => setCelebrationModal(null)}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Calcul série V/D pour badge feu/glace ─────────────────────
+  function getStreakBadge(carId, leagueName) {
+    const league = currentSeason.leagues[leagueName];
+    if (!league) return null;
+    const allMatches = Object.values(league.groupResults || {}).flat()
+      .filter(m => (m.homeId === carId || m.awayId === carId) && m.homeGoals !== null)
+      .sort((a, b) => a.day - b.day);
+    if (allMatches.length < 3) return null;
+    const last5 = allMatches.slice(-5);
+    const results = last5.map(m => {
+      const isHome = m.homeId === carId;
+      const f = isHome ? m.homeGoals : m.awayGoals;
+      const a = isHome ? m.awayGoals : m.homeGoals;
+      return f > a ? 'W' : f < a ? 'L' : 'D';
+    });
+    const wins = results.filter(r => r === 'W').length;
+    const losses = results.filter(r => r === 'L').length;
+    if (wins >= 4) return { icon:'🔥', label:'EN FEU', color:'#e67e22' };
+    if (losses >= 4) return { icon:'❄️', label:'EN FROID', color:'#5dade2' };
+    if (wins === 5) return { icon:'🔥🔥', label:'INARRÊTABLE', color:'#e74c3c' };
+    return null;
+  }
+
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
     tabScrollPos.current[key] = window.scrollY;
@@ -3503,7 +3582,14 @@ export default function App() {
         const finalMatch = Object.values(l.playoffResults).find(m => m.round === 'final');
         if (finalMatch && finalMatch.homeGoals !== null) {
           const champId = finalMatch.homeGoals > finalMatch.awayGoals ? finalMatch.homeId : finalMatch.awayId;
-          if (champId) s.champions[lName] = champId;
+          if (champId) {
+            s.champions[lName] = champId;
+            // Déclencher confettis + célébration après le setDb
+            setTimeout(() => {
+              launchConfetti();
+              setCelebrationModal({ carId: champId, leagueName: lName, type: 'playoff' });
+            }, 300);
+          }
         }
         const lastPerGroup = [];
         for (let g = 0; g < GROUPS; g++) {
@@ -4055,11 +4141,13 @@ export default function App() {
                           return idx >= 0 ? idx + 1 : null;
                         })();
                         const rankDiff = prevRank !== null ? prevRank - (i + 1) : null;
+                        const streakBadge = getStreakBadge(s.id, leagueTab);
+                        const finalBadge = streakBadge ? { label: `${streakBadge.icon} ${streakBadge.label}`, bg: `${streakBadge.color}22`, color: streakBadge.color } : badge;
                         return (
                           <LeaderboardRow key={s.id}
                             rank={i+1} rankDiff={rankDiff}
                             carId={s.id} leagueName={leagueTab}
-                            name={s.name} photo={photo} badge={badge}
+                            name={s.name} photo={photo} badge={finalBadge}
                             pts={s.pts} w={s.w} d={s.d} l={s.l}
                             gf={s.gf} ga={s.ga} gp={s.gp}
                             borderColor={borderColor}
@@ -9039,10 +9127,21 @@ export default function App() {
         const tc = { ...s.tournoiChampions };
         let pm = { ...tc.matches, [matchId]: { ...tc.matches[matchId], homeGoals: +homeGoals, awayGoals: +awayGoals } };
         pm = advanceBracket(pm);
-
         tc.matches = pm;
         s.tournoiChampions = tc;
         seasons[d.currentSeasonIdx] = s;
+
+        // Déclencher confettis si c'est la finale TC
+        const match = tc.matches[matchId];
+        if (match?.round === 'final' && homeGoals !== null) {
+          const champId = homeGoals > awayGoals ? match.homeId : match.awayId;
+          const champLeague = homeGoals > awayGoals ? match.homeLeague : match.awayLeague;
+          setTimeout(() => {
+            launchConfetti();
+            setCelebrationModal({ carId: champId, leagueName: champLeague, type: 'tc' });
+          }, 300);
+        }
+
         return { ...d, seasons };
       });
     }
@@ -9725,6 +9824,7 @@ export default function App() {
 
         {/* Match modal */}
         <MatchModal />
+      <CelebrationModal />
 
         {/* Car profile modal */}
         <CarProfileModal />
