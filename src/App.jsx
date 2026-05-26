@@ -9555,39 +9555,50 @@ export default function App() {
                     return (
                       <div key={l} style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                         <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:2,marginBottom:8 }}>{l}</div>
-                        <div style={{ display:'flex',gap:8,flexWrap:'wrap' }}>
+                        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
                           {champ && (
-                            <div style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(201,168,76,0.1)',borderRadius:4,padding:'6px 10px',cursor:'pointer' }}
+                            <div style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--gold)', cursor:'pointer', background:'var(--dark2)' }}
                               onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
-                              <CarThumb photo={getCarPhoto(champId)} size={36} />
-                              <div>
-                                <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>🏆 CHAMPION</div>
-                                <div style={{ fontSize:15,fontWeight:700,color:'var(--gold)',whiteSpace:'nowrap' }}>{champ.name}</div>
-                                {getCarBrand(champId) && <div style={{ fontSize:11,color:'var(--text-dim)' }}>{getCarBrand(champId)}</div>}
+                              <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                {getCarPhoto(champId)
+                                  ? <img src={getCarPhoto(champId)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                                  : <span style={{ fontSize:28 }}>🚗</span>}
+                              </div>
+                              <div style={{ padding:'4px 6px' }}>
+                                <div style={{ fontSize:9, color:'var(--gold)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>🏆 CHAMPION</div>
+                                <div style={{ fontSize: champ.name.length > 12 ? 11 : 13, fontWeight:700, color:'var(--gold)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{champ.name}</div>
                               </div>
                             </div>
                           )}
                           {zCar && zCar.id !== champId && (
-                            <div style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(201,168,76,0.06)',borderRadius:4,padding:'6px 10px',cursor:'pointer' }}
+                            <div style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--gold-dim)', cursor:'pointer', background:'var(--dark2)' }}
                               onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
-                              <CarThumb photo={getCarPhoto(zCar.id)} size={36} />
-                              <div>
-                                <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}><span style={{ background:'#c9a84c',color:'#000',borderRadius:2,padding:'0 3px',marginRight:3,fontSize:9 }}>Z</span>MEILLEUR LIGUE</div>
-                                <div style={{ fontSize:15,fontWeight:700,whiteSpace:'nowrap' }}>{zCar.name}</div>
+                              <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                {getCarPhoto(zCar.id)
+                                  ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                                  : <span style={{ fontSize:28 }}>🚗</span>}
+                              </div>
+                              <div style={{ padding:'4px 6px' }}>
+                                <div style={{ fontSize:9, color:'var(--gold-dim)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}><span style={{ background:'#c9a84c', color:'#000', borderRadius:2, padding:'0 3px', fontSize:8 }}>Z</span> MEILLEUR</div>
+                                <div style={{ fontSize: zCar.name.length > 12 ? 11 : 13, fontWeight:700, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{zCar.name}</div>
                               </div>
                             </div>
                           )}
                           {rel && (
-                            <div style={{ display:'flex',alignItems:'center',gap:6,background:'rgba(192,57,43,0.08)',borderRadius:4,padding:'6px 10px',cursor:'pointer' }}
+                            <div style={{ borderRadius:8, overflow:'hidden', border:'2px solid #e74c3c', cursor:'pointer', background:'var(--dark2)' }}
                               onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
-                              <CarThumb photo={getCarPhoto(relId)} size={36} />
-                              <div>
-                                <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>⬇ RELÉGUÉ</div>
-                                <div style={{ fontSize:15,fontWeight:700,color:'#e74c3c',whiteSpace:'nowrap' }}>{rel.name}</div>
+                              <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                {getCarPhoto(relId)
+                                  ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                                  : <span style={{ fontSize:28 }}>🚗</span>}
+                              </div>
+                              <div style={{ padding:'4px 6px' }}>
+                                <div style={{ fontSize:9, color:'#e74c3c', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>⬇ RELÉGUÉ</div>
+                                <div style={{ fontSize: rel.name.length > 12 ? 11 : 13, fontWeight:700, color:'#e74c3c', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{rel.name}</div>
                               </div>
                             </div>
                           )}
-                          {!champ && !rel && <span className="text-dim" style={{ fontSize:12 }}>Saison non terminée</span>}
+                          {!champ && !rel && <span className="text-dim" style={{ fontSize:12, gridColumn:'1/-1' }}>Saison non terminée</span>}
                         </div>
                       </div>
                     );
