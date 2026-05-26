@@ -3958,17 +3958,57 @@ export default function App() {
                     {(() => {
                       const top5 = computeAllSeasonsBonus(l).slice(0, 5);
                       if (!top5 || top5.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
+                      // Calculer le classement de la saison précédente pour les flèches
+                      const prevRankMap = {};
+                      if (db.currentSeasonIdx > 0) {
+                        const prevDb = { ...db, currentSeasonIdx: db.currentSeasonIdx - 1 };
+                        // On recalcule le top via computeAllSeasonsBonus mais sur la saison précédente
+                        // On simule en excluant la saison courante des totaux
+                        const totalMapPrev = {};
+                        (HISTORICAL_DATA.historicalBonus[l] || []).forEach(c => {
+                          const tot = Object.values(c.bySeason || {}).reduce((a, b) => a + b, 0);
+                          if (tot > 0) totalMapPrev[`hist-${c.name}`] = { name: c.name, total: tot };
+                        });
+                        db.seasons.slice(0, db.currentSeasonIdx).forEach(s => {
+                          const bonus = computeBonusPoints(s, l);
+                          const league = s.leagues[l];
+                          Object.entries(bonus).forEach(([id, pts]) => {
+                            if (!pts) return;
+                            const car = league?.cars.find(c => c.id === id);
+                            if (!car) return;
+                            const key = car.name;
+                            if (!totalMapPrev[key]) totalMapPrev[key] = { name: car.name, total: 0 };
+                            totalMapPrev[key].total += pts;
+                          });
+                        });
+                        Object.values(totalMapPrev).sort((a, b) => b.total - a.total).forEach((e, idx) => {
+                          prevRankMap[e.name] = idx + 1;
+                        });
+                      }
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
-                          {top5.map((e, i) => (
-                            <div key={e.id || e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id && !e.historicalOnly ? 'pointer' :'default' }}
-                              onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
-                              <span style={{ color:'var(--gold-dim)',fontSize:11,width:16,textAlign:'right',flexShrink:0 }}>{i + 1}.</span>
-                              <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
-                              <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
-                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{e.total}</span>
-                            </div>
-                          ))}
+                          {top5.map((e, i) => {
+                            const prevRank = prevRankMap[e.name];
+                            const diff = prevRank != null ? prevRank - (i + 1) : null;
+                            return (
+                              <div key={e.id || e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id && !e.historicalOnly ? 'pointer' :'default' }}
+                                onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
+                                <span style={{ color:'var(--gold-dim)',fontSize:11,width:16,textAlign:'right',flexShrink:0 }}>{i + 1}.</span>
+                                <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
+                                <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
+                                {diff !== null && diff !== 0 && (
+                                  <span style={{ fontSize:10,fontWeight:700,color: diff > 0 ? 'var(--green)' : 'var(--red)',display:'flex',alignItems:'center',gap:1,flexShrink:0 }}>
+                                    {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
+                                  </span>
+                                )}
+                                {diff === 0 && <span style={{ fontSize:10,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
+                                {diff === null && prevRank == null && db.currentSeasonIdx > 0 && (
+                                  <span style={{ fontSize:9,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
+                                )}
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{e.total}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                       );
                     })()}
@@ -5560,7 +5600,7 @@ export default function App() {
                             <td key={`h${n}`} style={{
                               textAlign:'center',fontSize:12,color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
                             }}>
-                              {pts || '—'}
+                              {isChamp ? '🏆' : isRel ? '⬇' : (pts || '—')}
                             </td>
                           );
                         })}
@@ -5572,7 +5612,7 @@ export default function App() {
                             <td key={`a${n}`} style={{
                               textAlign:'center',fontSize:12,color:(isChamp || pts) ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :isRel ? '#e74c3c' :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
                             }}>
-                              {pts || (isChamp ? '🏆' : isRel ? '⬇' : '—')}
+                              {isChamp ? '🏆' : isRel ? '⬇' : (pts || '—')}
                             </td>
                           );
                         })}
