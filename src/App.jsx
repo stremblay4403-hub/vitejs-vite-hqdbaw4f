@@ -1870,8 +1870,14 @@ export default function App() {
     if (!celebrationModal) return null;
     const { carId, leagueName, type } = celebrationModal;
     const photo = getCarPhoto(carId);
-    const car = currentSeason.leagues[leagueName]?.cars?.find(c => c.id === carId);
-    const name = car?.name || '?';
+    // Chercher le nom dans toutes les ligues
+    let name = '?';
+    const allLeagues = [...LEAGUES, ...AUXILIARY_LEAGUES];
+    for (const l of allLeagues) {
+      const car = currentSeason.leagues[l]?.cars?.find(c => c.id === carId);
+      if (car) { name = car.name; break; }
+    }
+    const brand = getCarBrand(carId);
     return (
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.92)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:24 }}
         onClick={() => setCelebrationModal(null)}>
@@ -1879,13 +1885,16 @@ export default function App() {
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:48, color:'var(--gold)', letterSpacing:4, lineHeight:1, marginBottom:8 }}>
             🏆 CHAMPION 🏆
           </div>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'var(--text-dim)', letterSpacing:3, marginBottom:24 }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'var(--text-dim)', letterSpacing:3, marginBottom:16 }}>
             {type === 'tc' ? 'TOURNOI DES CHAMPIONS' : leagueName.toUpperCase()}
           </div>
           {photo && (
             <div style={{ width:'100%', aspectRatio:'16/9', borderRadius:12, overflow:'hidden', border:'3px solid var(--gold)', marginBottom:16, boxShadow:'0 0 60px rgba(201,168,76,0.4)' }}>
               <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
             </div>
+          )}
+          {brand && (
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'var(--text-dim)', letterSpacing:3, marginBottom:4 }}>{brand}</div>
           )}
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:42, color:'var(--gold)', letterSpacing:3, marginBottom:24 }}>{name}</div>
           <button className="btn btn-gold" style={{ width:'100%', padding:'14px', fontSize:16, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}
@@ -1921,32 +1930,7 @@ export default function App() {
   }
 
   // Surveiller les nouveaux champions pour déclencher les confettis
-  const prevChampionsRef = React.useRef({});
-  useEffect(() => {
-    if (!loaded) return;
-    const season = db.seasons[db.currentSeasonIdx];
-    if (!season) return;
-    const champions = season.champions || {};
-    LEAGUES.forEach(l => {
-      const champId = champions[l];
-      if (champId && prevChampionsRef.current[l] !== champId) {
-        prevChampionsRef.current[l] = champId;
-        launchConfetti();
-        setTimeout(() => setCelebrationModal({ carId: champId, leagueName: l, type: 'playoff' }), 3000);
-      }
-    });
-    const tcFinal = Object.values(season.tournoiChampions?.matches || {}).find(m => m.round === 'final' && m.homeGoals !== null);
-    if (tcFinal) {
-      const tcChampId = tcFinal.homeGoals > tcFinal.awayGoals ? tcFinal.homeId : tcFinal.awayId;
-      const tcKey = 'tc';
-      if (tcChampId && prevChampionsRef.current[tcKey] !== tcChampId) {
-        prevChampionsRef.current[tcKey] = tcChampId;
-        const champLeague = tcFinal.homeGoals > tcFinal.awayGoals ? tcFinal.homeLeague : tcFinal.awayLeague;
-        launchConfetti();
-        setTimeout(() => setCelebrationModal({ carId: tcChampId, leagueName: champLeague, type: 'tc' }), 3000);
-      }
-    }
-  }, [loaded, db.currentSeasonIdx, db.seasons]);
+  const prevChampionsRef = React.useRef(null);
 
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
@@ -2783,6 +2767,10 @@ export default function App() {
             carId: champId,
             carName: champCar?.name || '',
             photo: getCarPhoto(champId),
+            onConfirm: () => {
+              launchConfetti();
+              setCelebrationModal({ carId: champId, leagueName, type: 'playoff' });
+            }
           });
         }, 100);
       }
@@ -9543,6 +9531,34 @@ export default function App() {
                 </div>
               );
             })}
+
+            {/* Bouton Enregistrer Champion TC */}
+            {(() => {
+              const finalMatch = Object.values(tc.matches).find(m => m.round === 'final' && m.homeGoals !== null);
+              if (!finalMatch || !isPublicMode === false) return null;
+              if (isPublicMode) return null;
+              const champId = finalMatch.homeGoals > finalMatch.awayGoals ? finalMatch.homeId : finalMatch.awayId;
+              const champLeague = finalMatch.homeGoals > finalMatch.awayGoals ? finalMatch.homeLeague : finalMatch.awayLeague;
+              const champName = getCarName(champId, champLeague);
+              return (
+                <div style={{ padding:12, textAlign:'center' }}>
+                  <button className="btn btn-gold" style={{ width:'100%', padding:'14px', fontSize:16, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}
+                    onClick={() => {
+                      setBrandModal({
+                        carId: champId,
+                        carName: champName,
+                        photo: getCarPhoto(champId),
+                        onConfirm: () => {
+                          launchConfetti();
+                          setCelebrationModal({ carId: champId, leagueName: champLeague, type: 'tc' });
+                        }
+                      });
+                    }}>
+                    🏆 Enregistrer le Champion TC
+                  </button>
+                </div>
+              );
+            })()}
 
             <div style={{ padding:12,textAlign:'center' }}>
               <button className="btn btn-danger btn-sm" onClick={() => {
