@@ -8742,22 +8742,31 @@ export default function App() {
       );
     }
 
+    const [openLeagues, setOpenLeagues] = useState({});
+    const toggleLeague = (l) => setOpenLeagues(prev => ({ ...prev, [l]: !prev[l] }));
+
     function LeagueBlock({ leagueName, cars, emptyMsg }) {
       if (cars.length === 0) return null;
+      const isOpen = !!openLeagues[leagueName];
       return (
-        <div style={{ marginBottom:20 }}>
+        <div style={{ marginBottom:8 }}>
           <div style={{
-            fontFamily:"'Bebas Neue',sans-serif",letterSpacing:3,fontSize:15,color:'var(--gold)',padding:'8px 12px',background:'var(--dark3)',borderBottom:'2px solid var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'space-between'
-          }}>
+            fontFamily:"'Bebas Neue',sans-serif",letterSpacing:3,fontSize:15,color:'var(--gold)',padding:'10px 14px',background:'var(--dark3)',borderBottom: isOpen ? '2px solid var(--gold-dim)' : '1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',borderRadius: isOpen ? '4px 4px 0 0' : 4
+          }} onClick={() => toggleLeague(leagueName)}>
             <span>{leagueName}</span>
-            <span style={{ fontSize:13,color:'var(--text-dim)' }}>{cars.length} voitures</span>
+            <div style={{ display:'flex',alignItems:'center',gap:12 }}>
+              <span style={{ fontSize:13,color:'var(--text-dim)' }}>{cars.length} voitures</span>
+              <span style={{ fontSize:14,color:'var(--gold-dim)',transition:'transform 0.2s',display:'inline-block',transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
+            </div>
           </div>
-          <table className="tbl" style={{ marginBottom:0 }}>
-            <thead><tr><th></th><th>Voiture</th><th>Historique relégations</th><th>Titres</th><th></th></tr></thead>
-            <tbody>
-              {cars.map(e => <CarRow key={e.displayName || e.name} entry={e} />)}
-            </tbody>
-          </table>
+          {isOpen && (
+            <table className="tbl" style={{ marginBottom:0 }}>
+              <thead><tr><th></th><th>Voiture</th><th>Historique relégations</th><th>Titres</th><th></th></tr></thead>
+              <tbody>
+                {cars.map(e => <CarRow key={e.displayName || e.name} entry={e} />)}
+              </tbody>
+            </table>
+          )}
         </div>
       );
     }
