@@ -3910,23 +3910,25 @@ export default function App() {
                   </div>
 
                   {/* Z et Relégué — côte à côte */}
-                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
+                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'stretch' }}>
 
                     {/* Z — Meilleur de la ligue */}
-                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
-                      <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>
+                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
+                      <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>
                         <span style={{ background:'#c9a84c',color:'#000',borderRadius:2,padding:'0 4px',fontSize:10,marginRight:4 }}>Z</span>
                         Meilleur
                       </div>
                       {zCar ? (
-                        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',width:'100%' }}
+                        <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
-                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)' }}>
+                          <div style={{ width:'100%',height:140,borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
                             {getCarPhoto(zCar.id)
-                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
-                              : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
+                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                              : <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
-                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{zCar.name}</span>
+                          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
+                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'var(--gold)',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{zCar.name}</span>
+                          </div>
                         </div>
                       ) : (
                         <span className="text-dim" style={{ fontSize:11 }}>Non terminé</span>
@@ -3934,17 +3936,19 @@ export default function App() {
                     </div>
 
                     {/* Relégué */}
-                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
-                      <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>⬇ Relégué</div>
+                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
+                      <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,minHeight:16 }}>⬇ Relégué</div>
                       {rel ? (
-                        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',width:'100%' }}
+                        <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
-                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)' }}>
+                          <div style={{ width:'100%',height:140,borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
                             {getCarPhoto(relId)
-                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
-                              : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
+                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                              : <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
-                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#e74c3c',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{rel.name}</span>
+                          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
+                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#e74c3c',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{rel.name}</span>
+                          </div>
                         </div>
                       ) : (
                         <span className="text-dim" style={{ fontSize:11 }}>Non terminé</span>
