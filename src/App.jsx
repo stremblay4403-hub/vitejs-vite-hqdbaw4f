@@ -1165,7 +1165,7 @@ const css = `
   
   body { background: var(--black); color: var(--text); font-family: 'Rajdhani', sans-serif; overflow-x: clip; }
   
-  .app { display: flex; flex-direction: column; max-width: 100vw; overflow-x: clip; }
+  .app { display: flex; flex-direction: column; max-width: 100vw; overflow-x: clip; background: var(--black); }
   
   /* Header */
   .header {
@@ -1200,7 +1200,7 @@ const css = `
   .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
   
   /* Content */
-  .content { flex: 1; padding: 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
+  .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
   
   /* Cards */
   .card {
