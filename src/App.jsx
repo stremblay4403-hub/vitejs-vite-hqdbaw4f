@@ -8629,7 +8629,7 @@ export default function App() {
                       : <span style={{ fontSize:36 }}>🚗</span>}
                   </div>
                   {/* Nom + crayon */}
-                  <div style={{ padding:'4px 6px', borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
+                  <div style={{ padding:'6px 8px', borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
                     {isEditing ? (
                       <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
                         <input value={editName} onChange={e => setEditName(e.target.value)}
@@ -8642,7 +8642,7 @@ export default function App() {
                       </div>
                     ) : (
                       <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                        <span style={{ fontSize:11, fontWeight:700, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor: c.carId ? 'pointer' : 'default' }}
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor: c.carId ? 'pointer' : 'default' }}
                           onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                           {c.name}
                         </span>
