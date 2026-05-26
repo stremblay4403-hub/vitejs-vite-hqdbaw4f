@@ -3956,31 +3956,27 @@ export default function App() {
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
                     {(() => {
-                      const top5 = computeAllSeasonsBonus(l).slice(0, 5);
+                      const allBonus = computeAllSeasonsBonus(l);
+                      const top5 = allBonus.slice(0, 5);
                       if (!top5 || top5.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
-                      // Calculer le classement de la saison précédente pour les flèches
+
+                      // Rang précédent : même méthode que BonusView — exclure la dernière saison app
                       const prevRankMap = {};
-                      if (db.currentSeasonIdx > 0) {
-                        const totalMapPrev = {};
-                        (HISTORICAL_DATA.historicalBonus[l] || []).forEach(c => {
-                          const tot = Object.values(c.bySeason || {}).reduce((a, b) => a + b, 0);
-                          if (tot > 0) totalMapPrev[c.name] = { name: c.name, total: tot };
-                        });
-                        db.seasons.slice(0, db.currentSeasonIdx).forEach(s => {
-                          const bonus = computeBonusPoints(s, l);
-                          const league = s.leagues[l];
-                          Object.entries(bonus).forEach(([id, pts]) => {
-                            if (!pts) return;
-                            const car = league?.cars.find(c => c.id === id);
-                            if (!car) return;
-                            if (!totalMapPrev[car.name]) totalMapPrev[car.name] = { name: car.name, total: 0 };
-                            totalMapPrev[car.name].total += pts;
-                          });
-                        });
-                        Object.values(totalMapPrev).sort((a, b) => b.total - a.total).forEach((e, idx) => {
-                          prevRankMap[e.name] = idx + 1;
-                        });
+                      const appSeasonNums = db.seasons.map(s => s.season);
+                      const histSeasonNums = [...new Set((HISTORICAL_DATA.historicalBonus[l] || []).flatMap(c => Object.keys(c.bySeason).map(Number)))].sort((a,b)=>a-b);
+                      const allSeasonKeys = [
+                        ...histSeasonNums.map(n => `hist-S${n}`),
+                        ...appSeasonNums.map(n => `app-S${n}`)
+                      ];
+                      const prevKeys = allSeasonKeys.slice(0, -1);
+                      if (prevKeys.length > 0) {
+                        const prevTotals = allBonus.map(e => ({
+                          name: e.name,
+                          total: prevKeys.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0)
+                        })).sort((a, b) => b.total - a.total);
+                        prevTotals.forEach((e, idx) => { prevRankMap[e.name] = idx + 1; });
                       }
+
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
                           {top5.map((e, i) => {
