@@ -1857,7 +1857,8 @@ export default function App() {
     setMatchModal({ ...config, wasPlayed: config.homeGoals !== null && config.homeGoals !== undefined });
     requestAnimationFrame(() => unlockScroll());
   }
-  const [celebrationModal, setCelebrationModal] = useState(null); // { carId, leagueName, type: 'playoff'|'tc' }
+  const [celebrationModal, setCelebrationModal] = useState(null);
+  const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
 
   // Fonctions scroll par onglet — définies après tous les états
