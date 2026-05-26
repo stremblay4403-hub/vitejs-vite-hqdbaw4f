@@ -1636,7 +1636,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, 
       {/* Nom — flex:1 */}
       {!showStats && (
         <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
-          <div style={{ fontWeight:700, fontSize:22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
+          <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
             <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
           )}
