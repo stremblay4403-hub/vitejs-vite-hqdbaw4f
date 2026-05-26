@@ -1971,7 +1971,7 @@ export default function App() {
           if (!parsed.histOverrides) parsed.histOverrides = {};
           isLoadingFromFirebase.current = true;
           applyLoadedData(parsed, true);
-          setTimeout(() => { isLoadingFromFirebase.current = false; }, 500);
+          setTimeout(() => { isLoadingFromFirebase.current = false; }, 4000);
         } catch(e) {
           console.warn('Firebase parse error:', e);
         }
@@ -3513,6 +3513,8 @@ export default function App() {
   }
 
   function simTout() {
+    isLoadingFromFirebase.current = true;
+    setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
