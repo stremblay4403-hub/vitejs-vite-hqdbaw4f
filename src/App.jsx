@@ -5755,8 +5755,8 @@ export default function App() {
                           ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span>
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
-                          <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                          <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }}
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>
                             🎲
                           </button>
                         )}
@@ -6041,8 +6041,8 @@ export default function App() {
                           ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span>
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
-                          <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                          <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }}
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>
                             🎲
                           </button>
                         )}
@@ -8409,8 +8409,8 @@ export default function App() {
                           ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span>
                           : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/{dayMatches.length}</span>}
                         {!dayComplete && (
-                          <button className="btn btn-xs btn-sim" style={{ marginLeft:4 }}
-                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }} style={{ display: isPublicMode ? 'none' : undefined }}>
+                          <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }}
+                            onClick={e => { e.stopPropagation(); if(isPublicMode) return; lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); }}>
                             🎲
                           </button>
                         )}
