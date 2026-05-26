@@ -1609,7 +1609,7 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
 }
 
 // Composant réutilisable pour toutes les ligues — style leaderboard mobile
-function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
+function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
@@ -1640,6 +1640,9 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, pts, w, d, l, gf, 
           <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
             <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+          )}
+          {streakBadge && (
+            <span style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
           )}
         </div>
       )}
@@ -1916,6 +1919,33 @@ export default function App() {
     if (wins === 5) return { icon:'🔥🔥', label:'INARRÊTABLE', color:'#e74c3c' };
     return null;
   }
+
+  // Surveiller les nouveaux champions pour déclencher les confettis
+  const prevChampionsRef = React.useRef({});
+  useEffect(() => {
+    if (!loaded) return;
+    const champions = currentSeason.champions || {};
+    LEAGUES.forEach(l => {
+      const champId = champions[l];
+      if (champId && prevChampionsRef.current[l] !== champId) {
+        prevChampionsRef.current[l] = champId;
+        launchConfetti();
+        setCelebrationModal({ carId: champId, leagueName: l, type: 'playoff' });
+      }
+    });
+    // TC champion
+    const tcFinal = Object.values(currentSeason.tournoiChampions?.matches || {}).find(m => m.round === 'final' && m.homeGoals !== null);
+    if (tcFinal) {
+      const tcChampId = tcFinal.homeGoals > tcFinal.awayGoals ? tcFinal.homeId : tcFinal.awayId;
+      const tcKey = 'tc';
+      if (tcChampId && prevChampionsRef.current[tcKey] !== tcChampId) {
+        prevChampionsRef.current[tcKey] = tcChampId;
+        const champLeague = tcFinal.homeGoals > tcFinal.awayGoals ? tcFinal.homeLeague : tcFinal.awayLeague;
+        launchConfetti();
+        setCelebrationModal({ carId: tcChampId, leagueName: champLeague, type: 'tc' });
+      }
+    }
+  }, [currentSeason.champions, currentSeason.tournoiChampions]);
 
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
@@ -3583,14 +3613,7 @@ export default function App() {
         const finalMatch = Object.values(l.playoffResults).find(m => m.round === 'final');
         if (finalMatch && finalMatch.homeGoals !== null) {
           const champId = finalMatch.homeGoals > finalMatch.awayGoals ? finalMatch.homeId : finalMatch.awayId;
-          if (champId) {
-            s.champions[lName] = champId;
-            // Déclencher confettis + célébration après le setDb
-            setTimeout(() => {
-              launchConfetti();
-              setCelebrationModal({ carId: champId, leagueName: lName, type: 'playoff' });
-            }, 300);
-          }
+          if (champId) s.champions[lName] = champId;
         }
         const lastPerGroup = [];
         for (let g = 0; g < GROUPS; g++) {
@@ -4141,12 +4164,11 @@ export default function App() {
                         })();
                         const rankDiff = prevRank !== null ? prevRank - (i + 1) : null;
                         const streakBadge = getStreakBadge(s.id, leagueTab);
-                        const finalBadge = streakBadge ? { label: `${streakBadge.icon} ${streakBadge.label}`, bg: `${streakBadge.color}22`, color: streakBadge.color } : badge;
                         return (
                           <LeaderboardRow key={s.id}
                             rank={i+1} rankDiff={rankDiff}
                             carId={s.id} leagueName={leagueTab}
-                            name={s.name} photo={photo} badge={finalBadge}
+                            name={s.name} photo={photo} badge={badge} streakBadge={streakBadge}
                             pts={s.pts} w={s.w} d={s.d} l={s.l}
                             gf={s.gf} ga={s.ga} gp={s.gp}
                             borderColor={borderColor}
@@ -9124,18 +9146,6 @@ export default function App() {
         tc.matches = pm;
         s.tournoiChampions = tc;
         seasons[d.currentSeasonIdx] = s;
-
-        // Déclencher confettis si c'est la finale TC
-        const match = tc.matches[matchId];
-        if (match?.round === 'final' && homeGoals !== null) {
-          const champId = homeGoals > awayGoals ? match.homeId : match.awayId;
-          const champLeague = homeGoals > awayGoals ? match.homeLeague : match.awayLeague;
-          setTimeout(() => {
-            launchConfetti();
-            setCelebrationModal({ carId: champId, leagueName: champLeague, type: 'tc' });
-          }, 300);
-        }
-
         return { ...d, seasons };
       });
     }
