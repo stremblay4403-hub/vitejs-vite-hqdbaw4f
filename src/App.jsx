@@ -1932,7 +1932,7 @@ export default function App() {
       if (champId && prevChampionsRef.current[l] !== champId) {
         prevChampionsRef.current[l] = champId;
         launchConfetti();
-        setCelebrationModal({ carId: champId, leagueName: l, type: 'playoff' });
+        setTimeout(() => setCelebrationModal({ carId: champId, leagueName: l, type: 'playoff' }), 3000);
       }
     });
     const tcFinal = Object.values(season.tournoiChampions?.matches || {}).find(m => m.round === 'final' && m.homeGoals !== null);
@@ -1943,7 +1943,7 @@ export default function App() {
         prevChampionsRef.current[tcKey] = tcChampId;
         const champLeague = tcFinal.homeGoals > tcFinal.awayGoals ? tcFinal.homeLeague : tcFinal.awayLeague;
         launchConfetti();
-        setCelebrationModal({ carId: tcChampId, leagueName: champLeague, type: 'tc' });
+        setTimeout(() => setCelebrationModal({ carId: tcChampId, leagueName: champLeague, type: 'tc' }), 3000);
       }
     }
   }, [loaded, db.currentSeasonIdx, db.seasons]);
