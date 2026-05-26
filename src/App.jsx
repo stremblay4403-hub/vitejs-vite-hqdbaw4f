@@ -3966,9 +3966,12 @@ export default function App() {
     const groupCars = getGroupCars(leagueTab, activeGroup);
     const listRef = React.useRef(null);
     const listScrollPos = React.useRef(0);
+    const openDayRef = React.useRef(null);
 
     React.useLayoutEffect(() => {
-      if (listRef.current) listRef.current.scrollTop = listScrollPos.current;
+      if (openDayRef.current) {
+        openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      }
     });
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
@@ -4099,21 +4102,9 @@ export default function App() {
                 const dayComplete = dayPlayed === dayMatches.length;
                 const isOpen = openDay === day;
                 return (
-                  <div key={day} style={{ marginBottom:3 }}>
+                  <div key={day} style={{ marginBottom:3 }} ref={isOpen ? openDayRef : null}>
                     {/* Journée header */}
-                    <div onClick={() => {
-  const scrollY = window.scrollY;
-  document.body.style.position = 'fixed';
-  document.body.style.top = `-${scrollY}px`;
-  document.body.style.width = '100%';
-  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
-  requestAnimationFrame(() => {
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    window.scrollTo(0, scrollY);
-  });
-}}
+                    <div onClick={() => setOpenDay(isOpen ? null : day)}
                       style={{
                         display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none'
                       }}>
