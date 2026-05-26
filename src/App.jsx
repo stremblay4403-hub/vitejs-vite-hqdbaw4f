@@ -3921,10 +3921,10 @@ export default function App() {
                       {zCar ? (
                         <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
-                          <div style={{ width:'100%',height:120,borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
+                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
                             {getCarPhoto(zCar.id)
-                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',display:'block' }} />
-                              : <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
+                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                              : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
                           <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
                             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'var(--gold)',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{zCar.name}</span>
@@ -3941,10 +3941,10 @@ export default function App() {
                       {rel ? (
                         <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
-                          <div style={{ width:'100%',height:120,borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
+                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
                             {getCarPhoto(relId)
-                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',display:'block' }} />
-                              : <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
+                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                              : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
                           <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
                             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#e74c3c',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{rel.name}</span>
