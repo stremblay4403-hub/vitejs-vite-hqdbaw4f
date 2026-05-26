@@ -3952,21 +3952,21 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Top 5 pts annexes cumulatif — snapshot fin de saison */}
+                  {/* Top 5 pts annexes cumulatif — calculé en direct */}
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
                     {(() => {
-                      const snap = currentSeason.bonusSnapshot?.[l];
-                      if (!snap || snap.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
+                      const top5 = computeAllSeasonsBonus(l).slice(0, 5);
+                      if (!top5 || top5.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
-                          {snap.map((e, i) => (
-                            <div key={e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id ? 'pointer' :'default' }}
-                              onClick={() => { if (e.id) openProfileCar({ leagueName: l, carId: e.id }); }}>
+                          {top5.map((e, i) => (
+                            <div key={e.id || e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id && !e.historicalOnly ? 'pointer' :'default' }}
+                              onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
                               <span style={{ color:'var(--gold-dim)',fontSize:11,width:16,textAlign:'right',flexShrink:0 }}>{i + 1}.</span>
                               <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
                               <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
-                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{e.pts}</span>
+                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{e.total}</span>
                             </div>
                           ))}
                         </div>
