@@ -1713,7 +1713,7 @@ function DaysList({ days, allMatches, openMatchModal, isPublicMode, simDay, leag
               <span style={{ fontSize:11, color:'var(--text-dim)', marginRight:8 }}>{played}/{dayMatches.length}</span>
               {!isPublicMode && simDay && (
                 <button className="btn btn-xs btn-sim" style={{ marginRight:6 }}
-                  onClick={e => { e.stopPropagation(); simDay(day); setOpenDay(day); }}>🎲</button>
+                  style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ simDay(day); setOpenDay(day); } }}>🎲</button>
               )}
               <span style={{ color:'var(--text-dim)', fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
             </div>
@@ -1812,6 +1812,7 @@ export default function App() {
   const [ligueSubTab, setLigueSubTab] = useState('principales');
   const [succSubTab, setSuccSubTab] = useState('classement');
   const [groupOpenDay, setGroupOpenDay] = useState(null);
+  const [relOpenDay, setRelOpenDay] = useState(1);
   const [succOpenDay, setSuccOpenDay] = useState(null);
   const [sucSuccSubTab, setSucSuccSubTab] = useState('classement');
   const [sucSuccOpenDay, setSucSuccOpenDay] = useState(null);
@@ -4679,7 +4680,7 @@ export default function App() {
                 <div className="card-body" style={{ maxWidth:320 }}>
                   <POMatchCard m={fin} compact={false} />
                   {fin.homeGoals !== null && (
-                    <button className="btn btn-gold" style={{ marginTop:10,width:'100%' }} onClick={() => finalizeChampion(leagueTab)}>
+                    <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>
                       ✓ Enregistrer le Champion
                     </button>
                   )}
@@ -4699,7 +4700,16 @@ export default function App() {
     const relMatches = Object.values(rm);
     const standings = relMatches.length > 0 ? computeStandings(relCars, relMatches) : [];
     const relId = currentSeason.relegated[leagueTab];
-    const [openDay, setOpenDay] = useState(1);
+    const [openDay, setOpenDay] = [relOpenDay, setRelOpenDay];
+
+    const listRef = React.useRef(null);
+    const openDayRef = React.useRef(null);
+
+    React.useLayoutEffect(() => {
+      if (openDayRef.current) {
+        openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
+      }
+    });
 
     const days = [...new Set(relMatches.map(m => m.day))].sort((a,b) => a - b);
     const nextUnplayedDay = days.find(d => relMatches.filter(m => m.day === d).some(m => m.homeGoals === null));
@@ -4762,7 +4772,7 @@ export default function App() {
             <div className="sim-bar" style={{ marginBottom:12 }}>
               <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
               <button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelDay(); }}>▶ Journée {(nextUnplayedDay ?? '—')}</button>
-              <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Barrage complet</button>
+              <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Barrage complet</button>
               <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelegationComplete(leagueTab); }}>
                 ⚡⚡ Tout simuler + confirmer
               </button>
@@ -4795,7 +4805,7 @@ export default function App() {
                 </div>
                 {standings.length > 0 && !relId && (
                   <div style={{ padding:12 }}>
-                    <button className="btn btn-danger btn-sm" onClick={() => finalizeRelegation(leagueTab)}>
+                    <button className="btn btn-danger btn-sm" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeRelegation(leagueTab); }}>
                       ✓ Confirmer la Relégation
                     </button>
                   </div>
@@ -4827,20 +4837,8 @@ export default function App() {
                     const dayComplete = dayPlayed === dayMatches.length;
                     const isOpen = openDay === day;
                     return (
-                      <div key={day} style={{ marginBottom:3 }}>
-                        <div onClick={() => {
-  const scrollY = window.scrollY;
-  document.body.style.position = 'fixed';
-  document.body.style.top = `-${scrollY}px`;
-  document.body.style.width = '100%';
-  lockScroll(); setOpenDay(isOpen ? null : day); requestAnimationFrame(() => unlockScroll());
-  requestAnimationFrame(() => {
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.width = '';
-    window.scrollTo(0, scrollY);
-  });
-}}
+                      <div key={day} style={{ marginBottom:3 }} ref={isOpen ? openDayRef : null}>
+                        <div onClick={() => setOpenDay(isOpen ? null : day)}
                           style={{
                             display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,userSelect:'none'
                           }}>
@@ -9521,7 +9519,7 @@ export default function App() {
                     <div className="card-title">{label}</div>
                     <div style={{ flex:1 }} />
                     <span className="text-dim" style={{ fontSize:12 }}>{played}/{available}</span>
-                    {available > 0 && <button className="btn btn-sm btn-sim" style={{ marginLeft:10 }} onClick={() => simTCRound(round)}>⚡ Simuler</button>}
+                    {available > 0 && !isPublicMode && <button className="btn btn-sm btn-sim" style={{ marginLeft:10 }} onClick={() => simTCRound(round)}>⚡ Simuler</button>}
                   </div>
                   <div className="card-body" style={{ maxHeight:round === 'r1' ? 480 :400,overflowY:'auto' }}>
                     <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round==='r1'?220:260}px,1fr))`,gap:10 }}>
@@ -10066,7 +10064,7 @@ export default function App() {
           {mainTab === 'ligues' && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && !isPublicMode && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
-              <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }} onClick={simAllActuelles}>⚡ Simuler toutes les Actuelles</button>
+              <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }} style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAllActuelles(); }}>⚡ Simuler toutes les Actuelles</button>
             </div>
           )}
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
