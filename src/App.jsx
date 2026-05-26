@@ -3961,13 +3961,10 @@ export default function App() {
                       // Calculer le classement de la saison précédente pour les flèches
                       const prevRankMap = {};
                       if (db.currentSeasonIdx > 0) {
-                        const prevDb = { ...db, currentSeasonIdx: db.currentSeasonIdx - 1 };
-                        // On recalcule le top via computeAllSeasonsBonus mais sur la saison précédente
-                        // On simule en excluant la saison courante des totaux
                         const totalMapPrev = {};
                         (HISTORICAL_DATA.historicalBonus[l] || []).forEach(c => {
                           const tot = Object.values(c.bySeason || {}).reduce((a, b) => a + b, 0);
-                          if (tot > 0) totalMapPrev[`hist-${c.name}`] = { name: c.name, total: tot };
+                          if (tot > 0) totalMapPrev[c.name] = { name: c.name, total: tot };
                         });
                         db.seasons.slice(0, db.currentSeasonIdx).forEach(s => {
                           const bonus = computeBonusPoints(s, l);
@@ -3976,9 +3973,8 @@ export default function App() {
                             if (!pts) return;
                             const car = league?.cars.find(c => c.id === id);
                             if (!car) return;
-                            const key = car.name;
-                            if (!totalMapPrev[key]) totalMapPrev[key] = { name: car.name, total: 0 };
-                            totalMapPrev[key].total += pts;
+                            if (!totalMapPrev[car.name]) totalMapPrev[car.name] = { name: car.name, total: 0 };
+                            totalMapPrev[car.name].total += pts;
                           });
                         });
                         Object.values(totalMapPrev).sort((a, b) => b.total - a.total).forEach((e, idx) => {
@@ -3997,7 +3993,7 @@ export default function App() {
                                 <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
                                 <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
                                 {diff !== null && diff !== 0 && (
-                                  <span style={{ fontSize:10,fontWeight:700,color: diff > 0 ? 'var(--green)' : 'var(--red)',display:'flex',alignItems:'center',gap:1,flexShrink:0 }}>
+                                  <span style={{ fontSize:10,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',display:'flex',alignItems:'center',gap:1,flexShrink:0 }}>
                                     {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
                                   </span>
                                 )}
@@ -5600,7 +5596,7 @@ export default function App() {
                             <td key={`h${n}`} style={{
                               textAlign:'center',fontSize:12,color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
                             }}>
-                              {isChamp ? '🏆' : isRel ? '⬇' : (pts || '—')}
+                              {isRel ? '⬇' : (pts || '—')}
                             </td>
                           );
                         })}
@@ -5612,7 +5608,7 @@ export default function App() {
                             <td key={`a${n}`} style={{
                               textAlign:'center',fontSize:12,color:(isChamp || pts) ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :isRel ? '#e74c3c' :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
                             }}>
-                              {isChamp ? '🏆' : isRel ? '⬇' : (pts || '—')}
+                              {isRel ? '⬇' : (pts || '—')}
                             </td>
                           );
                         })}
