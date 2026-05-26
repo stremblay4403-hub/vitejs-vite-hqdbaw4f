@@ -1027,10 +1027,8 @@ function initLeague(leagueName, existingCarIds) {
 function initAuxLeague(leagueName, existingCars) {
   let cars;
   if (existingCars && existingCars.length > 0) {
-    const existingNames = existingCars.map(c => c.name);
-    const baseCars = LEAGUE_CARS[leagueName] || [];
-    const extraFromCode = baseCars.filter(name => !existingNames.includes(name)).map(name => ({ id: genId(), name }));
-    cars = [...existingCars.map(c => ({ id: c.id, name: c.name })), ...extraFromCode];
+    // Garder exactement les voitures existantes — ne jamais recréer depuis LEAGUE_CARS
+    cars = existingCars.map(c => ({ id: c.id, name: c.name }));
   } else {
     cars = (LEAGUE_CARS[leagueName] || []).map(name => ({ id: genId(), name }));
   }
@@ -5127,11 +5125,35 @@ export default function App() {
               </tbody>
             </table>
           </div>
+          {/* Bouton supprimer — admin seulement */}
+          {!isPublicMode && (
+            <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)' }}>
+              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.15)', border:'1px solid rgba(192,57,43,0.5)', color:'#e74c3c', width:'100%' }}
+                onClick={() => {
+                  if (!window.confirm(`Supprimer ${effectiveName} de ${leagueName} ?`)) return;
+                  setDb(d => {
+                    const nd = JSON.parse(JSON.stringify(d));
+                    const season = nd.seasons[nd.currentSeasonIdx];
+                    const league = season.leagues[leagueName];
+                    if (!league) return d;
+                    // Supprimer la voiture
+                    league.cars = league.cars.filter(c => c.id !== carId);
+                    // Supprimer ses matchs
+                    Object.keys(league.groupResults || {}).forEach(g => {
+                      league.groupResults[g] = (league.groupResults[g] || []).filter(m => m.homeId !== carId && m.awayId !== carId);
+                    });
+                    return nd;
+                  });
+                  setProfileCar(null);
+                }}>
+                🗑 Supprimer de {leagueName}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
   }
-
   function carDisplayName(name, leagueName) {
     return name;
   }
