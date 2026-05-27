@@ -1189,7 +1189,7 @@ const css = `
   .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
   
   /* Tabs */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; }
   .tab {
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
     padding: 14px 20px; cursor: pointer; border: none; background: none;
@@ -1480,6 +1480,7 @@ const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 const isLoadingFromFirebase = { current: false };
+const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
 
@@ -1845,9 +1846,11 @@ export default function App() {
   const [activeGroup, setActiveGroup] = useState(0);
   const [profileCar, setProfileCar] = useState(null);
   function openProfileCar(config) {
-    lockScroll();
+    const sy = window.scrollY;
+    const tabsEl = document.querySelector('.tabs');
+    const sl = tabsEl ? tabsEl.scrollLeft : 0;
     setProfileCar(config);
-    setTimeout(() => unlockScroll(), 4500);
+    requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; });
   }
   const [notifications, setNotifications] = useState([]);
   const [matchModal, setMatchModal] = useState(null);
@@ -1971,12 +1974,16 @@ export default function App() {
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
           const savedScrollY = window.scrollY;
+          const tabsEl = document.querySelector('.tabs');
+          if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
           isLoadingFromFirebase.current = true;
           applyLoadedData(parsed, true);
           setTimeout(() => {
             isLoadingFromFirebase.current = false;
             if (!document.body.dataset.scrollY) {
               window.scrollTo(0, savedScrollY);
+              const el = document.querySelector('.tabs');
+              if (el) el.scrollLeft = savedTabsScrollLeft.current;
             }
           }, 4000);
         } catch(e) {
@@ -4167,13 +4174,13 @@ export default function App() {
         <div className="sim-bar">
           <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
           <button className="btn btn-sm btn-sim"
-            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ lockScroll(); simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); setTimeout(() => unlockScroll(), 4500); } }}>
+            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
             ▶ Journée {(nextUnplayedDay ?? '—')} (9 matchs)
           </button>
-          <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ lockScroll(); simulateGroup(leagueTab, activeGroup); setTimeout(() => unlockScroll(), 4500); } }}>
+          <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateGroup(leagueTab, activeGroup); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
             ⚡ Groupe complet
           </button>
-          <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ lockScroll(); simulateLeagueComplete(leagueTab); setTimeout(() => unlockScroll(), 4500); } }}>
+          <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateLeagueComplete(leagueTab); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
             ⚡⚡ Toute la ligue
           </button>
           <span className="text-dim" style={{ fontSize:12,marginLeft:8 }}>
@@ -5716,7 +5723,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {/* CLASSEMENT */}
@@ -6007,7 +6014,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6229,7 +6236,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6446,7 +6453,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6639,7 +6646,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6832,7 +6839,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7025,7 +7032,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7218,7 +7225,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7411,7 +7418,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7604,7 +7611,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7797,7 +7804,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7990,7 +7997,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8183,7 +8190,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8378,7 +8385,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
