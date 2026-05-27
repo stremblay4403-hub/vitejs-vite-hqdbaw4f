@@ -1489,6 +1489,7 @@ function lockScroll() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${sy}px`;
   document.body.style.width = '100%';
+  document.body.style.overflowX = 'hidden';
   document.body.dataset.scrollY = sy;
 }
 function unlockScroll() {
@@ -1496,6 +1497,7 @@ function unlockScroll() {
   document.body.style.position = '';
   document.body.style.top = '';
   document.body.style.width = '';
+  document.body.style.overflowX = '';
   window.scrollTo(0, sy);
 }
 
@@ -5708,7 +5710,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {/* CLASSEMENT */}
@@ -5999,7 +6001,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6221,7 +6223,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6438,7 +6440,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6631,7 +6633,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6824,7 +6826,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7017,7 +7019,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7210,7 +7212,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7403,7 +7405,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7596,7 +7598,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7789,7 +7791,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7982,7 +7984,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8175,7 +8177,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8370,7 +8372,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { lockScroll(); simDay(nextDay); setTimeout(() => unlockScroll(), 4500); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const sy = window.scrollY; simDay(nextDay); requestAnimationFrame(() => window.scrollTo(0, sy)); } }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
