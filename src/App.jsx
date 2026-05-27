@@ -4159,13 +4159,13 @@ export default function App() {
         <div className="sim-bar">
           <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
           <button className="btn btn-sm btn-sim"
-            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); } }}>
+            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ lockScroll(); simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); requestAnimationFrame(() => unlockScroll()); } }}>
             ▶ Journée {(nextUnplayedDay ?? '—')} (9 matchs)
           </button>
-          <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateGroup(leagueTab, activeGroup); }}>
+          <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ lockScroll(); simulateGroup(leagueTab, activeGroup); requestAnimationFrame(() => unlockScroll()); } }}>
             ⚡ Groupe complet
           </button>
-          <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateLeagueComplete(leagueTab); }}>
+          <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ lockScroll(); simulateLeagueComplete(leagueTab); requestAnimationFrame(() => unlockScroll()); } }}>
             ⚡⚡ Toute la ligue
           </button>
           <span className="text-dim" style={{ fontSize:12,marginLeft:8 }}>
