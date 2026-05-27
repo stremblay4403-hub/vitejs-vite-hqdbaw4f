@@ -1970,9 +1970,15 @@ export default function App() {
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
+          const savedScrollY = window.scrollY;
           isLoadingFromFirebase.current = true;
           applyLoadedData(parsed, true);
-          setTimeout(() => { isLoadingFromFirebase.current = false; }, 4000);
+          setTimeout(() => {
+            isLoadingFromFirebase.current = false;
+            if (!document.body.dataset.scrollY) {
+              window.scrollTo(0, savedScrollY);
+            }
+          }, 4000);
         } catch(e) {
           console.warn('Firebase parse error:', e);
         }
