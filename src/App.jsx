@@ -2040,11 +2040,24 @@ export default function App() {
 
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
-    tabScrollPos.current[key] = window.scrollY;
+    const tabsEls = document.querySelectorAll('.tabs');
+    tabScrollPos.current[key] = {
+      scrollY: window.scrollY,
+      tabsScrollLeft: Array.from(tabsEls).map(el => el.scrollLeft)
+    };
   }
   function restoreScrollForTab(key) {
-    const pos = tabScrollPos.current[key] || 0;
-    requestAnimationFrame(() => window.scrollTo(0, pos));
+    const saved = tabScrollPos.current[key];
+    const pos = saved?.scrollY || 0;
+    requestAnimationFrame(() => {
+      window.scrollTo(0, pos);
+      if (saved?.tabsScrollLeft) {
+        const tabsEls = document.querySelectorAll('.tabs');
+        tabsEls.forEach((el, i) => {
+          if (saved.tabsScrollLeft[i] !== undefined) el.scrollLeft = saved.tabsScrollLeft[i];
+        });
+      }
+    });
   }
 
   useEffect(() => {
