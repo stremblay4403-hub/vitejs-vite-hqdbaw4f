@@ -2859,6 +2859,9 @@ export default function App() {
 
   function getCarPhotoByName(name) {
     if (!name) return null;
+    // Chercher d'abord par clé byname (voitures historiques sans carId)
+    const bynameKey = `byname-${name.toLowerCase()}`;
+    if (db.photos?.[bynameKey]) return db.photos[bynameKey];
     for (const season of db.seasons) {
       for (const league of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
         const car = season.leagues[league]?.cars.find(c =>
@@ -8650,26 +8653,11 @@ export default function App() {
     const [newRipName, setNewRipName] = useState('');
 
     const rip = React.useMemo(() => {
-      // Voitures retraitées permanentes
-      const ripCars = [
-        { name: 'X7 Pick-up' },
+      return [
+        { name: 'X7 Pick-Up' },
         { name: 'Rebellion' },
-      ];
-      // Trouver leur carId dans les saisons app ou HISTORICAL_DATA
-      return ripCars.map(c => {
-        for (const s of db.seasons) {
-          for (const l of LEAGUES) {
-            const found = s.leagues[l]?.cars.find(car => car.name === c.name);
-            if (found) return { id: found.id, name: c.name };
-          }
-        }
-        for (const l of LEAGUES) {
-          const hist = (HISTORICAL_DATA.historicalBonus[l] || []).find(h => h.name === c.name);
-          if (hist) return { id: `hist-${c.name}`, name: c.name };
-        }
-        return { id: `rip-${c.name}`, name: c.name };
-      });
-    }, [db.seasons]);
+      ].map(c => ({ ...c, photoKey: `byname-${c.name.toLowerCase()}` }));
+    }, []);
 
     const filteredRip = rip.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
 
@@ -8780,27 +8768,23 @@ export default function App() {
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,padding:8 }}>
               {filteredRip.map(c => {
-                const photo = getCarPhoto(c.id);
+                const photo = db.photos?.[c.photoKey] || getCarPhotoByName(c.name);
                 return (
-                  <div key={c.id} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
-                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
-                      onClick={() => {
-                        // Chercher dans toutes les saisons app
-                        for (const s of db.seasons) {
-                          for (const l of LEAGUES) {
-                            const found = s.leagues[l]?.cars.find(car => car.name === c.name);
-                            if (found) { openProfileCar({ leagueName: l, carId: found.id }); return; }
-                          }
-                        }
-                        // Sinon ouvrir par nom historique
-                        openProfileCar({ leagueName: LEAGUES[0], carId: c.id, histName: c.name });
-                      }}>                      {photo
+                  <div key={c.name} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
+                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
+                      {photo
                         ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
                         : <span style={{ fontSize:36 }}>🪦</span>}
                       {!isPublicMode && <div className="car-photo-overlay">📷</div>}
+                      {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
+                        const file = e.target.files[0]; if (!file) return;
+                        uploadToCloudinary(file).then(url => setCarPhoto(c.photoKey, url));
+                      }} />}
                     </label>
-                    <div style={{ padding:'6px 8px',display:'flex',alignItems:'center',gap:4 }}>
+                    <div style={{ padding:'6px 8px',display:'flex',alignItems:'center',gap:4,cursor:'pointer' }}
+                      onClick={() => openProfileCar({ leagueName: LEAGUES[0], carId: c.photoKey, histName: c.name })}>
                       <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,flex:1,color:'var(--text-dim)' }}>{c.name}</span>
+                      <span style={{ fontSize:11,color:'var(--text-dim)' }}>→ profil</span>
                     </div>
                   </div>
                 );
