@@ -5588,91 +5588,17 @@ export default function App() {
               <button className="btn btn-dark btn-xs" onClick={() => setSearch('')}>✕ Effacer</button>
             )}
           </div>
-          <div style={{ padding:0 }}>
-            {(() => {
-                  const allSeasonKeys = [
-                    ...histSeasonNums.map(n => `hist-S${n}`),
-                    ...appSeasonNums.map(n => `app-S${n}`)
-                  ];
-                  const prevKeys = allSeasonKeys.slice(0, -1);
-                  const rankPrev = {};
-                  if (prevKeys.length > 0) {
-                    const totals = allBonus.map(e => ({
-                      id: e.id || e.name,
-                      total: prevKeys.reduce((sum, sk) => sum + (e.bySeason[sk] || 0), 0)
-                    }));
-                    totals.sort((a, b) => b.total - a.total);
-                    totals.forEach((t) => {
-                      rankPrev[t.id] = totals.filter(o => o.total > t.total).length + 1;
-                    });
-                  }
-
-                  return filtered.map((entry) => {
-                    const photo = !entry.historicalOnly
-                      ? (getCarPhoto(entry.id) || getCarPhotoByName(entry.name))
-                      : getCarPhotoByName(entry.name);
-                    const entryId = entry.id || entry.name;
-                    const prevRank = rankPrev[entryId];
-
-                  const rank = (() => {
-                    const keysUpTo = sortBySeason
-                      ? allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1)
-                      : null;
-                    const myTotal = keysUpTo
-                      ? keysUpTo.reduce((sum, k) => sum + (entry.bySeason[k] || 0), 0)
-                      : entry.total;
-                    const ref = keysUpTo ? sortedBonus : allBonus;
-                    return ref.filter(e => {
-                      const t = keysUpTo
-                        ? keysUpTo.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0)
-                        : e.total;
-                      return t > myTotal;
-                    }).length + 1;
-                  })();
-
-                    const delta = prevRank ? prevRank - rank : null;
-                    const entryStatus = getStatus(entry);
-                    const nameLower = entry.name.toLowerCase();
-                    let statusDot;
-                    if (entryStatus === 'active') statusDot = '#2ecc71';
-                    else if (entryStatus === 'other') statusDot = '#f1c40f';
-                    else statusDot = '#e74c3c';
-
-                    const champCount = (entry.histChampions || []).length + (entry.appChampions || []).length;
-                    const relCount = (entry.histRelegated || []).length + (entry.appRelegated || []).length;
-
-                    const badge = champCount > 0
-                      ? { label:`🏆×${champCount}`, bg:'rgba(201,168,76,0.2)', color:'var(--gold)' }
-                      : relCount > 0
-                      ? { label:`⬇×${relCount}`, bg:'rgba(192,57,43,0.2)', color:'#e74c3c' }
-                      : null;
-
-                    const streakBadge = { icon:'●', label:'', color: statusDot };
-
-                    return (
-                      <LeaderboardRow key={entryId}
-                        rank={rank} rankDiff={delta}
-                        carId={entry.id} leagueName={leagueTab}
-                        name={entry.name} photo={photo} badge={badge}
-                        pts={entry.total}
-                        borderColor={statusDot === '#2ecc71' ? 'rgba(46,204,113,0.4)' : statusDot === '#f1c40f' ? 'rgba(241,196,15,0.4)' : 'rgba(231,76,60,0.2)'}
-                        onClick={() => openProfile(entry)}
-                      />
-                    );
-                  });
-                })()}
-            {filtered.length === 0 && (
-              <div className="text-dim text-center" style={{ padding:24 }}>Aucune voiture trouvée</div>
-            )}
-          </div>
-
-          {/* Tableau saisons — scrollable */}
-          <div className="card-body" style={{ padding:0,overflowX:'auto',marginTop:12 }} ref={bonusScrollRef} onScroll={e => { bonusScrollPos.current = e.target.scrollLeft; }}>
+          <div className="card-body" style={{ padding:0,overflowX:'auto' }} ref={bonusScrollRef} onScroll={e => { bonusScrollPos.current = e.target.scrollLeft; }}>
             <table className="tbl">
               <thead>
                 <tr>
-                  <th style={{ minWidth:160 }}>Voiture</th>
-                  <th className="pts-val" style={{ textAlign:'center',color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
+                  <th style={{ textAlign:'center',fontSize:11,color:'var(--text-dim)',width:32 }}>Δ</th>
+                  <th className="rank" style={{ width:36 }}>#</th>
+                  <th style={{ width:110 }}></th>
+                  <th className="sticky-col car-name" style={{ left:0,minWidth:160 }}>Voiture</th>
+                  <th style={{ textAlign:'center' }}>🏆</th>
+                  <th style={{ textAlign:'center' }}>⬇</th>
+                  <th className="sticky-col pts-val" style={{ left:160,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
                     {!sortBySeason ? '▼ ' : ''}Total
                   </th>
                   {histSeasonNums.map(n => {
@@ -5698,34 +5624,97 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((entry) => {
-                  return (
-                    <tr key={entry.id || entry.name} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
-                      <td style={{ fontWeight:700,fontSize:14,whiteSpace:'nowrap' }}>{entry.name}</td>
-                      <td className="pts-val" style={{ borderRight:'1px solid var(--border)',textAlign:'center' }}>{entry.total}</td>
-                      {histSeasonNums.map(n => {
-                        const pts = entry.bySeason[`hist-S${n}`];
-                        const isChamp = (entry.histChampions || []).includes(n);
-                        const isRel = (entry.histRelegated || []).includes(n);
-                        return (
-                          <td key={`h${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent' }}>
-                            {isRel ? '⬇' : (pts || '—')}
-                          </td>
-                        );
-                      })}
-                      {appSeasonNums.map(n => {
-                        const pts = entry.bySeason[`app-S${n}`];
-                        const isChamp = (entry.appChampions || []).includes(n);
-                        const isRel = (entry.appRelegated || []).includes(n);
-                        return (
-                          <td key={`a${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:(isChamp || pts) ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :isRel ? '#e74c3c' :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent' }}>
-                            {isRel ? '⬇' : (pts || '—')}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
+                {(() => {
+                  const allSeasonKeys = [
+                    ...histSeasonNums.map(n => `hist-S${n}`),
+                    ...appSeasonNums.map(n => `app-S${n}`)
+                  ];
+                  const prevKeys = allSeasonKeys.slice(0, -1);
+                  const rankPrev = {};
+                  if (prevKeys.length > 0) {
+                    const totals = allBonus.map(e => ({
+                      id: e.id || e.name,
+                      total: prevKeys.reduce((sum, sk) => sum + (e.bySeason[sk] || 0), 0)
+                    }));
+                    totals.sort((a, b) => b.total - a.total);
+                    totals.forEach((t) => {
+                      rankPrev[t.id] = totals.filter(o => o.total > t.total).length + 1;
+                    });
+                  }
+
+                  return filtered.map((entry) => {
+                    const photo = !entry.historicalOnly
+                      ? (getCarPhoto(entry.id) || getCarPhotoByName(entry.name))
+                      : getCarPhotoByName(entry.name);
+                    const champCount = (entry.histChampions || []).length + (entry.appChampions || []).length;
+                    const relCount = (entry.histRelegated || []).length + (entry.appRelegated || []).length;
+                    const rank = (() => {
+                      const keysUpTo = sortBySeason ? allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1) : null;
+                      const myTotal = keysUpTo ? keysUpTo.reduce((sum, k) => sum + (entry.bySeason[k] || 0), 0) : entry.total;
+                      const ref = keysUpTo ? sortedBonus : allBonus;
+                      return ref.filter(e => { const t = keysUpTo ? keysUpTo.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0) : e.total; return t > myTotal; }).length + 1;
+                    })();
+                    const entryId = entry.id || entry.name;
+                    const prevRank = rankPrev[entryId];
+                    const delta = prevRank ? prevRank - rank : null;
+                    const entryStatus = getStatus(entry);
+                    let statusDot, statusTitle;
+                    const nameLower = entry.name.toLowerCase();
+                    if (entryStatus === 'active') { statusDot = '#2ecc71'; statusTitle = 'Active dans cette ligue'; }
+                    else if (entryStatus === 'other') { statusDot = '#f1c40f'; statusTitle = `Active en ${activeInOtherLeagueMap[nameLower]}`; }
+                    else { statusDot = '#e74c3c'; statusTitle = 'Inactive'; }
+
+                    return (
+                      <tr key={entryId} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
+                        <td style={{ textAlign:'center',fontSize:11,width:32 }}>
+                          {delta === null || delta === 0 ? <span style={{ color:'var(--text-dim)' }}>—</span>
+                            : delta > 0 ? <span style={{ color:'var(--green)',fontWeight:700 }}>▲{delta}</span>
+                            : <span style={{ color:'#e74c3c',fontWeight:700 }}>▼{Math.abs(delta)}</span>}
+                        </td>
+                        <td className="rank" style={{ width:36 }}>
+                          {(() => { const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1; return sameRank ? `=${rank}` : rank; })()}
+                        </td>
+                        <td style={{ padding:'4px',width:110 }}>
+                          <CarThumb photo={photo} size={90} />
+                        </td>
+                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:160,fontSize:16,fontWeight:700 }}>
+                          <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
+                          {entry.name}
+                        </td>
+                        <td style={{ textAlign:'center',fontSize:14,color:'var(--gold)' }}>
+                          {champCount > 0 ? `🏆×${champCount}` : '—'}
+                        </td>
+                        <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
+                          {relCount > 0 ? `⬇×${relCount}` : '—'}
+                        </td>
+                        <td className="sticky-col pts-val" style={{ left:160,borderRight:'1px solid var(--border)',fontSize:26 }}>{entry.total}</td>
+                        {histSeasonNums.map(n => {
+                          const pts = entry.bySeason[`hist-S${n}`];
+                          const isChamp = (entry.histChampions || []).includes(n);
+                          const isRel = (entry.histRelegated || []).includes(n);
+                          return (
+                            <td key={`h${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:pts ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : 'transparent' }}>
+                              {isRel ? '⬇' : (pts || '—')}
+                            </td>
+                          );
+                        })}
+                        {appSeasonNums.map(n => {
+                          const pts = entry.bySeason[`app-S${n}`];
+                          const isChamp = (entry.appChampions || []).includes(n);
+                          const isRel = (entry.appRelegated || []).includes(n);
+                          return (
+                            <td key={`a${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:(isChamp || pts) ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : isRel ? '#e74c3c' : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : 'transparent' }}>
+                              {isRel ? '⬇' : (pts || '—')}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    );
+                  });
+                })()}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={7 + histSeasonNums.length + appSeasonNums.length} className="text-dim text-center" style={{ padding:24 }}>Aucune voiture trouvée</td></tr>
+                )}
               </tbody>
             </table>
           </div>
