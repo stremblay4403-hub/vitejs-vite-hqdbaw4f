@@ -10184,10 +10184,13 @@ export default function App() {
               { key: 'import', label: 'Importation' },
               { key: 'oubl', label: 'Oubliettes' },
             ].map(t => (
-              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={() => {
+              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
+                const bar = e.currentTarget.parentElement;
+                const sl = bar.scrollLeft;
                 saveScrollForTab();
                 setLigueSubTab(t.key);
                 restoreScrollForTab(`ligues|${t.key}|${leagueTab}|${sectionTab}|${histSubTab}`);
+                requestAnimationFrame(() => { bar.scrollLeft = sl; });
               }}>
                 {t.label}
               </button>
@@ -10199,10 +10202,13 @@ export default function App() {
         {((mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus') && (
           <div className="tabs" id="tabs-leagues" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
             {LEAGUES.map(l => (
-              <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={() => {
+              <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={e => {
+                const bar = e.currentTarget.parentElement;
+                const sl = bar.scrollLeft;
                 saveScrollForTab();
                 setLeagueTab(l);
                 restoreScrollForTab(`${mainTab}|${ligueSubTab}|${l}|${sectionTab}|${histSubTab}`);
+                requestAnimationFrame(() => { bar.scrollLeft = sl; });
               }}>
                 {l}
               </button>
@@ -10218,10 +10224,13 @@ export default function App() {
               { key: 'playoffs', label: 'Playoffs' },
               { key: 'relegation', label: 'Barrage Relégation' },
             ].map(t => (
-              <button key={t.key} className={`tab ${sectionTab === t.key ? 'active' : ''}`} onClick={() => {
+              <button key={t.key} className={`tab ${sectionTab === t.key ? 'active' : ''}`} onClick={e => {
+                const bar = e.currentTarget.parentElement;
+                const sl = bar.scrollLeft;
                 saveScrollForTab();
                 setSectionTab(t.key);
                 restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${t.key}|${histSubTab}`);
+                requestAnimationFrame(() => { bar.scrollLeft = sl; });
               }}>
                 {t.label}
               </button>
