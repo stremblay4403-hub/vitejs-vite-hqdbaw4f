@@ -8235,6 +8235,7 @@ export default function App() {
     const [openDay, setOpenDay] = [oublOpenDay, setOublOpenDay];
     const leagueName = 'Oubliettes';
     const league = currentSeason.leagues[leagueName];
+    if (!league) return <div className="card" style={{ padding:24,textAlign:'center',color:'var(--text-dim)' }}>Ligue non initialisée pour cette saison.</div>;
     const cars = league?.cars || [];
     const playedMatches = league?.matches || [];
     const [search, setSearch] = useState('');
@@ -8319,8 +8320,11 @@ export default function App() {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
-                      const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: 'rgba(39,174,96,0.07)', height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                      const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', height: 72 };
+                      const promoted = rank <= 4;
+                      const borderColor = promoted ? 'var(--green)' : 'transparent';
+                      const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
+                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; return null; })();
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
