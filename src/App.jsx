@@ -5147,6 +5147,17 @@ export default function App() {
     }
     const photo = car ? getCarPhoto(carId) : getCarPhotoByName(effectiveName);
 
+    // Pour les voitures inactives, trouver leur carId dans les anciennes saisons
+    const resolvedCarId = carId || (() => {
+      for (const s of db.seasons) {
+        for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+          const f = s.leagues[l]?.cars.find(c => namesMatch(c.name, effectiveName));
+          if (f) return f.id;
+        }
+      }
+      return null;
+    })();
+
     let totalW = 0, totalD = 0, totalL = 0, totalGF = 0, totalGA = 0, totalGP = 0;
     let totalBonusPts = 0, champCount = 0, relCount = 0;
     db.seasons.forEach(s => {
@@ -5208,8 +5219,7 @@ export default function App() {
     function handlePhoto(e) {
       const file = e.target.files[0];
       if (!file) return;
-      const reader = new FileReader();
-      if (!isPublicMode) uploadToCloudinary(file).then(url => setCarPhoto(carId, url));
+      if (!isPublicMode && resolvedCarId) uploadToCloudinary(file).then(url => setCarPhoto(resolvedCarId, url));
     }
 
     return (
