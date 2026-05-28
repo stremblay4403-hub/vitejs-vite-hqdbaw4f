@@ -10214,10 +10214,15 @@ export default function App() {
             <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
               const bar = e.currentTarget.parentElement;
               const sl = bar.scrollLeft;
+              const liguesBar = document.getElementById('tabs-ligues');
+              const liguesSl = liguesBar ? liguesBar.scrollLeft : 0;
               saveScrollForTab();
               setMainTab(t.key);
               restoreScrollForTab(`${t.key}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`);
-              requestAnimationFrame(() => { bar.scrollLeft = sl; });
+              requestAnimationFrame(() => {
+                bar.scrollLeft = sl;
+                if (liguesBar) liguesBar.scrollLeft = liguesSl;
+              });
             }}>
               {t.label}
             </button>
@@ -10248,10 +10253,15 @@ export default function App() {
               <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
                 const bar = e.currentTarget.parentElement;
                 const sl = bar.scrollLeft;
+                const mainBar = document.getElementById('tabs-main');
+                const mainSl = mainBar ? mainBar.scrollLeft : 0;
                 saveScrollForTab();
                 setLigueSubTab(t.key);
                 restoreScrollForTab(`ligues|${t.key}|${leagueTab}|${sectionTab}|${histSubTab}`);
-                requestAnimationFrame(() => { bar.scrollLeft = sl; });
+                requestAnimationFrame(() => {
+                  bar.scrollLeft = sl;
+                  if (mainBar) mainBar.scrollLeft = mainSl;
+                });
               }}>
                 {t.label}
               </button>
