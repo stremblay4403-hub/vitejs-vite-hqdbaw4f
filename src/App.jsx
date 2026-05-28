@@ -8742,25 +8742,55 @@ export default function App() {
             ))}
           </div>
 
-          {/* Grille par lettre — rendu lazy par lettre */}
+          {/* Grille par lettre — tout chargé d'un coup */}
           <div style={{ padding:'8px' }}>
             {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
-              <LetterSection
-                key={letter}
-                letter={letter}
-                cars={grouped[letter]}
-                letterRefs={letterRefs}
-                leagueColors={leagueColors}
-                editKey={editKey}
-                editName={editName}
-                setEditName={setEditName}
-                setEditKey={setEditKey}
-                confirmEdit={confirmEdit}
-                startEdit={startEdit}
-                getCarPhoto={getCarPhoto}
-                openProfileCar={openProfileCar}
-                isPublicMode={isPublicMode}
-              />
+              <div key={letter} ref={el => letterRefs.current[letter] = el} style={{ marginBottom:16 }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
+                  {letter}
+                </div>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
+                  {grouped[letter].map((c, i) => {
+                    const photo = c.carId ? getCarPhoto(c.carId) : null;
+                    const key = `${c.league}||${c.name}`;
+                    const isEditing = editKey === key;
+                    return (
+                      <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                        <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
+                          onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                          {photo
+                            ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
+                            : <span style={{ fontSize:36 }}>🚗</span>}
+                        </div>
+                        <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
+                          {isEditing ? (
+                            <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
+                              <input value={editName} onChange={e => setEditName(e.target.value)}
+                                autoFocus style={{ width:'100%',fontSize:11 }}
+                                onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
+                              <div style={{ display:'flex',gap:3 }}>
+                                <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
+                                <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
+                                onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                                {c.name}
+                              </span>
+                              {!isPublicMode && (
+                                <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
+                                  onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             ))}
           </div>
         </div>
