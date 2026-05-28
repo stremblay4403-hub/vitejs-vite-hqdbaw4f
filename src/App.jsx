@@ -2046,7 +2046,6 @@ export default function App() {
     const total = cars.length * (cars.length - 1) / 2;
     const played = matches.filter(m => m.homeGoals !== null).length;
     if (played < total) return;
-    // Calculer le classement
     const standings = [...cars].map(car => {
       const ms = matches.filter(m => m.homeId === car.id || m.awayId === car.id);
       let pts = 0, gf = 0, ga = 0;
@@ -2061,7 +2060,8 @@ export default function App() {
     }).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga));
     const promoted = numPromoted > 0 ? standings.slice(0, numPromoted) : [];
     const relegated = numRelegated > 0 ? standings.slice(-numRelegated) : [];
-    setAuxCompleteModal({ leagueName, promoted, relegated, totalStandings: standings.length });
+    // setTimeout pour s'assurer que setDb est terminé avant d'afficher le modal
+    setTimeout(() => setAuxCompleteModal({ leagueName, promoted, relegated, totalStandings: standings.length }), 300);
   }
   function AuxCompleteModal() {
     if (!auxCompleteModal) return null;
@@ -2070,13 +2070,15 @@ export default function App() {
     return (
       <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.93)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}
         onClick={() => setAuxCompleteModal(null)}>
-        <div style={{ width:'100%',maxWidth:420,background:'var(--dark2)',borderRadius:16,border:'2px solid var(--gold-dim)',overflow:'hidden',maxHeight:'90vh',display:'flex',flexDirection:'column' }}
+        <div style={{ width:'100%',maxWidth:420,background:'var(--dark2)',borderRadius:16,border:'2px solid var(--gold-dim)',maxHeight:'88vh',display:'flex',flexDirection:'column' }}
           onClick={e => e.stopPropagation()}>
-          <div style={{ background:'var(--dark3)',padding:'16px 20px',borderBottom:'1px solid var(--border)',textAlign:'center',flexShrink:0 }}>
+          <div style={{ background:'var(--dark3)',padding:'16px 20px',borderBottom:'1px solid var(--border)',textAlign:'center',flexShrink:0,borderRadius:'16px 16px 0 0' }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:4,color:'var(--text-dim)',marginBottom:4 }}>SAISON TERMINÉE</div>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:3,color:'var(--gold)' }}>{leagueName}</div>
           </div>
-          <div style={{ overflowY:'auto',flex:1 }}>
+          <div style={{ overflowY:'scroll',WebkitOverflowScrolling:'touch',flex:1 }}
+            onTouchStart={e => e.stopPropagation()}
+            onTouchMove={e => e.stopPropagation()}>
             {promoted.length > 0 && (
               <div style={{ padding:'12px 16px',borderBottom: relegated.length > 0 ? '1px solid var(--border)' : 'none' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:3,color:'var(--green)',marginBottom:8 }}>▲ PROMUS ({promoted.length})</div>
