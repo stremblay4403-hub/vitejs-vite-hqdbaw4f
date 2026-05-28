@@ -5694,9 +5694,9 @@ export default function App() {
                           })()}
                         </td>
                         <td style={{ padding:'4px 4px',width:100 }}>
-                          <CarThumb photo={photo} size={72} />
+                          <CarThumb photo={photo} size={80} />
                         </td>
-                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:160,fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1 }}>
+                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:160 }}>
                           <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
                           {entry.name}
                         </td>
@@ -5706,14 +5706,14 @@ export default function App() {
                         <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
                           {relCount > 0 ? `⬇×${relCount}` : '—'}
                         </td>
-                        <td className="sticky-col pts-val" style={{ left:160,borderRight:'1px solid var(--border)',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)' }}>{entry.total}</td>
+                        <td className="sticky-col pts-val" style={{ left:160,borderRight:'1px solid var(--border)' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
                           const isRel = (entry.histRelegated || []).includes(n);
                           return (
                             <td key={`h${n}`} style={{
-                              textAlign:'center',fontSize:12,color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
+                              textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
                             }}>
                               {isRel ? '⬇' : (pts || '—')}
                             </td>
@@ -5725,7 +5725,7 @@ export default function App() {
                           const isRel = (entry.appRelegated || []).includes(n);
                           return (
                             <td key={`a${n}`} style={{
-                              textAlign:'center',fontSize:12,color:(isChamp || pts) ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :isRel ? '#e74c3c' :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
+                              textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:(isChamp || pts) ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :isRel ? '#e74c3c' :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
                             }}>
                               {isRel ? '⬇' : (pts || '—')}
                             </td>
@@ -8703,9 +8703,11 @@ export default function App() {
     const letterRefs = React.useRef({});
     const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
-    const [activeLetter, setActiveLetter] = useState(null);
+    const [activeLetter, setActiveLetter] = useState('TOUS');
     const activeLetters = new Set(Object.keys(grouped));
-    const displayLetter = activeLetter && activeLetters.has(activeLetter) ? activeLetter : [...activeLetters].sort()[0];
+    const displayLetter = activeLetter;
+
+    const displayCars = activeLetter === 'TOUS' ? filtered : (grouped[activeLetter] || []);
 
     return (
       <div>
@@ -8732,25 +8734,33 @@ export default function App() {
 
           {/* Barre alphabet */}
           <div style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
+            <button className="btn btn-xs"
+              style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,padding:'2px 8px',
+                background: displayLetter === 'TOUS' ? 'var(--gold)' : 'var(--dark3)',
+                color: displayLetter === 'TOUS' ? '#000' : 'var(--gold)',
+                border:'1px solid var(--gold-dim)' }}
+              onClick={() => setActiveLetter('TOUS')}>
+              Tous
+            </button>
             {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
               <button key={letter} className="btn btn-xs"
                 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,minWidth:24,padding:'2px 6px',
                   background: displayLetter === letter ? 'var(--gold)' : 'var(--dark3)',
                   color: displayLetter === letter ? '#000' : 'var(--gold)',
-                  border: `1px solid var(--gold-dim)` }}
+                  border:'1px solid var(--gold-dim)' }}
                 onClick={() => setActiveLetter(letter)}>
                 {letter}
               </button>
             ))}
           </div>
 
-          {/* Grille — seulement la lettre active */}
+          {/* Grille */}
           <div style={{ padding:'8px' }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
-              {displayLetter} <span style={{ fontSize:13,color:'var(--text-dim)' }}>({grouped[displayLetter]?.length || 0} voitures)</span>
+              {displayLetter === 'TOUS' ? 'Toutes' : displayLetter} <span style={{ fontSize:13,color:'var(--text-dim)' }}>({displayCars.length} voitures)</span>
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
-              {(grouped[displayLetter] || []).map((c, i) => {
+              {displayCars.map((c, i) => {
                 const photo = c.carId ? getCarPhoto(c.carId) : null;
                 const key = `${c.league}||${c.name}`;
                 const isEditing = editKey === key;
