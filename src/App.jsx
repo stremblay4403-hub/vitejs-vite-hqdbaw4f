@@ -8566,21 +8566,29 @@ export default function App() {
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
 
-    const allCars = [];
-    [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
-      const leagueCars = currentSeason.leagues[league]?.cars || [];
-      leagueCars.forEach(car => {
-        allCars.push({ name: car.name, league, carId: car.id });
+    const filtered = React.useMemo(() => {
+      const all = [];
+      [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
+        const leagueCars = currentSeason.leagues[league]?.cars || [];
+        leagueCars.forEach(car => all.push({ name: car.name, league, carId: car.id }));
       });
-    });
+      return all.filter(c => {
+        if (leagueFilter !== 'Toutes' && c.league !== leagueFilter) return false;
+        if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+        return true;
+      }).sort((a, b) => a.name.localeCompare(b.name));
+    }, [leagueFilter, search, currentSeason]);
 
-    const filtered = allCars.filter(c => {
-      if (leagueFilter !== 'Toutes' && c.league !== leagueFilter) return false;
-      if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
-      return true;
-    });
-
-    filtered.sort((a, b) => a.name.localeCompare(b.name));
+    const grouped = React.useMemo(() => {
+      const g = {};
+      filtered.forEach(c => {
+        const first = c.name[0]?.toUpperCase() || '#';
+        const key = /[A-Z]/.test(first) ? first : '#';
+        if (!g[key]) g[key] = [];
+        g[key].push(c);
+      });
+      return g;
+    }, [filtered]);
 
     const leagueColors = {
       'Voitures 1': '#e74c3c',
@@ -10148,7 +10156,12 @@ export default function App() {
           <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
             {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
               <button key={l} className={`tab ${actuellesLeague === l ? 'active' : ''}`}
-                onClick={() => { setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null); }}>
+                onClick={e => {
+                  const bar = e.currentTarget.parentElement;
+                  const sl = bar.scrollLeft;
+                  setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null);
+                  requestAnimationFrame(() => { bar.scrollLeft = sl; });
+                }}>
                 {l}
               </button>
             ))}
