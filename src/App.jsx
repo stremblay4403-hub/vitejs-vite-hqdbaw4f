@@ -5598,7 +5598,7 @@ export default function App() {
                   <th className="sticky-col car-name" style={{ left:0,minWidth:160 }}>Voiture</th>
                   <th style={{ textAlign:'center' }}>🏆</th>
                   <th style={{ textAlign:'center' }}>⬇</th>
-                  <th className="sticky-col pts-val" style={{ left:160,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
+                  <th className="pts-val" style={{ textAlign:'center',color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
                     {!sortBySeason ? '▼ ' : ''}Total
                   </th>
                   {histSeasonNums.map(n => {
@@ -5706,7 +5706,7 @@ export default function App() {
                         <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
                           {relCount > 0 ? `⬇×${relCount}` : '—'}
                         </td>
-                        <td className="sticky-col pts-val" style={{ left:160,borderRight:'1px solid var(--border)' }}>{entry.total}</td>
+                        <td className="pts-val" style={{ borderRight:'1px solid var(--border)',textAlign:'center' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
