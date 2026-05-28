@@ -8647,24 +8647,29 @@ export default function App() {
     const [editName, setEditName] = useState('');
     const [ripTab, setRipTab] = useState(false);
     const [ripSearch, setRipSearch] = useState('');
+    const [newRipName, setNewRipName] = useState('');
 
     const rip = React.useMemo(() => {
-      // Voitures actives dans la saison courante
-      const activeCars = new Set();
-      [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
-        (currentSeason.leagues[l]?.cars || []).forEach(c => activeCars.add(c.id));
+      // Voitures retraitées permanentes
+      const ripCars = [
+        { name: 'X7 Pick-up' },
+        { name: 'Rebellion' },
+      ];
+      // Trouver leur carId dans les saisons app ou HISTORICAL_DATA
+      return ripCars.map(c => {
+        for (const s of db.seasons) {
+          for (const l of LEAGUES) {
+            const found = s.leagues[l]?.cars.find(car => car.name === c.name);
+            if (found) return { id: found.id, name: c.name };
+          }
+        }
+        for (const l of LEAGUES) {
+          const hist = (HISTORICAL_DATA.historicalBonus[l] || []).find(h => h.name === c.name);
+          if (hist) return { id: `hist-${c.name}`, name: c.name };
+        }
+        return { id: `rip-${c.name}`, name: c.name };
       });
-      // Toutes les voitures vues dans les saisons passées
-      const seen = new Map(); // id → { name, id }
-      db.seasons.forEach(s => {
-        [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
-          (s.leagues[l]?.cars || []).forEach(c => {
-            if (!activeCars.has(c.id)) seen.set(c.id, { id: c.id, name: c.name });
-          });
-        });
-      });
-      return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
-    }, [currentSeason, db.seasons]);
+    }, [db.seasons]);
 
     const filteredRip = rip.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
 
@@ -8750,18 +8755,46 @@ export default function App() {
         {ripTab ? (
           /* ---- VUE RIP ---- */
           <div className="card">
-            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center' }}>
+            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
               <input placeholder="🔍 Rechercher..." value={ripSearch} onChange={e => setRipSearch(e.target.value)} style={{ width:180 }} />
-              <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)',marginLeft:8 }}>{filteredRip.length} voitures retraitées</span>
+              <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>{filteredRip.length} voitures</span>
+              {!isPublicMode && (
+                <div style={{ display:'flex',gap:6,alignItems:'center',marginLeft:'auto' }}>
+                  <input placeholder="Nom de la voiture..." value={newRipName} onChange={e => setNewRipName(e.target.value)}
+                    style={{ width:180 }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newRipName.trim()) {
+                        const id = genId();
+                        setDb(d => ({ ...d, rip: [...(d.rip||[]), { id, name: newRipName.trim() }] }));
+                        setNewRipName('');
+                      }
+                    }} />
+                  <button className="btn btn-gold btn-sm" onClick={() => {
+                    if (!newRipName.trim()) return;
+                    const id = genId();
+                    setDb(d => ({ ...d, rip: [...(d.rip||[]), { id, name: newRipName.trim() }] }));
+                    setNewRipName('');
+                  }}>+ Ajouter</button>
+                </div>
+              )}
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,padding:8 }}>
               {filteredRip.map(c => {
                 const photo = getCarPhoto(c.id);
                 return (
                   <div key={c.id} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
-                    <label style={{ cursor: isPublicMode ? 'default':'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
-                      onClick={() => openProfileCar({ leagueName: LEAGUES[0], carId: c.id })}>
-                      {photo
+                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
+                      onClick={() => {
+                        // Chercher dans toutes les saisons app
+                        for (const s of db.seasons) {
+                          for (const l of LEAGUES) {
+                            const found = s.leagues[l]?.cars.find(car => car.name === c.name);
+                            if (found) { openProfileCar({ leagueName: l, carId: found.id }); return; }
+                          }
+                        }
+                        // Sinon ouvrir par nom historique
+                        openProfileCar({ leagueName: LEAGUES[0], carId: c.id, histName: c.name });
+                      }}>                      {photo
                         ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
                         : <span style={{ fontSize:36 }}>🪦</span>}
                       {!isPublicMode && <div className="car-photo-overlay">📷</div>}
