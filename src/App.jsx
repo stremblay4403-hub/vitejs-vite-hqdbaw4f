@@ -2038,25 +2038,23 @@ export default function App() {
   // Surveiller les nouveaux champions pour déclencher les confettis
   const prevChampionsRef = React.useRef(null);
 
-  const TAB_IDS = ['tabs-main', 'tabs-ligues', 'tabs-leagues', 'tabs-section', 'tabs-actuelles'];
-
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
-    const scrollLefts = {};
-    TAB_IDS.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) scrollLefts[id] = el.scrollLeft;
-    });
-    tabScrollPos.current[key] = { scrollY: window.scrollY, scrollLefts };
+    const tabsEls = document.querySelectorAll('.tabs');
+    tabScrollPos.current[key] = {
+      scrollY: window.scrollY,
+      tabsScrollLeft: Array.from(tabsEls).map(el => el.scrollLeft)
+    };
   }
   function restoreScrollForTab(key) {
     const saved = tabScrollPos.current[key];
+    const pos = saved?.scrollY || 0;
     requestAnimationFrame(() => {
-      window.scrollTo(0, saved?.scrollY || 0);
-      if (saved?.scrollLefts) {
-        TAB_IDS.forEach(id => {
-          const el = document.getElementById(id);
-          if (el && saved.scrollLefts[id] !== undefined) el.scrollLeft = saved.scrollLefts[id];
+      window.scrollTo(0, pos);
+      if (saved?.tabsScrollLeft) {
+        const tabsEls = document.querySelectorAll('.tabs');
+        tabsEls.forEach((el, i) => {
+          if (saved.tabsScrollLeft[i] !== undefined) el.scrollLeft = saved.tabsScrollLeft[i];
         });
       }
     });
@@ -10152,10 +10150,13 @@ export default function App() {
             { key: 'voitures', label: 'Voitures' },
             { key: 'historique', label: 'Historique' },
           ].map(t => (
-            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={() => {
+            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
+              const bar = e.currentTarget.parentElement;
+              const sl = bar.scrollLeft;
               saveScrollForTab();
               setMainTab(t.key);
               restoreScrollForTab(`${t.key}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`);
+              requestAnimationFrame(() => { bar.scrollLeft = sl; });
             }}>
               {t.label}
             </button>
