@@ -1854,7 +1854,7 @@ function launchConfetti() {
 export default function App() {
   const [db, _setDb] = useState(() => {
     const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
-      histOverrides: {} // { 'leagueName||oldName': newName }
+      histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
     s.seasons.push(initSeason(33));
     return s;
@@ -2087,6 +2087,7 @@ export default function App() {
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
+          if (!parsed.rip) parsed.rip = [];
           const savedScrollY = window.scrollY;
           const tabsEl = document.querySelector('.tabs');
           if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
@@ -8644,6 +8645,28 @@ export default function App() {
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
+    const [ripTab, setRipTab] = useState(false);
+    const [ripSearch, setRipSearch] = useState('');
+
+    const rip = React.useMemo(() => {
+      // Voitures actives dans la saison courante
+      const activeCars = new Set();
+      [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
+        (currentSeason.leagues[l]?.cars || []).forEach(c => activeCars.add(c.id));
+      });
+      // Toutes les voitures vues dans les saisons passées
+      const seen = new Map(); // id → { name, id }
+      db.seasons.forEach(s => {
+        [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
+          (s.leagues[l]?.cars || []).forEach(c => {
+            if (!activeCars.has(c.id)) seen.set(c.id, { id: c.id, name: c.name });
+          });
+        });
+      });
+      return [...seen.values()].sort((a, b) => a.name.localeCompare(b.name));
+    }, [currentSeason, db.seasons]);
+
+    const filteredRip = rip.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
 
     const filtered = React.useMemo(() => {
       const all = [];
@@ -8714,7 +8737,49 @@ export default function App() {
     return (
       <div>
         <div className="section-title">Voitures — Toutes les ligues</div>
-        <div className="card">
+        {/* Onglets Actives / RIP */}
+        <div style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
+          <button onClick={() => setRipTab(false)} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,background:'transparent',border:'none',borderBottom: !ripTab ? '2px solid var(--gold)' :'2px solid transparent',color: !ripTab ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
+            🏎️ Actives ({filtered.length})
+          </button>
+          <button onClick={() => setRipTab(true)} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,background:'transparent',border:'none',borderBottom: ripTab ? '2px solid #e74c3c' :'2px solid transparent',color: ripTab ? '#e74c3c' :'var(--text-dim)',cursor:'pointer' }}>
+            🪦 RIP ({rip.length})
+          </button>
+        </div>
+
+        {ripTab ? (
+          /* ---- VUE RIP ---- */
+          <div className="card">
+            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center' }}>
+              <input placeholder="🔍 Rechercher..." value={ripSearch} onChange={e => setRipSearch(e.target.value)} style={{ width:180 }} />
+              <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)',marginLeft:8 }}>{filteredRip.length} voitures retraitées</span>
+            </div>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,padding:8 }}>
+              {filteredRip.map(c => {
+                const photo = getCarPhoto(c.id);
+                return (
+                  <div key={c.id} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
+                    <label style={{ cursor: isPublicMode ? 'default':'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
+                      {photo
+                        ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                        : <span style={{ fontSize:36 }}>🪦</span>}
+                      {!isPublicMode && <div className="car-photo-overlay">📷</div>}
+                      {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
+                        const file = e.target.files[0]; if (!file) return;
+                        uploadToCloudinary(file).then(url => setCarPhoto(c.id, url));
+                      }} />}
+                    </label>
+                    <div style={{ padding:'6px 8px',display:'flex',alignItems:'center',gap:4 }}>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,flex:1,color:'var(--text-dim)' }}>{c.name}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredRip.length === 0 && <div className="text-dim" style={{ gridColumn:'1/-1',padding:24,textAlign:'center' }}>Aucune voiture retraitée</div>}
+            </div>
+          </div>
+        ) : (
+          <div className="card">
           <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
             <input
               placeholder="🔍 Rechercher..."
@@ -8804,6 +8869,7 @@ export default function App() {
             </div>
           </div>
         </div>
+        )} {/* fin ternaire ripTab */}
       </div>
     );
   }
