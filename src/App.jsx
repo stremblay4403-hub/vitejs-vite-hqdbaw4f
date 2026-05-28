@@ -1886,6 +1886,7 @@ export default function App() {
   const [mainTab, setMainTab] = useState("dashboard");
   const [allCarsSearch, setAllCarsSearch] = useState('');
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
+  const [ripTab, setRipTab] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
@@ -8648,9 +8649,7 @@ export default function App() {
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
-    const [ripTab, setRipTab] = useState(false);
     const [ripSearch, setRipSearch] = useState('');
-    const [newRipName, setNewRipName] = useState('');
 
     const rip = React.useMemo(() => {
       return [
@@ -8743,35 +8742,17 @@ export default function App() {
         {ripTab ? (
           /* ---- VUE RIP ---- */
           <div className="card">
-            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center',flexWrap:'wrap' }}>
+            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center' }}>
               <input placeholder="🔍 Rechercher..." value={ripSearch} onChange={e => setRipSearch(e.target.value)} style={{ width:180 }} />
               <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>{filteredRip.length} voitures</span>
-              {!isPublicMode && (
-                <div style={{ display:'flex',gap:6,alignItems:'center',marginLeft:'auto' }}>
-                  <input placeholder="Nom de la voiture..." value={newRipName} onChange={e => setNewRipName(e.target.value)}
-                    style={{ width:180 }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newRipName.trim()) {
-                        const id = genId();
-                        setDb(d => ({ ...d, rip: [...(d.rip||[]), { id, name: newRipName.trim() }] }));
-                        setNewRipName('');
-                      }
-                    }} />
-                  <button className="btn btn-gold btn-sm" onClick={() => {
-                    if (!newRipName.trim()) return;
-                    const id = genId();
-                    setDb(d => ({ ...d, rip: [...(d.rip||[]), { id, name: newRipName.trim() }] }));
-                    setNewRipName('');
-                  }}>+ Ajouter</button>
-                </div>
-              )}
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,padding:8 }}>
               {filteredRip.map(c => {
                 const photo = db.photos?.[c.photoKey] || getCarPhotoByName(c.name);
                 return (
                   <div key={c.name} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
-                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
+                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
+                      onClick={e => e.preventDefault()}>
                       {photo
                         ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
                         : <span style={{ fontSize:36 }}>🪦</span>}
