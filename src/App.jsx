@@ -8735,7 +8735,20 @@ export default function App() {
                 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,minWidth:24,padding:'2px 4px',color:'var(--gold)' }}
                 onClick={() => {
                   const el = letterRefs.current[letter];
-                  if (el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+                  if (!el) return;
+                  const target = el.getBoundingClientRect().top + window.scrollY - 100;
+                  const start = window.scrollY;
+                  const distance = target - start;
+                  const duration = Math.min(3000, Math.abs(distance) * 2);
+                  const startTime = performance.now();
+                  function step(now) {
+                    const elapsed = now - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    // Easing linéaire lent pour laisser le temps aux images
+                    window.scrollTo(0, start + distance * progress);
+                    if (progress < 1) requestAnimationFrame(step);
+                  }
+                  requestAnimationFrame(step);
                 }}>
                 {letter}
               </button>
