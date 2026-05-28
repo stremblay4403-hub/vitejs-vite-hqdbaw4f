@@ -1579,6 +1579,83 @@ function storageLoad() {
 }
 
 // Composant scroll stable — défini hors de App pour éviter le remount à chaque render
+function LetterSection({ letter, cars, letterRefs, leagueColors, editKey, editName, setEditName, setEditKey, confirmEdit, startEdit, getCarPhoto, openProfileCar, isPublicMode }) {
+  const [visible, setVisible] = React.useState(false);
+  const ref = React.useRef(null);
+
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // Hauteur estimée pour réserver l'espace même avant rendu
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
+    }, { rootMargin: '400px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // Attacher le ref pour le scroll de la barre alphabet
+  const setRef = React.useCallback(el => {
+    ref.current = el;
+    if (letterRefs) letterRefs.current[letter] = el;
+  }, [letter, letterRefs]);
+
+  const estimatedHeight = Math.ceil(cars.length / 2) * 160;
+
+  return (
+    <div ref={setRef}>
+      <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
+        {letter}
+      </div>
+      {!visible ? (
+        <div style={{ height: estimatedHeight, marginBottom:16, background:'var(--dark3)', borderRadius:8, opacity:0.3 }} />
+      ) : (
+        <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,marginBottom:16 }}>
+          {cars.map((c, i) => {
+            const photo = c.carId ? getCarPhoto(c.carId) : null;
+            const key = `${c.league}||${c.name}`;
+            const isEditing = editKey === key;
+            return (
+              <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
+                  onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                  {photo
+                    ? <img src={photo} alt="" loading="lazy" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
+                    : <span style={{ fontSize:36 }}>🚗</span>}
+                </div>
+                <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
+                  {isEditing ? (
+                    <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
+                      <input value={editName} onChange={e => setEditName(e.target.value)}
+                        autoFocus style={{ width:'100%',fontSize:11 }}
+                        onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
+                      <div style={{ display:'flex',gap:3 }}>
+                        <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
+                        <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
+                        onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                        {c.name}
+                      </span>
+                      {!isPublicMode && (
+                        <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
+                          onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScrollKeeper({ children, maxHeight = 700 }) {
   const ref = React.useRef(null);
   const pos = React.useRef(0);
@@ -8665,55 +8742,25 @@ export default function App() {
             ))}
           </div>
 
-          {/* Grille par lettre */}
+          {/* Grille par lettre — rendu lazy par lettre */}
           <div style={{ padding:'8px' }}>
             {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
-              <div key={letter} ref={el => letterRefs.current[letter] = el}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
-                  {letter}
-                </div>
-                <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,marginBottom:16 }}>
-                  {grouped[letter].map((c, i) => {
-                    const photo = c.carId ? getCarPhoto(c.carId) : null;
-                    const key = `${c.league}||${c.name}`;
-                    const isEditing = editKey === key;
-                    return (
-                      <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
-                        <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
-                          onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                          {photo
-                            ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
-                            : <span style={{ fontSize:36 }}>🚗</span>}
-                        </div>
-                        <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
-                          {isEditing ? (
-                            <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
-                              <input value={editName} onChange={e => setEditName(e.target.value)}
-                                autoFocus style={{ width:'100%',fontSize:11 }}
-                                onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
-                              <div style={{ display:'flex',gap:3 }}>
-                                <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
-                                <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
-                                onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                                {c.name}
-                              </span>
-                              {!isPublicMode && (
-                                <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
-                                  onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <LetterSection
+                key={letter}
+                letter={letter}
+                cars={grouped[letter]}
+                letterRefs={letterRefs}
+                leagueColors={leagueColors}
+                editKey={editKey}
+                editName={editName}
+                setEditName={setEditName}
+                setEditKey={setEditKey}
+                confirmEdit={confirmEdit}
+                startEdit={startEdit}
+                getCarPhoto={getCarPhoto}
+                openProfileCar={openProfileCar}
+                isPublicMode={isPublicMode}
+              />
             ))}
           </div>
         </div>
