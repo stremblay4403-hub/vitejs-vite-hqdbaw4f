@@ -8759,15 +8759,12 @@ export default function App() {
                 const photo = getCarPhoto(c.id);
                 return (
                   <div key={c.id} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
-                    <label style={{ cursor: isPublicMode ? 'default':'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
+                    <label style={{ cursor: isPublicMode ? 'default':'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
+                      onClick={() => openProfileCar({ leagueName: LEAGUES[0], carId: c.id })}>
                       {photo
                         ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
                         : <span style={{ fontSize:36 }}>🪦</span>}
                       {!isPublicMode && <div className="car-photo-overlay">📷</div>}
-                      {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
-                        const file = e.target.files[0]; if (!file) return;
-                        uploadToCloudinary(file).then(url => setCarPhoto(c.id, url));
-                      }} />}
                     </label>
                     <div style={{ padding:'6px 8px',display:'flex',alignItems:'center',gap:4 }}>
                       <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,flex:1,color:'var(--text-dim)' }}>{c.name}</span>
