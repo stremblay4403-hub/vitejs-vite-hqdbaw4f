@@ -10222,6 +10222,10 @@ export default function App() {
               requestAnimationFrame(() => {
                 bar.scrollLeft = sl;
                 if (liguesBar) liguesBar.scrollLeft = liguesSl;
+                requestAnimationFrame(() => {
+                  bar.scrollLeft = sl;
+                  if (liguesBar) liguesBar.scrollLeft = liguesSl;
+                });
               });
             }}>
               {t.label}
@@ -10261,6 +10265,11 @@ export default function App() {
                 requestAnimationFrame(() => {
                   bar.scrollLeft = sl;
                   if (mainBar) mainBar.scrollLeft = mainSl;
+                  // Double rAF pour s'assurer que le DOM est stable
+                  requestAnimationFrame(() => {
+                    bar.scrollLeft = sl;
+                    if (mainBar) mainBar.scrollLeft = mainSl;
+                  });
                 });
               }}>
                 {t.label}
