@@ -2061,57 +2061,61 @@ export default function App() {
     }).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga));
     const promoted = numPromoted > 0 ? standings.slice(0, numPromoted) : [];
     const relegated = numRelegated > 0 ? standings.slice(-numRelegated) : [];
-    setAuxCompleteModal({ leagueName, promoted, relegated });
+    setAuxCompleteModal({ leagueName, promoted, relegated, totalStandings: standings.length });
   }
   function AuxCompleteModal() {
     if (!auxCompleteModal) return null;
     const { leagueName, promoted, relegated } = auxCompleteModal;
+    const totalCars = auxCompleteModal.totalStandings || (promoted.length + relegated.length);
     return (
-      <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.93)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
+      <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.93)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16,overflowY:'auto' }}
         onClick={() => setAuxCompleteModal(null)}>
-        <div style={{ width:'100%',maxWidth:420,background:'var(--dark2)',borderRadius:16,border:'2px solid var(--gold-dim)',overflow:'hidden' }}
+        <div style={{ width:'100%',maxWidth:420,background:'var(--dark2)',borderRadius:16,border:'2px solid var(--gold-dim)',overflow:'hidden',maxHeight:'90vh',display:'flex',flexDirection:'column' }}
           onClick={e => e.stopPropagation()}>
-          <div style={{ background:'var(--dark3)',padding:'16px 20px',borderBottom:'1px solid var(--border)',textAlign:'center' }}>
+          <div style={{ background:'var(--dark3)',padding:'16px 20px',borderBottom:'1px solid var(--border)',textAlign:'center',flexShrink:0 }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:4,color:'var(--text-dim)',marginBottom:4 }}>SAISON TERMINÉE</div>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:28,letterSpacing:3,color:'var(--gold)' }}>{leagueName}</div>
           </div>
-          {promoted.length > 0 && (
-            <div style={{ padding:'12px 16px',borderBottom: relegated.length > 0 ? '1px solid var(--border)' : 'none' }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:3,color:'var(--green)',marginBottom:8 }}>▲ PROMUS</div>
-              {promoted.map((c, i) => {
-                const photo = getCarPhoto(c.id);
-                return (
-                  <div key={c.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--green)',width:24,textAlign:'center' }}>{i+1}</span>
-                    <div style={{ width:60,height:40,borderRadius:4,overflow:'hidden',background:'var(--dark3)',flexShrink:0 }}>
-                      {photo ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center' }}>🚗</div>}
+          <div style={{ overflowY:'auto',flex:1 }}>
+            {promoted.length > 0 && (
+              <div style={{ padding:'12px 16px',borderBottom: relegated.length > 0 ? '1px solid var(--border)' : 'none' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:3,color:'var(--green)',marginBottom:8 }}>▲ PROMUS ({promoted.length})</div>
+                {promoted.map((c, i) => {
+                  const photo = getCarPhoto(c.id);
+                  return (
+                    <div key={c.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--green)',width:28,textAlign:'center',flexShrink:0 }}>{i+1}</span>
+                      <div style={{ width:60,height:40,borderRadius:4,overflow:'hidden',background:'var(--dark3)',flexShrink:0 }}>
+                        {photo ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center' }}>🚗</div>}
+                      </div>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1 }}>{c.name}</span>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)',flexShrink:0 }}>{c.pts} pts</span>
                     </div>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1 }}>{c.name}</span>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{c.pts} pts</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          {relegated.length > 0 && (
-            <div style={{ padding:'12px 16px' }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:3,color:'#e74c3c',marginBottom:8 }}>⬇ RELÉGUÉS</div>
-              {relegated.map((c, i) => {
-                const photo = getCarPhoto(c.id);
-                return (
-                  <div key={c.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'#e74c3c',width:24,textAlign:'center' }}>{promoted.length + i + 1}</span>
-                    <div style={{ width:60,height:40,borderRadius:4,overflow:'hidden',background:'var(--dark3)',flexShrink:0 }}>
-                      {photo ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center' }}>🚗</div>}
+                  );
+                })}
+              </div>
+            )}
+            {relegated.length > 0 && (
+              <div style={{ padding:'12px 16px' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:3,color:'#e74c3c',marginBottom:8 }}>⬇ RELÉGUÉS ({relegated.length})</div>
+                {relegated.map((c, i) => {
+                  const photo = getCarPhoto(c.id);
+                  const rank = totalCars - relegated.length + i + 1;
+                  return (
+                    <div key={c.id} style={{ display:'flex',alignItems:'center',gap:10,padding:'6px 0',borderBottom:'1px solid rgba(255,255,255,0.05)' }}>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'#e74c3c',width:28,textAlign:'center',flexShrink:0 }}>{rank}</span>
+                      <div style={{ width:60,height:40,borderRadius:4,overflow:'hidden',background:'var(--dark3)',flexShrink:0 }}>
+                        {photo ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center' }}>🚗</div>}
+                      </div>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1 }}>{c.name}</span>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)',flexShrink:0 }}>{c.pts} pts</span>
                     </div>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1 }}>{c.name}</span>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{c.pts} pts</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <div style={{ padding:'12px 16px',borderTop:'1px solid var(--border)' }}>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div style={{ padding:'12px 16px',borderTop:'1px solid var(--border)',flexShrink:0 }}>
             <button className="btn btn-gold" style={{ width:'100%',padding:'12px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2 }}
               onClick={() => setAuxCompleteModal(null)}>Fermer</button>
           </div>
