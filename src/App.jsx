@@ -2043,7 +2043,7 @@ export default function App() {
   };
 
   function checkAuxLeagueComplete(leagueName, matches, cars, numPromoted, numRelegated) {
-    const total = cars.length * (cars.length - 1) / 2;
+    const total = matches.length;
     const played = matches.filter(m => m.homeGoals !== null).length;
     if (played < total) return;
     const standings = [...cars].map(car => {
