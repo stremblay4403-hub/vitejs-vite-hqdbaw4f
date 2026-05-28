@@ -8626,18 +8626,6 @@ export default function App() {
     const letterRefs = React.useRef({});
     const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
-    // Grouper par première lettre
-    const grouped = React.useMemo(() => {
-      const g = {};
-      filtered.forEach(c => {
-        const first = c.name[0]?.toUpperCase() || '#';
-        const key = /[A-Z]/.test(first) ? first : '#';
-        if (!g[key]) g[key] = [];
-        g[key].push(c);
-      });
-      return g;
-    }, [filtered]);
-
     const activeLetters = new Set(Object.keys(grouped));
 
     return (
