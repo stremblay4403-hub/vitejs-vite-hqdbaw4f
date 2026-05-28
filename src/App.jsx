@@ -10330,67 +10330,7 @@ export default function App() {
         )}
 
         {/* Content */}
-        {(() => {
-          const AUX_ORDER = ['successeurs','sucsucc','remplac','avantdern','derniere','persev','deter','acharn','obstin','insist','comeback','import','oubl'];
-          const GROUP_NAMES = ['A','B','C','D','E','F','G','H'];
-
-          function handleSwipe(dir) {
-            // Ligues principales — swipe entre groupes
-            if (mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes') {
-              const cur = activeGroup;
-              const next = dir === 'left' ? Math.min(cur + 1, GROUPS - 1) : Math.max(cur - 1, 0);
-              if (next !== cur) setActiveGroup(next);
-              return;
-            }
-            // Ligues auxiliaires (sauf actuelles) — swipe entre ligues
-            if (mainTab === 'ligues' && AUX_ORDER.includes(ligueSubTab)) {
-              const cur = AUX_ORDER.indexOf(ligueSubTab);
-              const next = dir === 'left' ? Math.min(cur + 1, AUX_ORDER.length - 1) : Math.max(cur - 1, 0);
-              if (next !== cur) {
-                saveScrollForTab();
-                setLigueSubTab(AUX_ORDER[next]);
-                restoreScrollForTab(`ligues|${AUX_ORDER[next]}|${leagueTab}|${sectionTab}|${histSubTab}`);
-              }
-            }
-          }
-
-          let touchStartX = 0;
-          let touchStartY = 0;
-
-          return (
-            <div className="content" style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}
-              onTouchStart={e => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }}
-              onTouchEnd={e => {
-                const dx = e.changedTouches[0].clientX - touchStartX;
-                const dy = e.changedTouches[0].clientY - touchStartY;
-                if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
-                  handleSwipe(dx < 0 ? 'left' : 'right');
-                }
-              }}>
-              {/* Indicateur de swipe pour groupes */}
-              {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && (
-                <div style={{ display:'flex',justifyContent:'center',gap:6,padding:'6px 0',background:'var(--dark3)' }}>
-                  {GROUP_NAMES.map((g, i) => (
-                    <div key={g} onClick={() => setActiveGroup(i)}
-                      style={{ width:28,height:28,borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontFamily:"'Bebas Neue',sans-serif",fontSize:14,
-                        background: activeGroup === i ? 'var(--gold)' : 'var(--dark2)',
-                        color: activeGroup === i ? '#000' : 'var(--text-dim)',
-                        border: activeGroup === i ? '2px solid var(--gold)' : '2px solid var(--border)' }}>
-                      {g}
-                    </div>
-                  ))}
-                </div>
-              )}
-              {/* Indicateur de swipe pour ligues auxiliaires */}
-              {mainTab === 'ligues' && AUX_ORDER.includes(ligueSubTab) && (
-                <div style={{ display:'flex',justifyContent:'center',gap:4,padding:'6px 0',background:'var(--dark3)' }}>
-                  {AUX_ORDER.map((k, i) => (
-                    <div key={k} style={{ width:8,height:8,borderRadius:'50%',cursor:'pointer',
-                      background: ligueSubTab === k ? 'var(--gold)' : 'var(--border)' }}
-                      onClick={() => { saveScrollForTab(); setLigueSubTab(k); restoreScrollForTab(`ligues|${k}|${leagueTab}|${sectionTab}|${histSubTab}`); }} />
-                  ))}
-                </div>
-              )}
+        <div className="content" style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
@@ -10420,9 +10360,7 @@ export default function App() {
           {mainTab === 'historique' && histSubTab === 'historique' && <HistoriqueView />}
           {mainTab === 'historique' && histSubTab === 'mouvements' && <VoituresView />}
           {mainTab === 'historique' && histSubTab === 'records' && <RecordsView />}
-            </div>
-          );
-        })()}
+        </div>
       </div>
     </>
     </PublicModeContext.Provider>
