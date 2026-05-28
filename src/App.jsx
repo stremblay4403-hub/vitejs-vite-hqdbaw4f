@@ -5687,7 +5687,7 @@ export default function App() {
                             ? <span style={{ color:'var(--green)',fontWeight:700 }}>▲{delta}</span>
                             : <span style={{ color:'#e74c3c',fontWeight:700 }}>▼{Math.abs(delta)}</span>}
                         </td>
-                        <td className="rank" style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:20 }}>
+                        <td style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold-dim)',textAlign:'center' }}>
                           {(() => {
                             const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1;
                             return sameRank ? `=${rank}` : rank;
@@ -5696,7 +5696,7 @@ export default function App() {
                         <td style={{ padding:'4px 4px',width:100 }}>
                           <CarThumb photo={photo} size={80} />
                         </td>
-                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:160 }}>
+                        <td className="sticky-col" style={{ whiteSpace:'nowrap',left:0,minWidth:160,fontWeight:700,fontSize:16 }}>
                           <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
                           {entry.name}
                         </td>
@@ -5706,7 +5706,7 @@ export default function App() {
                         <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
                           {relCount > 0 ? `⬇×${relCount}` : '—'}
                         </td>
-                        <td className="pts-val" style={{ borderRight:'1px solid var(--border)',textAlign:'center' }}>{entry.total}</td>
+                        <td style={{ borderRight:'1px solid var(--border)',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
