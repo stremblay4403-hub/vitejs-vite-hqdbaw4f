@@ -5594,10 +5594,7 @@ export default function App() {
                 <tr>
                   <th style={{ textAlign:'center',fontSize:11,color:'var(--text-dim)',width:32 }}>Δ</th>
                   <th className="rank" style={{ width:36 }}>#</th>
-                  <th style={{ width:100 }}></th>
-                  <th className="sticky-col car-name" style={{ left:0,minWidth:160 }}>Voiture</th>
-                  <th style={{ textAlign:'center' }}>🏆</th>
-                  <th style={{ textAlign:'center' }}>⬇</th>
+                  <th style={{ minWidth:220 }}>Voiture</th>
                   <th className="pts-val" style={{ textAlign:'center',color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
                     {!sortBySeason ? '▼ ' : ''}Total
                   </th>
@@ -5693,18 +5690,20 @@ export default function App() {
                             return sameRank ? `=${rank}` : rank;
                           })()}
                         </td>
-                        <td style={{ padding:'4px 4px',width:100 }}>
-                          <CarThumb photo={photo} size={80} />
-                        </td>
-                        <td className="sticky-col" style={{ whiteSpace:'nowrap',left:0,minWidth:160,fontWeight:700,fontSize:16 }}>
-                          <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
-                          {entry.name}
-                        </td>
-                        <td style={{ textAlign:'center',fontSize:14,color:'var(--gold)' }}>
-                          {champCount > 0 ? `🏆×${champCount}` : '—'}
-                        </td>
-                        <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
-                          {relCount > 0 ? `⬇×${relCount}` : '—'}
+                        <td style={{ padding:'6px 8px',minWidth:220 }}>
+                          <div style={{ display:'flex',alignItems:'center',gap:10 }}>
+                            <CarThumb photo={photo} size={80} />
+                            <div style={{ display:'flex',flexDirection:'column',gap:2 }}>
+                              <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+                                <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,flexShrink:0 }} />
+                                <span style={{ fontWeight:700,fontSize:16,whiteSpace:'nowrap' }}>{entry.name}</span>
+                              </div>
+                              <div style={{ display:'flex',gap:8,fontSize:12 }}>
+                                {champCount > 0 && <span style={{ color:'var(--gold)' }}>🏆×{champCount}</span>}
+                                {relCount > 0 && <span style={{ color:'#e74c3c' }}>⬇×{relCount}</span>}
+                              </div>
+                            </div>
+                          </div>
                         </td>
                         <td style={{ borderRight:'1px solid var(--border)',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
