@@ -5594,11 +5594,11 @@ export default function App() {
                 <tr>
                   <th style={{ textAlign:'center',fontSize:11,color:'var(--text-dim)',width:32 }}>Δ</th>
                   <th className="rank" style={{ width:36 }}>#</th>
-                  <th style={{ width:60 }}></th>
-                  <th className="sticky-col car-name" style={{ left:0,minWidth:140 }}>Voiture</th>
+                  <th style={{ width:100 }}></th>
+                  <th className="sticky-col car-name" style={{ left:0,minWidth:160 }}>Voiture</th>
                   <th style={{ textAlign:'center' }}>🏆</th>
                   <th style={{ textAlign:'center' }}>⬇</th>
-                  <th className="sticky-col pts-val" style={{ left:140,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
+                  <th className="sticky-col pts-val" style={{ left:160,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
                     {!sortBySeason ? '▼ ' : ''}Total
                   </th>
                   {histSeasonNums.map(n => {
@@ -5680,23 +5680,23 @@ export default function App() {
 
                     return (
                       <tr key={entry.id} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
-                        <td style={{ textAlign:'center',fontSize:11,width:32 }}>
+                        <td style={{ textAlign:'center',fontSize:12,width:32 }}>
                           {delta === null || delta === 0
                             ? <span style={{ color:'var(--text-dim)' }}>—</span>
                             : delta > 0
-                            ? <span style={{ color:'var(--green)' }}>▲{delta}</span>
-                            : <span style={{ color:'#e74c3c' }}>▼{Math.abs(delta)}</span>}
+                            ? <span style={{ color:'var(--green)',fontWeight:700 }}>▲{delta}</span>
+                            : <span style={{ color:'#e74c3c',fontWeight:700 }}>▼{Math.abs(delta)}</span>}
                         </td>
-                        <td className="rank" style={{ width:36 }}>
+                        <td className="rank" style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:20 }}>
                           {(() => {
                             const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1;
                             return sameRank ? `=${rank}` : rank;
                           })()}
                         </td>
-                        <td style={{ padding:'4px 4px',width:60 }}>
-                          <CarThumb photo={photo} />
+                        <td style={{ padding:'4px 4px',width:100 }}>
+                          <CarThumb photo={photo} size={72} />
                         </td>
-                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:140 }}>
+                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:160,fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1 }}>
                           <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
                           {entry.name}
                         </td>
@@ -5706,7 +5706,7 @@ export default function App() {
                         <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
                           {relCount > 0 ? `⬇×${relCount}` : '—'}
                         </td>
-                        <td className="sticky-col pts-val" style={{ left:140,borderRight:'1px solid var(--border)' }}>{entry.total}</td>
+                        <td className="sticky-col pts-val" style={{ left:160,borderRight:'1px solid var(--border)',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
@@ -8703,7 +8703,9 @@ export default function App() {
     const letterRefs = React.useRef({});
     const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
+    const [activeLetter, setActiveLetter] = useState(null);
     const activeLetters = new Set(Object.keys(grouped));
+    const displayLetter = activeLetter && activeLetters.has(activeLetter) ? activeLetter : [...activeLetters].sort()[0];
 
     return (
       <div>
@@ -8731,80 +8733,63 @@ export default function App() {
           {/* Barre alphabet */}
           <div style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
             {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
-              <button key={letter} className="btn btn-dark btn-xs"
-                style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,minWidth:24,padding:'2px 4px',color:'var(--gold)' }}
-                onClick={() => {
-                  const el = letterRefs.current[letter];
-                  if (!el) return;
-                  const target = el.getBoundingClientRect().top + window.scrollY - 100;
-                  const start = window.scrollY;
-                  const distance = target - start;
-                  const duration = Math.min(3000, Math.abs(distance) * 2);
-                  const startTime = performance.now();
-                  function step(now) {
-                    const elapsed = now - startTime;
-                    const progress = Math.min(elapsed / duration, 1);
-                    // Easing linéaire lent pour laisser le temps aux images
-                    window.scrollTo(0, start + distance * progress);
-                    if (progress < 1) requestAnimationFrame(step);
-                  }
-                  requestAnimationFrame(step);
-                }}>
+              <button key={letter} className="btn btn-xs"
+                style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,minWidth:24,padding:'2px 6px',
+                  background: displayLetter === letter ? 'var(--gold)' : 'var(--dark3)',
+                  color: displayLetter === letter ? '#000' : 'var(--gold)',
+                  border: `1px solid var(--gold-dim)` }}
+                onClick={() => setActiveLetter(letter)}>
                 {letter}
               </button>
             ))}
           </div>
 
-          {/* Grille par lettre — tout chargé d'un coup */}
+          {/* Grille — seulement la lettre active */}
           <div style={{ padding:'8px' }}>
-            {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
-              <div key={letter} ref={el => letterRefs.current[letter] = el} style={{ marginBottom:16 }}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
-                  {letter}
-                </div>
-                <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
-                  {grouped[letter].map((c, i) => {
-                    const photo = c.carId ? getCarPhoto(c.carId) : null;
-                    const key = `${c.league}||${c.name}`;
-                    const isEditing = editKey === key;
-                    return (
-                      <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
-                        <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
-                          onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                          {photo
-                            ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
-                            : <span style={{ fontSize:36 }}>🚗</span>}
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
+              {displayLetter} <span style={{ fontSize:13,color:'var(--text-dim)' }}>({grouped[displayLetter]?.length || 0} voitures)</span>
+            </div>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
+              {(grouped[displayLetter] || []).map((c, i) => {
+                const photo = c.carId ? getCarPhoto(c.carId) : null;
+                const key = `${c.league}||${c.name}`;
+                const isEditing = editKey === key;
+                return (
+                  <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                    <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
+                      onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                      {photo
+                        ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
+                        : <span style={{ fontSize:36 }}>🚗</span>}
+                    </div>
+                    <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
+                      {isEditing ? (
+                        <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
+                          <input value={editName} onChange={e => setEditName(e.target.value)}
+                            autoFocus style={{ width:'100%',fontSize:11 }}
+                            onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
+                          <div style={{ display:'flex',gap:3 }}>
+                            <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
+                            <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
+                          </div>
                         </div>
-                        <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
-                          {isEditing ? (
-                            <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
-                              <input value={editName} onChange={e => setEditName(e.target.value)}
-                                autoFocus style={{ width:'100%',fontSize:11 }}
-                                onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
-                              <div style={{ display:'flex',gap:3 }}>
-                                <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
-                                <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
-                                onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                                {c.name}
-                              </span>
-                              {!isPublicMode && (
-                                <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
-                                  onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
-                              )}
-                            </div>
+                      ) : (
+                        <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
+                            onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                            {c.name}
+                          </span>
+                          {!isPublicMode && (
+                            <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
+                              onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
                           )}
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
