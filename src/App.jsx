@@ -1506,10 +1506,7 @@ function unlockScroll() {
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
-  // Ne jamais sauvegarder vers Firestore depuis la vue publique
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-
-  // Ne pas sauvegarder vers Firestore si on vient de charger depuis Firestore
   if (isLoadingFromFirebase.current) return;
 
   const { photos, ...dataWithoutPhotos } = data;
@@ -1518,10 +1515,27 @@ function storageSave(data) {
   );
   if (!hasData) return;
 
-  // Debounce — attendre 2s avant de sauvegarder pour éviter le spam
+  // Compresser pour Firestore : retirer les matchs des saisons passées
+  const currentIdx = dataWithoutPhotos.currentSeasonIdx;
+  const compressed = {
+    ...dataWithoutPhotos,
+    seasons: dataWithoutPhotos.seasons.map((s, i) => {
+      if (i === currentIdx) return s; // saison courante — garder tout
+      // Saisons passées — retirer les matchs pour économiser de l'espace
+      const compLeagues = {};
+      Object.entries(s.leagues || {}).forEach(([l, league]) => {
+        compLeagues[l] = { ...league, matches: [], groupResults: league.groupResults };
+      });
+      return { ...s, leagues: compLeagues };
+    })
+  };
+
+  const json = JSON.stringify(compressed);
+  console.log(`[Firestore] Taille données: ${(json.length / 1024).toFixed(1)} KB`);
+
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
-    setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() })
+    setDoc(dataDocRef, { data: json, updatedAt: Date.now() })
       .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
@@ -2045,6 +2059,7 @@ export default function App() {
   function checkAuxLeagueComplete(leagueName, matches, cars, numPromoted, numRelegated) {
     const total = matches.length;
     const played = matches.filter(m => m.homeGoals !== null).length;
+    console.log(`[checkAux] ${leagueName}: ${played}/${total} matchs joués`);
     if (played < total) return;
     const standings = [...cars].map(car => {
       const ms = matches.filter(m => m.homeId === car.id || m.awayId === car.id);
@@ -2061,7 +2076,7 @@ export default function App() {
     const promoted = numPromoted > 0 ? standings.slice(0, numPromoted) : [];
     const relegated = numRelegated > 0 ? standings.slice(-numRelegated) : [];
     // setTimeout pour s'assurer que setDb est terminé avant d'afficher le modal
-    setTimeout(() => setAuxCompleteModal({ leagueName, promoted, relegated, totalStandings: standings.length }), 300);
+    setTimeout(() => setAuxCompleteModal({ leagueName, promoted, relegated, totalStandings: standings.length }), 800);
   }
   function AuxCompleteModal() {
     if (!auxCompleteModal) return null;
@@ -5926,11 +5941,13 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
       });
       savePlayedMatches(updated);
+      setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -6220,11 +6237,13 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
       });
       savePlayedMatches(updated);
+      setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -8619,11 +8638,13 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
       });
       savePlayedMatches(updated);
+      setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     }
 
     function updateMatch(matchId, hg, ag) {
