@@ -5593,12 +5593,10 @@ export default function App() {
               <thead>
                 <tr>
                   <th style={{ textAlign:'center',fontSize:11,color:'var(--text-dim)',width:32 }}>Δ</th>
-                  <th className="rank" style={{ width:36 }}>#</th>
-                  <th style={{ width:110 }}></th>
-                  <th className="sticky-col car-name" style={{ left:0,minWidth:160 }}>Voiture</th>
-                  <th style={{ textAlign:'center' }}>🏆</th>
-                  <th style={{ textAlign:'center' }}>⬇</th>
-                  <th className="sticky-col pts-val" style={{ left:160,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
+                  <th style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",color:'var(--gold-dim)' }}>#</th>
+                  <th style={{ width:130 }}></th>
+                  <th className="sticky-col" style={{ left:0,minWidth:180 }}>Voiture</th>
+                  <th className="sticky-col pts-val" style={{ left:180,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
                     {!sortBySeason ? '▼ ' : ''}Total
                   </th>
                   {histSeasonNums.map(n => {
@@ -5671,23 +5669,27 @@ export default function App() {
                             : delta > 0 ? <span style={{ color:'var(--green)',fontWeight:700 }}>▲{delta}</span>
                             : <span style={{ color:'#e74c3c',fontWeight:700 }}>▼{Math.abs(delta)}</span>}
                         </td>
-                        <td className="rank" style={{ width:36 }}>
+                        <td style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',textAlign:'center' }}>
                           {(() => { const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1; return sameRank ? `=${rank}` : rank; })()}
                         </td>
-                        <td style={{ padding:'4px',width:110 }}>
-                          <CarThumb photo={photo} size={90} />
+                        <td style={{ padding:0,width:130 }}>
+                          <div style={{ width:130,height:90,overflow:'hidden',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                            {photo
+                              ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                              : <span style={{ fontSize:36 }}>🚗</span>}
+                          </div>
                         </td>
-                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:160,fontSize:16,fontWeight:700 }}>
-                          <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
-                          {entry.name}
+                        <td className="sticky-col" style={{ left:0,minWidth:180,padding:'8px 12px',background:'var(--dark2)' }}>
+                          <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
+                            <span title={statusTitle} style={{ display:'inline-block',width:8,height:8,borderRadius:'50%',background:statusDot,flexShrink:0 }} />
+                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:1,color:'var(--text)',lineHeight:1 }}>{entry.name}</span>
+                          </div>
+                          <div style={{ display:'flex',gap:8,fontSize:12 }}>
+                            {champCount > 0 && <span style={{ color:'var(--gold)' }}>🏆×{champCount}</span>}
+                            {relCount > 0 && <span style={{ color:'#e74c3c' }}>⬇×{relCount}</span>}
+                          </div>
                         </td>
-                        <td style={{ textAlign:'center',fontSize:14,color:'var(--gold)' }}>
-                          {champCount > 0 ? `🏆×${champCount}` : '—'}
-                        </td>
-                        <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
-                          {relCount > 0 ? `⬇×${relCount}` : '—'}
-                        </td>
-                        <td className="sticky-col pts-val" style={{ left:160,borderRight:'1px solid var(--border)',fontSize:26 }}>{entry.total}</td>
+                        <td className="sticky-col pts-val" style={{ left:180,borderRight:'1px solid var(--border)',fontSize:28,textAlign:'center' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
