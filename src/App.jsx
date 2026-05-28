@@ -1788,6 +1788,9 @@ export default function App() {
     const tabsEl = document.querySelector('.tabs');
     tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
     savedTabsScrollLeft.current = tabsScrollRef.current;
+    // Capturer tous les .tabs
+    const tabsEls = document.querySelectorAll('.tabs');
+    allTabsScrollRef.current = Array.from(tabsEls).map(el => el.scrollLeft);
     _setDb(updater);
   }, []);
   const [loaded, setLoaded] = useState(false);
@@ -1814,6 +1817,22 @@ export default function App() {
   const scrollPosRef = React.useRef(0);
   const tabsScrollRef = React.useRef(0);
   const tabScrollPos = React.useRef({});
+
+  // Préserver le scrollLeft de TOUTES les barres .tabs après chaque render
+  const allTabsScrollRef = React.useRef([]);
+  React.useLayoutEffect(() => {
+    const tabsEls = document.querySelectorAll('.tabs');
+    tabsEls.forEach((el, i) => {
+      if (allTabsScrollRef.current[i] !== undefined) {
+        el.scrollLeft = allTabsScrollRef.current[i];
+      }
+    });
+  });
+  // Capturer scrollLeft avant chaque render
+  const captureTabsScroll = React.useCallback(() => {
+    const tabsEls = document.querySelectorAll('.tabs');
+    allTabsScrollRef.current = Array.from(tabsEls).map(el => el.scrollLeft);
+  }, []);
 
   const [sectionTab, setSectionTab] = useState("groupes");
   const [ligueSubTab, setLigueSubTab] = useState('principales');
