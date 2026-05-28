@@ -2038,23 +2038,25 @@ export default function App() {
   // Surveiller les nouveaux champions pour déclencher les confettis
   const prevChampionsRef = React.useRef(null);
 
+  const TAB_IDS = ['tabs-main', 'tabs-ligues', 'tabs-leagues', 'tabs-section', 'tabs-actuelles'];
+
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
-    const tabsEls = document.querySelectorAll('.tabs');
-    tabScrollPos.current[key] = {
-      scrollY: window.scrollY,
-      tabsScrollLeft: Array.from(tabsEls).map(el => el.scrollLeft)
-    };
+    const scrollLefts = {};
+    TAB_IDS.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) scrollLefts[id] = el.scrollLeft;
+    });
+    tabScrollPos.current[key] = { scrollY: window.scrollY, scrollLefts };
   }
   function restoreScrollForTab(key) {
     const saved = tabScrollPos.current[key];
-    const pos = saved?.scrollY || 0;
     requestAnimationFrame(() => {
-      window.scrollTo(0, pos);
-      if (saved?.tabsScrollLeft) {
-        const tabsEls = document.querySelectorAll('.tabs');
-        tabsEls.forEach((el, i) => {
-          if (saved.tabsScrollLeft[i] !== undefined) el.scrollLeft = saved.tabsScrollLeft[i];
+      window.scrollTo(0, saved?.scrollY || 0);
+      if (saved?.scrollLefts) {
+        TAB_IDS.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && saved.scrollLefts[id] !== undefined) el.scrollLeft = saved.scrollLefts[id];
         });
       }
     });
@@ -10142,7 +10144,7 @@ export default function App() {
         </div>
 
         {/* Main nav */}
-        <div className="tabs">
+        <div className="tabs" id="tabs-main">
           {[
             { key: 'dashboard', label: 'Tableau de Bord' },
             { key: 'ligues', label: 'Ligues' },
@@ -10162,7 +10164,7 @@ export default function App() {
 
         {/* Sous-onglets Ligues */}
         {mainTab === 'ligues' && (
-          <div className="tabs" style={{ background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" id="tabs-ligues" style={{ background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
             {[
               { key: 'champions', label: '🏆 Tournoi des Champions' },
               { key: 'principales', label: 'Ligues Principales' },
@@ -10194,7 +10196,7 @@ export default function App() {
 
         {/* League selector for principales + bonus */}
         {((mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus') && (
-          <div className="tabs" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" id="tabs-leagues" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
             {LEAGUES.map(l => (
               <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={() => {
                 saveScrollForTab();
@@ -10209,7 +10211,7 @@ export default function App() {
 
         {/* Section tabs for principales */}
         {mainTab === 'ligues' && ligueSubTab === 'principales' && (
-          <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" id="tabs-section" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
             {[
               { key: 'groupes', label: 'Phase de Groupes' },
               { key: 'playoffs', label: 'Playoffs' },
@@ -10228,7 +10230,7 @@ export default function App() {
 
         {/* Sous-onglets Actuelles */}
         {mainTab === 'ligues' && ligueSubTab === 'actuelles' && (
-          <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
+          <div className="tabs" id="tabs-actuelles" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
             {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
               <button key={l} className={`tab ${actuellesLeague === l ? 'active' : ''}`}
                 onClick={e => {
