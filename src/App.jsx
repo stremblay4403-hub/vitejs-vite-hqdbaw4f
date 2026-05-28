@@ -1775,13 +1775,21 @@ function launchConfetti() {
 }
 
 export default function App() {
-  const [db, setDb] = useState(() => {
+  const [db, _setDb] = useState(() => {
     const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
       histOverrides: {} // { 'leagueName||oldName': newName }
     };
     s.seasons.push(initSeason(33));
     return s;
   });
+  // Wrapper qui capture le scroll avant chaque setDb
+  const setDb = React.useCallback((updater) => {
+    scrollPosRef.current = window.scrollY;
+    const tabsEl = document.querySelector('.tabs');
+    tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
+    savedTabsScrollLeft.current = tabsScrollRef.current;
+    _setDb(updater);
+  }, []);
   const [loaded, setLoaded] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const ADMIN_PASSWORD = 'Tungtungtung440';
@@ -1804,12 +1812,9 @@ export default function App() {
   const recordsScrollPos = React.useRef(0);
   const contentRef = React.useRef(null);
   const scrollPosRef = React.useRef(0);
+  const tabsScrollRef = React.useRef(0);
   const tabScrollPos = React.useRef({});
 
-  const setDbPreserveScroll = React.useCallback((updater) => {
-    scrollPosRef.current = window.scrollY;
-    setDb(updater);
-  }, []);
   const [sectionTab, setSectionTab] = useState("groupes");
   const [ligueSubTab, setLigueSubTab] = useState('principales');
   const [succSubTab, setSuccSubTab] = useState('classement');
@@ -2032,10 +2037,14 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     storageSave(db);
-    // Restaurer la position de scroll après sauvegarde, sauf si le scroll est locké
-    if (scrollPosRef.current > 0 && !document.body.dataset.scrollY) {
-      requestAnimationFrame(() => window.scrollTo(0, scrollPosRef.current));
-    }
+    // Restaurer systématiquement scrollY et scrollLeft des tabs après chaque re-render
+    requestAnimationFrame(() => {
+      if (!document.body.dataset.scrollY) {
+        window.scrollTo(0, scrollPosRef.current);
+        const tabsEl = document.querySelector('.tabs');
+        if (tabsEl) tabsEl.scrollLeft = tabsScrollRef.current;
+      }
+    });
   }, [db, loaded]);
 
   const currentSeason = db.seasons[db.currentSeasonIdx];
