@@ -1946,10 +1946,13 @@ export default function App() {
   const [profileCar, setProfileCar] = useState(null);
   function openProfileCar(config) {
     const sy = window.scrollY;
-    const tabsEl = document.querySelector('.tabs');
-    const sl = tabsEl ? tabsEl.scrollLeft : 0;
+    const tabsEls = document.querySelectorAll('.tabs');
+    const tabsScrolls = Array.from(tabsEls).map(el => ({ el, sl: el.scrollLeft }));
     setProfileCar(config);
-    requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; });
+    requestAnimationFrame(() => {
+      window.scrollTo(0, sy);
+      tabsScrolls.forEach(({ el, sl }) => { el.scrollLeft = sl; });
+    });
   }
   const [notifications, setNotifications] = useState([]);
   const [matchModal, setMatchModal] = useState(null);
@@ -5867,7 +5870,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })}
@@ -6155,7 +6158,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6377,7 +6380,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6594,7 +6597,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6787,7 +6790,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6980,7 +6983,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7173,7 +7176,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7366,7 +7369,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7559,7 +7562,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7752,7 +7755,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7945,7 +7948,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8138,7 +8141,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8331,7 +8334,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
                       );
                     })})              </div>
