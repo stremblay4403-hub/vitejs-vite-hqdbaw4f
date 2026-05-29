@@ -1690,7 +1690,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, 
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
-  const PHOTO_W = 220;
+  const PHOTO_W = ROW_H * 1.6;
   return (
     <div style={{ display:'flex', alignItems:'stretch', height:ROW_H, borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a' }}>
 
@@ -1715,7 +1715,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, 
       {/* Nom — flex:1 */}
       {!showStats && (
         <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
-          <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 12 : 14) : 18, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
+          <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
             <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
           )}
