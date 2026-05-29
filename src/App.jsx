@@ -1481,6 +1481,7 @@ const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 const isLoadingFromFirebase = { current: false };
 const savedTabsScrollLeft = { current: 0 };
+const lastLocalSaveTime = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
 
@@ -1521,10 +1522,10 @@ function storageSave(data) {
     ...dataWithoutPhotos,
     seasons: dataWithoutPhotos.seasons.map((s, i) => {
       if (i === currentIdx) return s; // saison courante — garder tout
-      // Saisons passées — retirer les matchs pour économiser de l'espace
+      // Saisons passées — retirer TOUS les matchs et résultats
       const compLeagues = {};
       Object.entries(s.leagues || {}).forEach(([l, league]) => {
-        compLeagues[l] = { ...league, matches: [], groupResults: league.groupResults };
+        compLeagues[l] = { cars: league.cars, completed: league.completed };
       });
       return { ...s, leagues: compLeagues };
     })
@@ -1533,9 +1534,11 @@ function storageSave(data) {
   const json = JSON.stringify(compressed);
   console.log(`[Firestore] Taille données: ${(json.length / 1024).toFixed(1)} KB`);
 
+  const now = Date.now();
+  lastLocalSaveTime.current = now;
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
-    setDoc(dataDocRef, { data: json, updatedAt: Date.now() })
+    setDoc(dataDocRef, { data: json, updatedAt: now })
       .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
@@ -2211,6 +2214,13 @@ export default function App() {
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
         try {
+          // Ignorer si nos données locales sont plus récentes
+          const firestoreUpdatedAt = dataSnap.data().updatedAt || 0;
+          if (firestoreUpdatedAt < lastLocalSaveTime.current) {
+            console.log('[onSnapshot] Ignoré — Firestore plus vieux que local');
+            setLoaded(true);
+            return;
+          }
           const parsed = JSON.parse(dataSnap.data().data);
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
