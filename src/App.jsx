@@ -1968,11 +1968,46 @@ export default function App() {
     requestAnimationFrame(() => unlockScroll());
   }
   const [celebrationModal, setCelebrationModal] = useState(null);
+  const [relegationModal, setRelegationModal] = useState(null);
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
 
   // Fonctions scroll par onglet — définies après tous les états
   // ── Modal de célébration ───────────────────────────────────────
+  function RelegationModal() {
+    if (!relegationModal) return null;
+    const { carId, carName, leagueName } = relegationModal;
+    const photo = getCarPhoto(carId);
+    return (
+      <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
+        onClick={() => setRelegationModal(null)}>
+        <div style={{ width:'100%',maxWidth:380,background:'var(--dark2)',borderRadius:16,border:'2px solid #e74c3c',overflow:'hidden',textAlign:'center' }}
+          onClick={e => e.stopPropagation()}>
+          {/* Header */}
+          <div style={{ background:'rgba(192,57,43,0.3)',padding:'16px 20px',borderBottom:'1px solid #e74c3c' }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:4,color:'#e74c3c',marginBottom:4 }}>{leagueName}</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:48,letterSpacing:4,color:'#e74c3c',lineHeight:1 }}>⬇ RELÉGUÉ</div>
+          </div>
+          {/* Photo */}
+          {photo && (
+            <div style={{ width:'100%',maxHeight:220,overflow:'hidden',background:'var(--dark3)' }}>
+              <img src={photo} alt="" style={{ width:'100%',objectFit:'cover',display:'block' }} />
+            </div>
+          )}
+          {/* Nom */}
+          <div style={{ padding:'20px 16px' }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:36,letterSpacing:3,color:'var(--text)' }}>{carName}</div>
+            <div style={{ fontSize:13,color:'var(--text-dim)',marginTop:6 }}>Relégué de {leagueName}</div>
+          </div>
+          <div style={{ padding:'0 16px 16px' }}>
+            <button className="btn btn-sm" style={{ width:'100%',padding:'12px',background:'rgba(192,57,43,0.2)',border:'1px solid #e74c3c',color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2 }}
+              onClick={() => setRelegationModal(null)}>Fermer</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function CelebrationModal() {
     if (!celebrationModal) return null;
     const { carId, leagueName, type } = celebrationModal;
@@ -2890,6 +2925,10 @@ export default function App() {
       seasons[d.currentSeasonIdx] = s;
       return { ...d, seasons };
     });
+    const relegatedCar = l.cars.find(c => c.id === relegatedId);
+    if (relegatedCar) {
+      setTimeout(() => setRelegationModal({ carId: relegatedId, carName: relegatedCar.name, leagueName }), 200);
+    }
   }
 
   function finalizeChampion(leagueName) {
@@ -10119,6 +10158,7 @@ export default function App() {
         {/* Match modal */}
         <MatchModal />
       <CelebrationModal />
+      <RelegationModal />
 
         {/* Car profile modal */}
         <CarProfileModal />
