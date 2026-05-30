@@ -1686,6 +1686,29 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
 }
 
 // Composant réutilisable pour toutes les ligues — style leaderboard mobile
+function isMathematicallySecured(standings, carIndex, threshold, allMatches, isTop) {
+  // Une voiture est mathématiquement assurée si son classement ne peut plus changer
+  const car = standings[carIndex];
+  const remainingForCar = allMatches.filter(m => (m.homeId === car.id || m.awayId === car.id) && m.homeGoals === null).length;
+  const maxPts = car.pts + remainingForCar * 3;
+
+  if (isTop) {
+    // Promue mathématiquement : la voiture au rang threshold+1 ne peut plus atteindre ce score
+    const challenger = standings[threshold]; // première voiture hors zone
+    if (!challenger) return true;
+    const challengerRemaining = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length;
+    const challengerMax = challenger.pts + challengerRemaining * 3;
+    return car.pts > challengerMax;
+  } else {
+    // Reléguée mathématiquement : la voiture au rang threshold ne peut plus être dépassée
+    const savior = standings[threshold - 1]; // dernière voiture en zone sûre
+    if (!savior) return true;
+    const saviorRemaining = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length;
+    const saviorMax = savior.pts + saviorRemaining * 3;
+    return car.pts + (allMatches.filter(m => (m.homeId === car.id || m.awayId === car.id) && m.homeGoals === null).length) * 3 < saviorMax - (saviorMax - savior.pts);
+  }
+}
+
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
@@ -6182,14 +6205,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 12;
-                      const relegated = rank > 16;
+                      const inZonePromo = rank <= 12;
+                      const inZoneRel = rank > 16;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[12]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[16]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6404,14 +6430,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 48;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 48;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[48]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6621,14 +6650,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 24;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 24;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[24]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6814,14 +6846,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 8;
-                      const relegated = rank > 16;
+                      const inZonePromo = rank <= 8;
+                      const inZoneRel = rank > 16;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[8]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[16]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7007,14 +7042,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 32;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 32;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[32]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7200,14 +7238,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 32;
-                      const relegated = rank > 48;
+                      const inZonePromo = rank <= 32;
+                      const inZoneRel = rank > 48;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[32]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[48]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7393,14 +7434,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 48;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 48;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[48]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7586,14 +7630,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 24;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 24;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[24]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7779,14 +7826,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 8;
-                      const relegated = rank > 16;
+                      const inZonePromo = rank <= 8;
+                      const inZoneRel = rank > 16;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[8]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[16]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7972,14 +8022,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 76;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 76;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[76]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -8165,14 +8218,17 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 16;
-                      const relegated = rank > 82;
+                      const inZonePromo = rank <= 16;
+                      const inZoneRel = rank > 82;
+                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
+                      const relegated = inZoneRel && (() => { const savior = standings[82]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
