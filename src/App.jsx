@@ -6213,7 +6213,7 @@ export default function App() {
                         const firstOut = standings[12];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -6450,7 +6450,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -6682,7 +6682,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -6890,7 +6890,7 @@ export default function App() {
                         const firstOut = standings[8];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -7098,7 +7098,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -7306,7 +7306,7 @@ export default function App() {
                         const firstOut = standings[32];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -7514,7 +7514,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -7722,7 +7722,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -7930,7 +7930,7 @@ export default function App() {
                         const firstOut = standings[8];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -8138,7 +8138,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
@@ -8346,7 +8346,7 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
