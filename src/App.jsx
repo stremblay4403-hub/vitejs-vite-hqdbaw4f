@@ -1189,7 +1189,7 @@ const css = `
   .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
   
   /* Tabs */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; }
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; }
   .tab {
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
     padding: 14px 20px; cursor: pointer; border: none; background: none;
@@ -1480,7 +1480,6 @@ const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 const isLoadingFromFirebase = { current: false };
-const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
 
@@ -1490,7 +1489,6 @@ function lockScroll() {
   document.body.style.position = 'fixed';
   document.body.style.top = `-${sy}px`;
   document.body.style.width = '100%';
-  document.body.style.overflowX = 'hidden';
   document.body.dataset.scrollY = sy;
 }
 function unlockScroll() {
@@ -1498,7 +1496,6 @@ function unlockScroll() {
   document.body.style.position = '';
   document.body.style.top = '';
   document.body.style.width = '';
-  document.body.style.overflowX = '';
   window.scrollTo(0, sy);
 }
 
@@ -1506,7 +1503,11 @@ function unlockScroll() {
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
+  // Ne jamais sauvegarder vers Firestore depuis la vue publique
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
+
+  // Ne pas sauvegarder vers Firestore si on vient de charger depuis Firestore
+  if (isLoadingFromFirebase.current) return;
 
   const { photos, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -1514,26 +1515,10 @@ function storageSave(data) {
   );
   if (!hasData) return;
 
-  // Compression légère : retirer les matches des saisons passées
-  const currentIdx = dataWithoutPhotos.currentSeasonIdx;
-  const toSave = {
-    ...dataWithoutPhotos,
-    seasons: dataWithoutPhotos.seasons.map((s, i) => {
-      if (i === currentIdx) return s;
-      const leagues = {};
-      Object.entries(s.leagues || {}).forEach(([l, league]) => {
-        const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
-        leagues[l] = isMain
-          ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} }
-          : { ...league, matches: [] };
-      });
-      return { ...s, leagues };
-    })
-  };
-
+  // Debounce — attendre 2s avant de sauvegarder pour éviter le spam
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
-    setDoc(dataDocRef, { data: JSON.stringify(toSave), updatedAt: Date.now() })
+    setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() })
       .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
@@ -1591,83 +1576,6 @@ function storageLoad() {
 }
 
 // Composant scroll stable — défini hors de App pour éviter le remount à chaque render
-function LetterSection({ letter, cars, letterRefs, leagueColors, editKey, editName, setEditName, setEditKey, confirmEdit, startEdit, getCarPhoto, openProfileCar, isPublicMode }) {
-  const [visible, setVisible] = React.useState(false);
-  const ref = React.useRef(null);
-
-  React.useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // Hauteur estimée pour réserver l'espace même avant rendu
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) { setVisible(true); observer.disconnect(); }
-    }, { rootMargin: '400px' });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  // Attacher le ref pour le scroll de la barre alphabet
-  const setRef = React.useCallback(el => {
-    ref.current = el;
-    if (letterRefs) letterRefs.current[letter] = el;
-  }, [letter, letterRefs]);
-
-  const estimatedHeight = Math.ceil(cars.length / 2) * 160;
-
-  return (
-    <div ref={setRef}>
-      <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
-        {letter}
-      </div>
-      {!visible ? (
-        <div style={{ height: estimatedHeight, marginBottom:16, background:'var(--dark3)', borderRadius:8, opacity:0.3 }} />
-      ) : (
-        <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,marginBottom:16 }}>
-          {cars.map((c, i) => {
-            const photo = c.carId ? getCarPhoto(c.carId) : null;
-            const key = `${c.league}||${c.name}`;
-            const isEditing = editKey === key;
-            return (
-              <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
-                <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
-                  onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                  {photo
-                    ? <img src={photo} alt="" loading="lazy" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
-                    : <span style={{ fontSize:36 }}>🚗</span>}
-                </div>
-                <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
-                  {isEditing ? (
-                    <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
-                      <input value={editName} onChange={e => setEditName(e.target.value)}
-                        autoFocus style={{ width:'100%',fontSize:11 }}
-                        onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
-                      <div style={{ display:'flex',gap:3 }}>
-                        <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
-                        <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
-                        onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                        {c.name}
-                      </span>
-                      {!isPublicMode && (
-                        <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
-                          onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function ScrollKeeper({ children, maxHeight = 700 }) {
   const ref = React.useRef(null);
   const pos = React.useRef(0);
@@ -1701,34 +1609,10 @@ function ScrollKeeper({ children, maxHeight = 700 }) {
 }
 
 // Composant réutilisable pour toutes les ligues — style leaderboard mobile
-function isMathematicallySecured(standings, carIndex, threshold, allMatches, isTop) {
-  // Une voiture est mathématiquement assurée si son classement ne peut plus changer
-  const car = standings[carIndex];
-  const remainingForCar = allMatches.filter(m => (m.homeId === car.id || m.awayId === car.id) && m.homeGoals === null).length;
-  const maxPts = car.pts + remainingForCar * 3;
-
-  if (isTop) {
-    // Promue mathématiquement : la voiture au rang threshold+1 ne peut plus atteindre ce score
-    const challenger = standings[threshold]; // première voiture hors zone
-    if (!challenger) return true;
-    const challengerRemaining = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length;
-    const challengerMax = challenger.pts + challengerRemaining * 3;
-    return car.pts > challengerMax;
-  } else {
-    // Reléguée mathématiquement : la voiture au rang threshold ne peut plus être dépassée
-    const savior = standings[threshold - 1]; // dernière voiture en zone sûre
-    if (!savior) return true;
-    const saviorRemaining = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length;
-    const saviorMax = savior.pts + saviorRemaining * 3;
-    return car.pts + (allMatches.filter(m => (m.homeId === car.id || m.awayId === car.id) && m.homeGoals === null).length) * 3 < saviorMax - (saviorMax - savior.pts);
-  }
-}
-
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
-  const PHOTO_W = ROW_H * 1.6;
   return (
     <div style={{ display:'flex', alignItems:'stretch', height:ROW_H, borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a' }}>
 
@@ -1744,7 +1628,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, 
       </div>
 
       {/* Image */}
-      <div style={{ width:PHOTO_W, flexShrink:0, overflow:'hidden', background:'var(--dark3)', cursor:'pointer' }} onClick={onClick}>
+      <div style={{ width:ROW_H * 1.4, flexShrink:0, overflow:'hidden', background:'var(--dark3)', cursor:'pointer' }} onClick={onClick}>
         {photo
           ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>🚗</div>}
@@ -1755,7 +1639,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, 
         <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
           <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
-            <span style={{ display:'inline-block', marginTop:2, padding:'2px 6px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+            <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
           )}
           {streakBadge && (
             <span style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
@@ -1828,7 +1712,8 @@ function DaysList({ days, allMatches, openMatchModal, isPublicMode, simDay, leag
               </span>
               <span style={{ fontSize:11, color:'var(--text-dim)', marginRight:8 }}>{played}/{dayMatches.length}</span>
               {!isPublicMode && simDay && (
-                <button className="btn btn-xs btn-sim" style={{ marginRight:6, display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ lockScroll(); simDay(day); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); } }}>🎲</button>
+                <button className="btn btn-xs btn-sim" style={{ marginRight:6 }}
+                  style={{ display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ simDay(day); setOpenDay(day); } }}>🎲</button>
               )}
               <span style={{ color:'var(--text-dim)', fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
             </div>
@@ -1888,27 +1773,13 @@ function launchConfetti() {
 }
 
 export default function App() {
-  const dbRef = React.useRef(null);
-  const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
-      histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
+  const [db, setDb] = useState(() => {
+    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
+      histOverrides: {} // { 'leagueName||oldName': newName }
     };
     s.seasons.push(initSeason(33));
     return s;
   });
-  // Wrapper qui capture le scroll avant chaque setDb
-  const setDb = React.useCallback((updater) => {
-    scrollPosRef.current = window.scrollY;
-    const tabsEl = document.querySelector('.tabs');
-    tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
-    savedTabsScrollLeft.current = tabsScrollRef.current;
-    const tabsEls = document.querySelectorAll('.tabs');
-    allTabsScrollRef.current = Array.from(tabsEls).map(el => el.scrollLeft);
-    _setDb(prev => {
-      const next = typeof updater === 'function' ? updater(prev) : updater;
-      dbRef.current = next;
-      return next;
-    });
-  }, []);
   const [loaded, setLoaded] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
   const ADMIN_PASSWORD = 'Tungtungtung440';
@@ -1925,32 +1796,18 @@ export default function App() {
   const [mainTab, setMainTab] = useState("dashboard");
   const [allCarsSearch, setAllCarsSearch] = useState('');
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
-  const [ripTab, setRipTab] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
   const recordsScrollPos = React.useRef(0);
   const contentRef = React.useRef(null);
   const scrollPosRef = React.useRef(0);
-  const tabsScrollRef = React.useRef(0);
   const tabScrollPos = React.useRef({});
 
-  // Préserver le scrollLeft de TOUTES les barres .tabs après chaque render
-  const allTabsScrollRef = React.useRef([]);
-  React.useLayoutEffect(() => {
-    const tabsEls = document.querySelectorAll('.tabs');
-    tabsEls.forEach((el, i) => {
-      if (allTabsScrollRef.current[i] !== undefined) {
-        el.scrollLeft = allTabsScrollRef.current[i];
-      }
-    });
-  });
-  // Capturer scrollLeft avant chaque render
-  const captureTabsScroll = React.useCallback(() => {
-    const tabsEls = document.querySelectorAll('.tabs');
-    allTabsScrollRef.current = Array.from(tabsEls).map(el => el.scrollLeft);
+  const setDbPreserveScroll = React.useCallback((updater) => {
+    scrollPosRef.current = window.scrollY;
+    setDb(updater);
   }, []);
-
   const [sectionTab, setSectionTab] = useState("groupes");
   const [ligueSubTab, setLigueSubTab] = useState('principales');
   const [succSubTab, setSuccSubTab] = useState('classement');
@@ -1987,14 +1844,9 @@ export default function App() {
   const [activeGroup, setActiveGroup] = useState(0);
   const [profileCar, setProfileCar] = useState(null);
   function openProfileCar(config) {
-    const sy = window.scrollY;
-    const tabsEls = document.querySelectorAll('.tabs');
-    const tabsScrolls = Array.from(tabsEls).map(el => ({ el, sl: el.scrollLeft }));
+    lockScroll();
     setProfileCar(config);
-    requestAnimationFrame(() => {
-      window.scrollTo(0, sy);
-      tabsScrolls.forEach(({ el, sl }) => { el.scrollLeft = sl; });
-    });
+    requestAnimationFrame(() => unlockScroll());
   }
   const [notifications, setNotifications] = useState([]);
   const [matchModal, setMatchModal] = useState(null);
@@ -2010,46 +1862,11 @@ export default function App() {
     requestAnimationFrame(() => unlockScroll());
   }
   const [celebrationModal, setCelebrationModal] = useState(null);
-  const [relegationModal, setRelegationModal] = useState(null);
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
 
   // Fonctions scroll par onglet — définies après tous les états
   // ── Modal de célébration ───────────────────────────────────────
-  function RelegationModal() {
-    if (!relegationModal) return null;
-    const { carId, carName, leagueName } = relegationModal;
-    const photo = getCarPhoto(carId);
-    return (
-      <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.92)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:16 }}
-        onClick={() => setRelegationModal(null)}>
-        <div style={{ width:'100%',maxWidth:380,background:'var(--dark2)',borderRadius:16,border:'2px solid #e74c3c',overflow:'hidden',textAlign:'center' }}
-          onClick={e => e.stopPropagation()}>
-          {/* Header */}
-          <div style={{ background:'rgba(192,57,43,0.3)',padding:'16px 20px',borderBottom:'1px solid #e74c3c' }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:4,color:'#e74c3c',marginBottom:4 }}>{leagueName}</div>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:48,letterSpacing:4,color:'#e74c3c',lineHeight:1 }}>⬇ RELÉGUÉ</div>
-          </div>
-          {/* Photo */}
-          {photo && (
-            <div style={{ width:'100%',maxHeight:220,overflow:'hidden',background:'var(--dark3)' }}>
-              <img src={photo} alt="" style={{ width:'100%',objectFit:'cover',display:'block' }} />
-            </div>
-          )}
-          {/* Nom */}
-          <div style={{ padding:'20px 16px' }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:36,letterSpacing:3,color:'var(--text)' }}>{carName}</div>
-            <div style={{ fontSize:13,color:'var(--text-dim)',marginTop:6 }}>Relégué de {leagueName}</div>
-          </div>
-          <div style={{ padding:'0 16px 16px' }}>
-            <button className="btn btn-sm" style={{ width:'100%',padding:'12px',background:'rgba(192,57,43,0.2)',border:'1px solid #e74c3c',color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2 }}
-              onClick={() => setRelegationModal(null)}>Fermer</button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   function CelebrationModal() {
     if (!celebrationModal) return null;
     const { carId, leagueName, type } = celebrationModal;
@@ -2090,8 +1907,7 @@ export default function App() {
     );
   }
 
-
-
+  // ── Calcul série V/D pour badge feu/glace ─────────────────────
   function getStreakBadge(carId, leagueName) {
     const league = currentSeason.leagues[leagueName];
     if (!league) return null;
@@ -2119,24 +1935,11 @@ export default function App() {
 
   function saveScrollForTab() {
     const key = `${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`;
-    const tabsEls = document.querySelectorAll('.tabs');
-    tabScrollPos.current[key] = {
-      scrollY: window.scrollY,
-      tabsScrollLeft: Array.from(tabsEls).map(el => el.scrollLeft)
-    };
+    tabScrollPos.current[key] = window.scrollY;
   }
   function restoreScrollForTab(key) {
-    const saved = tabScrollPos.current[key];
-    const pos = saved?.scrollY || 0;
-    requestAnimationFrame(() => {
-      window.scrollTo(0, pos);
-      if (saved?.tabsScrollLeft) {
-        const tabsEls = document.querySelectorAll('.tabs');
-        tabsEls.forEach((el, i) => {
-          if (saved.tabsScrollLeft[i] !== undefined) el.scrollLeft = saved.tabsScrollLeft[i];
-        });
-      }
-    });
+    const pos = tabScrollPos.current[key] || 0;
+    requestAnimationFrame(() => window.scrollTo(0, pos));
   }
 
   useEffect(() => {
@@ -2166,20 +1969,9 @@ export default function App() {
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
-          if (!parsed.rip) parsed.rip = [];
-          const savedScrollY = window.scrollY;
-          const tabsEl = document.querySelector('.tabs');
-          if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
           isLoadingFromFirebase.current = true;
           applyLoadedData(parsed, true);
-          setTimeout(() => {
-            isLoadingFromFirebase.current = false;
-            if (!document.body.dataset.scrollY) {
-              window.scrollTo(0, savedScrollY);
-              const el = document.querySelector('.tabs');
-              if (el) el.scrollLeft = savedTabsScrollLeft.current;
-            }
-          }, 4000);
+          setTimeout(() => { isLoadingFromFirebase.current = false; }, 500);
         } catch(e) {
           console.warn('Firebase parse error:', e);
         }
@@ -2226,14 +2018,10 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     storageSave(db);
-    // Restaurer systématiquement scrollY et scrollLeft des tabs après chaque re-render
-    requestAnimationFrame(() => {
-      if (!document.body.dataset.scrollY) {
-        window.scrollTo(0, scrollPosRef.current);
-        const tabsEl = document.querySelector('.tabs');
-        if (tabsEl) tabsEl.scrollLeft = tabsScrollRef.current;
-      }
-    });
+    // Restaurer la position de scroll après sauvegarde
+    if (scrollPosRef.current > 0) {
+      requestAnimationFrame(() => window.scrollTo(0, scrollPosRef.current));
+    }
   }, [db, loaded]);
 
   const currentSeason = db.seasons[db.currentSeasonIdx];
@@ -2888,22 +2676,16 @@ export default function App() {
   }
 
   async function uploadToCloudinary(file) {
-    isLoadingFromFirebase.current = true;
-    try {
-      const compressed = await compressImage(file);
-      const formData = new FormData();
-      formData.append('file', compressed);
-      formData.append('upload_preset', 'Tournois de Voitures');
-      const res = await fetch('https://api.cloudinary.com/v1_1/dty8if0h1/image/upload', {
-        method: 'POST',
-        body: formData
-      });
-      const data = await res.json();
-      return data.secure_url;
-    } finally {
-      // Laisser 5s après l'upload pour que la sauvegarde Firestore parte avant de réactiver onSnapshot
-      setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
-    }
+    const compressed = await compressImage(file);
+    const formData = new FormData();
+    formData.append('file', compressed);
+    formData.append('upload_preset', 'Tournois de Voitures');
+    const res = await fetch('https://api.cloudinary.com/v1_1/dty8if0h1/image/upload', {
+      method: 'POST',
+      body: formData
+    });
+    const data = await res.json();
+    return data.secure_url;
   }
 
   function setCarPhoto(carId, url) {
@@ -2938,9 +2720,6 @@ export default function App() {
 
   function getCarPhotoByName(name) {
     if (!name) return null;
-    // Chercher d'abord par clé byname (voitures historiques sans carId)
-    const bynameKey = `byname-${name.toLowerCase()}`;
-    if (db.photos?.[bynameKey]) return db.photos[bynameKey];
     for (const season of db.seasons) {
       for (const league of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
         const car = season.leagues[league]?.cars.find(c =>
@@ -2967,10 +2746,6 @@ export default function App() {
       seasons[d.currentSeasonIdx] = s;
       return { ...d, seasons };
     });
-    const relegatedCar = l.cars.find(c => c.id === relegatedId);
-    if (relegatedCar) {
-      setTimeout(() => setRelegationModal({ carId: relegatedId, carName: relegatedCar.name, leagueName }), 200);
-    }
   }
 
   function finalizeChampion(leagueName) {
@@ -3515,7 +3290,7 @@ export default function App() {
           .sort((a, b) => b.pts - a.pts)
           .slice(0, 5);
       });
-      seasons[si] = { ...seasons[si], bonusSnapshot };
+      ns.bonusSnapshot = bonusSnapshot;
 
       return { ...d, seasons: [...seasons, ns], currentSeasonIdx: seasons.length, succPromotions: {} };
     });
@@ -3563,6 +3338,24 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Successeurs aux Successeurs'];
       if (!league) return d;
+      const played_simRemplac = league.matches || [];
+      const fresh_simRemplac = genRoundRobin(league.cars).map(m => {
+        const p = played_simRemplac.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
+        const sc = simScore();
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
+      });
+      league.matches = fresh_simRemplac;
+      return next;
+    });
+  }
+
+  function simRemplac() {
+    setDb(d => {
+      const next = JSON.parse(JSON.stringify(d));
+      const s = next.seasons[next.currentSeasonIdx];
+      const league = s.leagues['Remplaçants des Successeurs'];
+      if (!league) return d;
       if (!league.matches || league.matches.length === 0) {
         league.matches = genRoundRobin(league.cars);
       }
@@ -3575,38 +3368,20 @@ export default function App() {
     });
   }
 
-  function simRemplac() {
-    setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
-      const s = next.seasons[next.currentSeasonIdx];
-      const league = s.leagues['Remplaçants des Successeurs'];
-      if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
-        if (p) return p;
-        const sc = simScore();
-        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
-      });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
-      return next;
-    });
-  }
-
   function simAvantDern() {
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Avant-dernière chance'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simRemplac = league.matches || [];
+      const fresh_simRemplac = genRoundRobin(league.cars).map(m => {
+        const p = played_simRemplac.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simRemplac;
       return next;
     });
   }
@@ -3617,14 +3392,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Dernière chance'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simAvantDern = league.matches || [];
+      const fresh_simAvantDern = genRoundRobin(league.cars).map(m => {
+        const p = played_simAvantDern.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simAvantDern;
       return next;
     });
   }
@@ -3635,14 +3410,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Persévérance'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simDerniere = league.matches || [];
+      const fresh_simDerniere = genRoundRobin(league.cars).map(m => {
+        const p = played_simDerniere.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simDerniere;
       return next;
     });
   }
@@ -3653,14 +3428,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Détermination'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simPersev = league.matches || [];
+      const fresh_simPersev = genRoundRobin(league.cars).map(m => {
+        const p = played_simPersev.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simPersev;
       return next;
     });
   }
@@ -3671,14 +3446,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Acharnement'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simDeter = league.matches || [];
+      const fresh_simDeter = genRoundRobin(league.cars).map(m => {
+        const p = played_simDeter.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simDeter;
       return next;
     });
   }
@@ -3689,14 +3464,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Obstination'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simAcharn = league.matches || [];
+      const fresh_simAcharn = genRoundRobin(league.cars).map(m => {
+        const p = played_simAcharn.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simAcharn;
       return next;
     });
   }
@@ -3707,14 +3482,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Insistance'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simObstin = league.matches || [];
+      const fresh_simObstin = genRoundRobin(league.cars).map(m => {
+        const p = played_simObstin.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simObstin;
       return next;
     });
   }
@@ -3725,14 +3500,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Comeback'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simInsist = league.matches || [];
+      const fresh_simInsist = genRoundRobin(league.cars).map(m => {
+        const p = played_simInsist.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simInsist;
       return next;
     });
   }
@@ -3743,21 +3518,19 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Importation'];
       if (!league) return d;
-      const played = league.matches || [];
-      const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+      const played_simComeback = league.matches || [];
+      const fresh_simComeback = genRoundRobin(league.cars).map(m => {
+        const p = played_simComeback.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
+      league.matches = fresh_simComeback;
       return next;
     });
   }
 
   function simTout() {
-    isLoadingFromFirebase.current = true;
-    setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3795,25 +3568,22 @@ export default function App() {
 
         if (seeded.length < 64) return; // pas assez de voitures qualifiées
 
-        // Si les playoffs existent déjà, ne pas les recréer — juste simuler les matchs manquants
-        if (!l.playoffResults || Object.keys(l.playoffResults).length === 0) {
-          const pm = {};
-          const mk = (round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank) => {
-            const id = genId();
-            pm[id] = { id, round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank, homeGoals: null, awayGoals: null };
-          };
-          for (let i = 1; i <= 32; i++) {
-            const h = seeded[i-1]; const a = seeded[64-i];
-            mk('r1', i, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
-          }
-          for (let i = 1; i <= 16; i++) mk('r2', 32+i, null, null, null, null, null, null, null, null);
-          for (let i = 1; i <= 8; i++)  mk('r3', 48+i, null, null, null, null, null, null, null, null);
-          for (let i = 1; i <= 4; i++)  mk('qf', 56+i, null, null, null, null, null, null, null, null);
-          for (let i = 1; i <= 2; i++)  mk('sf', 60+i, null, null, null, null, null, null, null, null);
-          mk('final', 63, null, null, null, null, null, null, null, null);
-          l.playoffResults = pm;
-          l.playoffSeeds = seeded.map(q => ({ id: q.id, seed: q.seed, groupRank: q.groupRank, fromGroup: q.fromGroup }));
+        const pm = {};
+        const mk = (round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank) => {
+          const id = genId();
+          pm[id] = { id, round, bracketPos, homeId, awayId, homeSeed, awaySeed, homeGroup, awayGroup, homeGroupRank, awayGroupRank, homeGoals: null, awayGoals: null };
+        };
+        for (let i = 1; i <= 32; i++) {
+          const h = seeded[i-1]; const a = seeded[64-i];
+          mk('r1', i, h.id, a.id, h.seed, a.seed, h.fromGroup, a.fromGroup, h.groupRank, a.groupRank);
         }
+        for (let i = 1; i <= 16; i++) mk('r2', 32+i, null, null, null, null, null, null, null, null);
+        for (let i = 1; i <= 8; i++)  mk('r3', 48+i, null, null, null, null, null, null, null, null);
+        for (let i = 1; i <= 4; i++)  mk('qf', 56+i, null, null, null, null, null, null, null, null);
+        for (let i = 1; i <= 2; i++)  mk('sf', 60+i, null, null, null, null, null, null, null, null);
+        mk('final', 63, null, null, null, null, null, null, null, null);
+        l.playoffResults = pm;
+        l.playoffSeeds = seeded.map(q => ({ id: q.id, seed: q.seed, groupRank: q.groupRank, fromGroup: q.fromGroup }));
 
         const roundOrder = ['r1','r2','r3','qf','sf','final'];
         const rounds = [
@@ -3863,14 +3633,11 @@ export default function App() {
           if (carObj) lastPerGroup.push(carObj);
         }
         if (lastPerGroup.length > 0) {
-          // Ne recréer le barrage que s'il n'existe pas encore
-          if (!l.relegationResults || Object.keys(l.relegationResults).length === 0) {
-            const relMatches = {};
-            const rms = roundRobinMatchups(lastPerGroup);
-            rms.forEach(m => { m.round = 'relegation'; relMatches[m.id] = m; });
-            l.relegationResults = relMatches;
-            l.relegationCars = lastPerGroup.map(c => c.id);
-          }
+          const relMatches = {};
+          const rms = roundRobinMatchups(lastPerGroup);
+          rms.forEach(m => { m.round = 'relegation'; relMatches[m.id] = m; });
+          l.relegationResults = relMatches;
+          l.relegationCars = lastPerGroup.map(c => c.id);
           Object.values(l.relegationResults).forEach(m => {
             if (m.homeGoals !== null) return;
             const sc = simScore();
@@ -3909,12 +3676,14 @@ export default function App() {
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Oubliettes'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played_simImport = league.matches || [];
+      const fresh_simImport = genRoundRobin(league.cars).map(m => {
+        const p = played_simImport.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh_simImport;
       return next;
     });
   }
@@ -4161,25 +3930,23 @@ export default function App() {
                   </div>
 
                   {/* Z et Relégué — côte à côte */}
-                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'stretch' }}>
+                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
 
                     {/* Z — Meilleur de la ligue */}
-                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
-                      <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>
+                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
+                      <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>
                         <span style={{ background:'#c9a84c',color:'#000',borderRadius:2,padding:'0 4px',fontSize:10,marginRight:4 }}>Z</span>
                         Meilleur
                       </div>
                       {zCar ? (
-                        <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
+                        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',width:'100%' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
-                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
+                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                             {getCarPhoto(zCar.id)
-                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'auto',maxHeight:200,objectFit:'contain',display:'block' }} />
                               : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
-                          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
-                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'var(--gold)',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{zCar.name}</span>
-                          </div>
+                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{zCar.name}</span>
                         </div>
                       ) : (
                         <span className="text-dim" style={{ fontSize:11 }}>Non terminé</span>
@@ -4187,19 +3954,17 @@ export default function App() {
                     </div>
 
                     {/* Relégué */}
-                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
-                      <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,minHeight:16 }}>⬇ Relégué</div>
+                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
+                      <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>⬇ Relégué</div>
                       {rel ? (
-                        <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
+                        <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:6,cursor:'pointer',width:'100%' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
-                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
+                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                             {getCarPhoto(relId)
-                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'auto',maxHeight:200,objectFit:'contain',display:'block' }} />
                               : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
-                          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
-                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'#e74c3c',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{rel.name}</span>
-                          </div>
+                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#e74c3c',letterSpacing:1,textAlign:'center',lineHeight:1.2 }}>{rel.name}</span>
                         </div>
                       ) : (
                         <span className="text-dim" style={{ fontSize:11 }}>Non terminé</span>
@@ -4207,66 +3972,24 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Top 5 pts annexes cumulatif — calculé en direct */}
+                  {/* Top 5 pts annexes cumulatif — snapshot fin de saison */}
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
-                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
+                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
                     {(() => {
-                      const allBonus = computeAllSeasonsBonus(l);
-                      const top5 = allBonus.slice(0, 5);
-                      if (!top5 || top5.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
-
-                      // Rang précédent : même méthode que BonusView — exclure la dernière saison app
-                      const prevRankMap = {};
-                      const appSeasonNums = db.seasons.map(s => s.season);
-                      const histSeasonNums = [...new Set((HISTORICAL_DATA.historicalBonus[l] || []).flatMap(c => Object.keys(c.bySeason).map(Number)))].sort((a,b)=>a-b);
-                      const allSeasonKeys = [
-                        ...histSeasonNums.map(n => `hist-S${n}`),
-                        ...appSeasonNums.map(n => `app-S${n}`)
-                      ];
-                      const prevKeys = allSeasonKeys.slice(0, -1);
-                      if (prevKeys.length > 0) {
-                        const prevTotals = allBonus.map(e => ({
-                          name: e.name,
-                          total: prevKeys.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0)
-                        })).sort((a, b) => b.total - a.total);
-                        prevTotals.forEach((e, idx) => { prevRankMap[e.name] = idx + 1; });
-                      }
-
+                      const prevIdx = db.currentSeasonIdx > 0 ? db.currentSeasonIdx - 1 : 0;
+                      const snap = db.seasons[prevIdx]?.bonusSnapshot?.[l];
+                      if (!snap || snap.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
                       return (
-                        <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-                          {top5.map((e, i) => {
-                            const prevRank = prevRankMap[e.name];
-                            const diff = prevRank != null ? prevRank - (i + 1) : null;
-                            const photo = getCarPhoto(e.id) || getCarPhotoByName(e.name);
-                            return (
-                              <div key={e.id || e.name}
-                                style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
-                                onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
-                                {/* Photo */}
-                                <div style={{ width:90,height:60,flexShrink:0,background:'var(--dark3)',overflow:'hidden' }}>
-                                  {photo
-                                    ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
-                                    : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
-                                </div>
-                                {/* Rang */}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
-                                {/* Nom */}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1,letterSpacing:1,color:'var(--text)' }}>{e.name}</span>
-                                {/* Flèche */}
-                                {diff !== null && diff !== 0 && (
-                                  <span style={{ fontSize:12,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',flexShrink:0 }}>
-                                    {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
-                                  </span>
-                                )}
-                                {diff === 0 && <span style={{ fontSize:12,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
-                                {diff === null && db.currentSeasonIdx > 0 && (
-                                  <span style={{ fontSize:10,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
-                                )}
-                                {/* Points */}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',paddingRight:12,flexShrink:0 }}>{e.total}</span>
-                              </div>
-                            );
-                          })}
+                        <div style={{ display:'flex',flexDirection:'column',gap:5 }}>
+                          {snap.map((e, i) => (
+                            <div key={e.name} style={{ display:'flex',alignItems:'center',gap:8,cursor:e.id ? 'pointer' :'default' }}
+                              onClick={() => { if (e.id) openProfileCar({ leagueName: l, carId: e.id }); }}>
+                              <span style={{ color:'var(--gold-dim)',fontSize:11,width:16,textAlign:'right',flexShrink:0 }}>{i + 1}.</span>
+                              <CarThumb photo={getCarPhoto(e.id) || getCarPhotoByName(e.name)} />
+                              <span style={{ fontSize:12,flex:1,fontWeight:600 }}>{e.name}</span>
+                              <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'var(--gold)' }}>{e.pts}</span>
+                            </div>
+                          ))}
                         </div>
                       );
                     })()}
@@ -4397,13 +4120,13 @@ export default function App() {
         <div className="sim-bar">
           <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
           <button className="btn btn-sm btn-sim"
-            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
+            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); } }}>
             ▶ Journée {(nextUnplayedDay ?? '—')} (9 matchs)
           </button>
-          <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateGroup(leagueTab, activeGroup); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
+          <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateGroup(leagueTab, activeGroup); }}>
             ⚡ Groupe complet
           </button>
-          <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateLeagueComplete(leagueTab); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
+          <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateLeagueComplete(leagueTab); }}>
             ⚡⚡ Toute la ligue
           </button>
           <span className="text-dim" style={{ fontSize:12,marginLeft:8 }}>
@@ -5069,7 +4792,7 @@ export default function App() {
             <div className="sim-bar" style={{ marginBottom:12 }}>
               <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
               <button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelDay(); }}>▶ Journée {(nextUnplayedDay ?? '—')}</button>
-              <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Barrage complet</button>
+              <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Barrage complet</button>
               <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelegationComplete(leagueTab); }}>
                 ⚡⚡ Tout simuler + confirmer
               </button>
@@ -5265,17 +4988,6 @@ export default function App() {
     }
     const photo = car ? getCarPhoto(carId) : getCarPhotoByName(effectiveName);
 
-    // Pour les voitures inactives, trouver leur carId dans les anciennes saisons
-    const resolvedCarId = carId || (() => {
-      for (const s of db.seasons) {
-        for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
-          const f = s.leagues[l]?.cars.find(c => namesMatch(c.name, effectiveName));
-          if (f) return f.id;
-        }
-      }
-      return null;
-    })();
-
     let totalW = 0, totalD = 0, totalL = 0, totalGF = 0, totalGA = 0, totalGP = 0;
     let totalBonusPts = 0, champCount = 0, relCount = 0;
     db.seasons.forEach(s => {
@@ -5337,7 +5049,8 @@ export default function App() {
     function handlePhoto(e) {
       const file = e.target.files[0];
       if (!file) return;
-      if (!isPublicMode && resolvedCarId) uploadToCloudinary(file).then(url => setCarPhoto(resolvedCarId, url));
+      const reader = new FileReader();
+      if (!isPublicMode) uploadToCloudinary(file).then(url => setCarPhoto(carId, url));
     }
 
     return (
@@ -5523,6 +5236,31 @@ export default function App() {
               </tbody>
             </table>
           </div>
+          {/* Bouton supprimer — admin seulement */}
+          {!isPublicMode && (
+            <div style={{ padding:'12px 16px', borderTop:'1px solid var(--border)' }}>
+              <button className="btn btn-sm" style={{ background:'rgba(192,57,43,0.15)', border:'1px solid rgba(192,57,43,0.5)', color:'#e74c3c', width:'100%' }}
+                onClick={() => {
+                  if (!window.confirm(`Supprimer ${effectiveName} de ${leagueName} ?`)) return;
+                  setDb(d => {
+                    const nd = JSON.parse(JSON.stringify(d));
+                    const season = nd.seasons[nd.currentSeasonIdx];
+                    const league = season.leagues[leagueName];
+                    if (!league) return d;
+                    // Supprimer la voiture
+                    league.cars = league.cars.filter(c => c.id !== carId);
+                    // Supprimer ses matchs
+                    Object.keys(league.groupResults || {}).forEach(g => {
+                      league.groupResults[g] = (league.groupResults[g] || []).filter(m => m.homeId !== carId && m.awayId !== carId);
+                    });
+                    return nd;
+                  });
+                  setProfileCar(null);
+                }}>
+                🗑 Supprimer de {leagueName}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -5721,10 +5459,12 @@ export default function App() {
               <thead>
                 <tr>
                   <th style={{ textAlign:'center',fontSize:11,color:'var(--text-dim)',width:32 }}>Δ</th>
-                  <th style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",color:'var(--gold-dim)' }}>#</th>
-                  <th style={{ width:130 }}></th>
-                  <th className="sticky-col" style={{ left:0,minWidth:180 }}>Voiture</th>
-                  <th className="sticky-col pts-val" style={{ left:180,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
+                  <th className="rank" style={{ width:36 }}>#</th>
+                  <th style={{ width:60 }}></th>
+                  <th className="sticky-col car-name" style={{ left:0,minWidth:140 }}>Voiture</th>
+                  <th style={{ textAlign:'center' }}>🏆</th>
+                  <th style={{ textAlign:'center' }}>⬇</th>
+                  <th className="sticky-col pts-val" style={{ left:140,color:!sortBySeason ? 'var(--gold)' :'var(--gold-dim)',cursor:'pointer',minWidth:60,borderRight:'1px solid var(--border)' }} onClick={() => setSortBySeason(null)}>
                     {!sortBySeason ? '▼ ' : ''}Total
                   </th>
                   {histSeasonNums.map(n => {
@@ -5772,59 +5512,76 @@ export default function App() {
                     const photo = !entry.historicalOnly
                       ? (getCarPhoto(entry.id) || getCarPhotoByName(entry.name))
                       : getCarPhotoByName(entry.name);
-                    const champCount = (entry.histChampions || []).length + (entry.appChampions || []).length;
-                    const relCount = (entry.histRelegated || []).length + (entry.appRelegated || []).length;
-                    const rank = (() => {
-                      const keysUpTo = sortBySeason ? allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1) : null;
-                      const myTotal = keysUpTo ? keysUpTo.reduce((sum, k) => sum + (entry.bySeason[k] || 0), 0) : entry.total;
-                      const ref = keysUpTo ? sortedBonus : allBonus;
-                      return ref.filter(e => { const t = keysUpTo ? keysUpTo.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0) : e.total; return t > myTotal; }).length + 1;
-                    })();
+                    const champCount = (entry.histChampions || []).length;
+                    const relCount = (entry.histRelegated || []).length;
+                  const rank = (() => {
+                    const keysUpTo = sortBySeason
+                      ? allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1)
+                      : null;
+                    const myTotal = keysUpTo
+                      ? keysUpTo.reduce((sum, k) => sum + (entry.bySeason[k] || 0), 0)
+                      : entry.total;
+                    const ref = keysUpTo ? sortedBonus : allBonus;
+                    return ref.filter(e => {
+                      const t = keysUpTo
+                        ? keysUpTo.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0)
+                        : e.total;
+                      return t > myTotal;
+                    }).length + 1;
+                  })();
                     const entryId = entry.id || entry.name;
                     const prevRank = rankPrev[entryId];
                     const delta = prevRank ? prevRank - rank : null;
+
                     const entryStatus = getStatus(entry);
                     let statusDot, statusTitle;
                     const nameLower = entry.name.toLowerCase();
-                    if (entryStatus === 'active') { statusDot = '#2ecc71'; statusTitle = 'Active dans cette ligue'; }
-                    else if (entryStatus === 'other') { statusDot = '#f1c40f'; statusTitle = `Active en ${activeInOtherLeagueMap[nameLower]}`; }
-                    else { statusDot = '#e74c3c'; statusTitle = 'Inactive'; }
+                    if (entryStatus === 'active') {
+                      statusDot = '#2ecc71'; statusTitle = 'Active dans cette ligue';
+                    } else if (entryStatus === 'other') {
+                      statusDot = '#f1c40f'; statusTitle = `Active en ${activeInOtherLeagueMap[nameLower]}`;
+                    } else {
+                      statusDot = '#e74c3c'; statusTitle = 'Inactive';
+                    }
 
                     return (
-                      <tr key={entryId} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
+                      <tr key={entry.id} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
                         <td style={{ textAlign:'center',fontSize:11,width:32 }}>
-                          {delta === null || delta === 0 ? <span style={{ color:'var(--text-dim)' }}>—</span>
-                            : delta > 0 ? <span style={{ color:'var(--green)',fontWeight:700 }}>▲{delta}</span>
-                            : <span style={{ color:'#e74c3c',fontWeight:700 }}>▼{Math.abs(delta)}</span>}
+                          {delta === null || delta === 0
+                            ? <span style={{ color:'var(--text-dim)' }}>—</span>
+                            : delta > 0
+                            ? <span style={{ color:'var(--green)' }}>▲{delta}</span>
+                            : <span style={{ color:'#e74c3c' }}>▼{Math.abs(delta)}</span>}
                         </td>
-                        <td style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',textAlign:'center' }}>
-                          {(() => { const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1; return sameRank ? `=${rank}` : rank; })()}
+                        <td className="rank" style={{ width:36 }}>
+                          {(() => {
+                            const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1;
+                            return sameRank ? `=${rank}` : rank;
+                          })()}
                         </td>
-                        <td style={{ padding:0,width:130 }}>
-                          <div style={{ width:130,height:90,overflow:'hidden',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center' }}>
-                            {photo
-                              ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
-                              : <span style={{ fontSize:36 }}>🚗</span>}
-                          </div>
+                        <td style={{ padding:'4px 4px',width:60 }}>
+                          <CarThumb photo={photo} />
                         </td>
-                        <td className="sticky-col" style={{ left:0,minWidth:180,padding:'8px 12px',background:'var(--dark2)' }}>
-                          <div style={{ display:'flex',alignItems:'center',gap:6,marginBottom:4 }}>
-                            <span title={statusTitle} style={{ display:'inline-block',width:8,height:8,borderRadius:'50%',background:statusDot,flexShrink:0 }} />
-                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,letterSpacing:1,color:'var(--text)',lineHeight:1 }}>{entry.name}</span>
-                          </div>
-                          <div style={{ display:'flex',gap:8,fontSize:12 }}>
-                            {champCount > 0 && <span style={{ color:'var(--gold)' }}>🏆×{champCount}</span>}
-                            {relCount > 0 && <span style={{ color:'#e74c3c' }}>⬇×{relCount}</span>}
-                          </div>
+                        <td className="sticky-col car-name" style={{ whiteSpace:'nowrap',color:'var(--text)',left:0,minWidth:140 }}>
+                          <span title={statusTitle} style={{ display:'inline-block',width:9,height:9,borderRadius:'50%',background:statusDot,marginRight:7,verticalAlign:'middle',flexShrink:0 }} />
+                          {entry.name}
                         </td>
-                        <td className="sticky-col pts-val" style={{ left:180,borderRight:'1px solid var(--border)',fontSize:28,textAlign:'center' }}>{entry.total}</td>
+                        <td style={{ textAlign:'center',fontSize:14,color:'var(--gold)' }}>
+                          {champCount > 0 ? `🏆×${champCount}` : '—'}
+                        </td>
+                        <td style={{ textAlign:'center',fontSize:14,color:'#e74c3c' }}>
+                          {relCount > 0 ? `⬇×${relCount}` : '—'}
+                        </td>
+                        <td className="sticky-col pts-val" style={{ left:140,borderRight:'1px solid var(--border)' }}>{entry.total}</td>
                         {histSeasonNums.map(n => {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
                           const isRel = (entry.histRelegated || []).includes(n);
                           return (
-                            <td key={`h${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:pts ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : 'transparent' }}>
-                              {isRel ? '⬇' : (pts || '—')}
+                            <td key={`h${n}`} style={{
+                              textAlign:'center',fontSize:12,color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
+                            }}>
+                              {pts || '—'}
                             </td>
                           );
                         })}
@@ -5833,8 +5590,10 @@ export default function App() {
                           const isChamp = (entry.appChampions || []).includes(n);
                           const isRel = (entry.appRelegated || []).includes(n);
                           return (
-                            <td key={`a${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:(isChamp || pts) ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : isRel ? '#e74c3c' : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : 'transparent' }}>
-                              {isRel ? '⬇' : (pts || '—')}
+                            <td key={`a${n}`} style={{
+                              textAlign:'center',fontSize:12,color:(isChamp || pts) ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :isRel ? '#e74c3c' :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400
+                            }}>
+                              {pts || (isChamp ? '🏆' : isRel ? '⬇' : '—')}
                             </td>
                           );
                         })}
@@ -5912,13 +5671,11 @@ export default function App() {
     }
 
     function simAll() {
-      const fresh = genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
-        const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
-        if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
-        return base;
+      const updated = allMatches.map(m => {
+        if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
+        return m;
       });
-      savePlayedMatches(fresh);
+      savePlayedMatches(updated);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -5937,7 +5694,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          </div><div className="sim-bar" style={{ padding:'4px 12px', display:'flex', gap:8, background:'var(--dark3)', borderBottom:'1px solid var(--border)' }}><button className="btn btn-gold btn-sm" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button><div style={{ flex:1 }} />
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {/* CLASSEMENT */}
@@ -5971,7 +5728,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })}
@@ -6206,13 +5963,11 @@ export default function App() {
     }
 
     function simAll() {
-      const fresh = genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
-        const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
-        if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
-        return base;
+      const updated = allMatches.map(m => {
+        if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
+        return m;
       });
-      savePlayedMatches(fresh);
+      savePlayedMatches(updated);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -6230,7 +5985,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          </div><div className="sim-bar" style={{ padding:'4px 12px', display:'flex', gap:8, background:'var(--dark3)', borderBottom:'1px solid var(--border)' }}><button className="btn btn-gold btn-sm" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button><div style={{ flex:1 }} />
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6245,29 +6000,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 12;
-                      const inZoneRel = rank > 16;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[12];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[16 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 12;
+                      const relegated = rank > 16;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6276,7 +6016,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6467,7 +6207,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRemplac(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6482,29 +6222,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 48;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[48 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 48;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6513,7 +6238,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6699,7 +6424,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAvantDern(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6714,29 +6439,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 24;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[24 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 24;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6745,7 +6455,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -6907,7 +6617,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDerniere(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -6922,29 +6632,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 8;
-                      const inZoneRel = rank > 16;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[8];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[16 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 8;
+                      const relegated = rank > 16;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6953,7 +6648,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7115,7 +6810,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simPersev(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7130,29 +6825,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 32;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[32 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 32;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7161,7 +6841,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7323,7 +7003,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simDeter(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7338,29 +7018,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 32;
-                      const inZoneRel = rank > 48;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[32];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[48 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 32;
+                      const relegated = rank > 48;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7369,7 +7034,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7531,7 +7196,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAcharn(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7546,29 +7211,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 48;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[48 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 48;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7577,7 +7227,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7739,7 +7389,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simObstin(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7754,29 +7404,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 24;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[24 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 24;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7785,7 +7420,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -7947,7 +7582,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simInsist(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -7962,29 +7597,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 8;
-                      const inZoneRel = rank > 16;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[8];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[16 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 8;
+                      const relegated = rank > 16;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7993,7 +7613,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8155,7 +7775,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simComeback(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8170,29 +7790,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 76;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[76 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 76;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -8201,7 +7806,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8363,7 +7968,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simImport(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8378,29 +7983,14 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 82;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
-                        if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
-                      })();
-                      const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[82 - 1];
-                        if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
-                      })();
+                      const promoted = rank <= 16;
+                      const relegated = rank > 82;
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -8409,7 +7999,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8504,7 +8094,6 @@ export default function App() {
     const [openDay, setOpenDay] = [oublOpenDay, setOublOpenDay];
     const leagueName = 'Oubliettes';
     const league = currentSeason.leagues[leagueName];
-    if (!league) return <div className="card" style={{ padding:24,textAlign:'center',color:'var(--text-dim)' }}>Ligue non initialisée pour cette saison.</div>;
     const cars = league?.cars || [];
     const playedMatches = league?.matches || [];
     const [search, setSearch] = useState('');
@@ -8572,7 +8161,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button>
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simOubl(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8589,11 +8178,8 @@ export default function App() {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
-                      const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', height: 72 };
-                      const promoted = rank <= 4;
-                      const borderColor = promoted ? 'var(--green)' : 'transparent';
-                      const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
-                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; return null; })();
+                      const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: 'rgba(39,174,96,0.07)', height: 72 };
+                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -8602,7 +8188,7 @@ export default function App() {
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
                           borderColor={borderColor}
-                          onClick={() => openProfileCar({ leagueName, carId: s.id })}
+                          onClick={() => openProfileCar({ leagueName: 'Successeurs', carId: s.id })}
                         />
                       );
                     })})              </div>
@@ -8748,13 +8334,11 @@ export default function App() {
     }
 
     function simAll() {
-      const fresh = genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
-        const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
-        if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
-        return base;
+      const updated = allMatches.map(m => {
+        if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
+        return m;
       });
-      savePlayedMatches(fresh);
+      savePlayedMatches(updated);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -8772,7 +8356,7 @@ export default function App() {
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
-          </div><div className="sim-bar" style={{ padding:'4px 12px', display:'flex', gap:8, background:'var(--dark3)', borderBottom:'1px solid var(--border)' }}><button className="btn btn-gold btn-sm" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) { const tabsEl = document.querySelector(".tabs"); const sl = tabsEl ? tabsEl.scrollLeft : 0; savedTabsScrollLeft.current = sl; simDay(nextDay); requestAnimationFrame(() => { if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>📅 Journée suivante</button><div style={{ flex:1 }} />
+          <button className="btn btn-gold btn-sm" style={{ margin:'6px 12px', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAll(); }}>⚡ Simuler tous les matchs</button><button className="btn btn-sm btn-sim" style={{ margin:'6px 0', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(isPublicMode) return; const nextDay = days.find(d => allMatches.filter(m => m.day === d).some(m => m.homeGoals === null)); if (nextDay !== undefined) simDay(nextDay); }}>📅 Journée suivante</button>
         </div>
 
         {subTab === 'classement' && (
@@ -8924,40 +8508,22 @@ export default function App() {
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
-    const [ripSearch, setRipSearch] = useState('');
 
-    const rip = React.useMemo(() => {
-      return [
-        { name: 'X7 Pick-Up' },
-        { name: 'Rebellion' },
-      ].map(c => ({ ...c, photoKey: `byname-${c.name.toLowerCase()}` }));
-    }, []);
-
-    const filteredRip = rip.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
-
-    const filtered = React.useMemo(() => {
-      const all = [];
-      [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
-        const leagueCars = currentSeason.leagues[league]?.cars || [];
-        leagueCars.forEach(car => all.push({ name: car.name, league, carId: car.id }));
+    const allCars = [];
+    [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
+      const leagueCars = currentSeason.leagues[league]?.cars || [];
+      leagueCars.forEach(car => {
+        allCars.push({ name: car.name, league, carId: car.id });
       });
-      return all.filter(c => {
-        if (leagueFilter !== 'Toutes' && c.league !== leagueFilter) return false;
-        if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-      }).sort((a, b) => a.name.localeCompare(b.name));
-    }, [leagueFilter, search, currentSeason]);
+    });
 
-    const grouped = React.useMemo(() => {
-      const g = {};
-      filtered.forEach(c => {
-        const first = c.name[0]?.toUpperCase() || '#';
-        const key = /[A-Z]/.test(first) ? first : '#';
-        if (!g[key]) g[key] = [];
-        g[key].push(c);
-      });
-      return g;
-    }, [filtered]);
+    const filtered = allCars.filter(c => {
+      if (leagueFilter !== 'Toutes' && c.league !== leagueFilter) return false;
+      if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+      return true;
+    });
+
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
 
     const leagueColors = {
       'Voitures 1': '#e74c3c',
@@ -8992,64 +8558,10 @@ export default function App() {
       setEditKey(null);
     }
 
-    const letterRefs = React.useRef({});
-    const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
-
-    const [activeLetter, setActiveLetter] = useState('TOUS');
-    const activeLetters = new Set(Object.keys(grouped));
-    const displayLetter = activeLetter;
-
-    const displayCars = activeLetter === 'TOUS' ? filtered : (grouped[activeLetter] || []);
-
     return (
       <div>
         <div className="section-title">Voitures — Toutes les ligues</div>
-        {/* Onglets Actives / RIP */}
-        <div style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
-          <button onClick={() => setRipTab(false)} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,background:'transparent',border:'none',borderBottom: !ripTab ? '2px solid var(--gold)' :'2px solid transparent',color: !ripTab ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
-            🏎️ Actives ({filtered.length})
-          </button>
-          <button onClick={() => setRipTab(true)} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,background:'transparent',border:'none',borderBottom: ripTab ? '2px solid #e74c3c' :'2px solid transparent',color: ripTab ? '#e74c3c' :'var(--text-dim)',cursor:'pointer' }}>
-            🪦 RIP ({rip.length})
-          </button>
-        </div>
-
-        {ripTab ? (
-          /* ---- VUE RIP ---- */
-          <div className="card">
-            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center' }}>
-              <input placeholder="🔍 Rechercher..." value={ripSearch} onChange={e => setRipSearch(e.target.value)} style={{ width:180 }} />
-              <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>{filteredRip.length} voitures</span>
-            </div>
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,padding:8 }}>
-              {filteredRip.map(c => {
-                const photo = db.photos?.[c.photoKey] || getCarPhotoByName(c.name);
-                return (
-                  <div key={c.name} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
-                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
-                      onClick={e => e.preventDefault()}>
-                      {photo
-                        ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
-                        : <span style={{ fontSize:36 }}>🪦</span>}
-                      {!isPublicMode && <div className="car-photo-overlay">📷</div>}
-                      {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
-                        const file = e.target.files[0]; if (!file) return;
-                        uploadToCloudinary(file).then(url => setCarPhoto(c.photoKey, url));
-                      }} />}
-                    </label>
-                    <div style={{ padding:'6px 8px',display:'flex',alignItems:'center',gap:4,cursor:'pointer' }}
-                      onClick={() => openProfileCar({ leagueName: LEAGUES[0], carId: c.photoKey, histName: c.name })}>
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,flex:1,color:'var(--text-dim)' }}>{c.name}</span>
-                      <span style={{ fontSize:11,color:'var(--text-dim)' }}>→ profil</span>
-                    </div>
-                  </div>
-                );
-              })}
-              {filteredRip.length === 0 && <div className="text-dim" style={{ gridColumn:'1/-1',padding:24,textAlign:'center' }}>Aucune voiture retraitée</div>}
-            </div>
-          </div>
-        ) : (
-          <div className="card">
+        <div className="card">
           <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
             <input
               placeholder="🔍 Rechercher..."
@@ -9068,78 +8580,50 @@ export default function App() {
               </button>
             ))}
           </div>
-
-          {/* Barre alphabet */}
-          <div style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
-            <button className="btn btn-xs"
-              style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,padding:'2px 8px',
-                background: displayLetter === 'TOUS' ? 'var(--gold)' : 'var(--dark3)',
-                color: displayLetter === 'TOUS' ? '#000' : 'var(--gold)',
-                border:'1px solid var(--gold-dim)' }}
-              onClick={() => setActiveLetter('TOUS')}>
-              Tous
-            </button>
-            {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
-              <button key={letter} className="btn btn-xs"
-                style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,minWidth:24,padding:'2px 6px',
-                  background: displayLetter === letter ? 'var(--gold)' : 'var(--dark3)',
-                  color: displayLetter === letter ? '#000' : 'var(--gold)',
-                  border:'1px solid var(--gold-dim)' }}
-                onClick={() => setActiveLetter(letter)}>
-                {letter}
-              </button>
-            ))}
-          </div>
-
-          {/* Grille */}
-          <div style={{ padding:'8px' }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
-              {displayLetter === 'TOUS' ? 'Toutes' : displayLetter} <span style={{ fontSize:13,color:'var(--text-dim)' }}>({displayCars.length} voitures)</span>
-            </div>
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
-              {displayCars.map((c, i) => {
-                const photo = c.carId ? getCarPhoto(c.carId) : null;
-                const key = `${c.league}||${c.name}`;
-                const isEditing = editKey === key;
-                return (
-                  <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
-                    <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
-                      onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                      {photo
-                        ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
-                        : <span style={{ fontSize:36 }}>🚗</span>}
-                    </div>
-                    <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
-                      {isEditing ? (
-                        <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
-                          <input value={editName} onChange={e => setEditName(e.target.value)}
-                            autoFocus style={{ width:'100%',fontSize:11 }}
-                            onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
-                          <div style={{ display:'flex',gap:3 }}>
-                            <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
-                            <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
-                            onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                            {c.name}
-                          </span>
-                          {!isPublicMode && (
-                            <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
-                              onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
-                          )}
-                        </div>
-                      )}
-                    </div>
+          <div style={{ padding:'8px',display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
+            {filtered.map((c, i) => {
+              const photo = c.carId ? getCarPhoto(c.carId) : null;
+              const key = `${c.league}||${c.name}`;
+              const isEditing = editKey === key;
+              return (
+                <div key={i} style={{ borderRadius:8, border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`, background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                  {/* Grande photo rectangulaire */}
+                  <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', cursor: c.carId ? 'pointer' : 'default', display:'flex', alignItems:'center', justifyContent:'center' }}
+                    onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                    {photo
+                      ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                      : <span style={{ fontSize:36 }}>🚗</span>}
                   </div>
-                );
-              })}
-            </div>
+                  {/* Nom + crayon */}
+                  <div style={{ padding:'4px 6px', borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
+                    {isEditing ? (
+                      <div style={{ display:'flex', flexDirection:'column', gap:3 }}>
+                        <input value={editName} onChange={e => setEditName(e.target.value)}
+                          autoFocus style={{ width:'100%', fontSize:11 }}
+                          onKeyDown={e => { if (e.key === 'Enter') confirmEdit(c); if (e.key === 'Escape') setEditKey(null); }} />
+                        <div style={{ display:'flex', gap:3 }}>
+                          <button className="btn btn-gold btn-xs" style={{ flex:1 }} onClick={() => confirmEdit(c)}>✓</button>
+                          <button className="btn btn-dark btn-xs" style={{ flex:1 }} onClick={() => setEditKey(null)}>✕</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', alignItems:'center', gap:3 }}>
+                        <span style={{ fontSize:11, fontWeight:700, color:'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', cursor: c.carId ? 'pointer' : 'default' }}
+                          onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                          {c.name}
+                        </span>
+                        {!isPublicMode && (
+                          <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px', fontSize:10, flexShrink:0 }}
+                            onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        )} {/* fin ternaire ripTab */}
       </div>
     );
   }
@@ -9171,11 +8655,11 @@ export default function App() {
               openProfileCar({ leagueName: entry.lastRelLeague || LEAGUES[0], carId: `hist-${entry.name}`, histName: entry.name });
             }
           }}>
-          <td style={{ width:100,padding:'4px 6px' }}>
-            <label onClick={e => e.stopPropagation()} style={{ cursor:'pointer',display:'flex',width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',flexShrink:0,alignItems:'center',justifyContent:'center' }}>
+          <td style={{ width:60,padding:'4px 6px' }}>
+            <label onClick={e => e.stopPropagation()} style={{ cursor:'pointer',display:'flex',width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',flexShrink:0,alignItems:'center',justifyContent:'center' }}>
               {photo
                 ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',display:'block' }} />
-                : <span style={{ fontSize:24 }}>🚗</span>}
+                : <span style={{ fontSize:18 }}>🚗</span>}
               {mainLeague && <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => {
                 const file = e.target.files[0]; if (!file) return;
                 const reader = new FileReader();
@@ -9184,7 +8668,7 @@ export default function App() {
               }} />}
             </label>
           </td>
-          <td className="car-name" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,whiteSpace:'nowrap' }}>
+          <td className="car-name" style={{ fontWeight:700,whiteSpace:'nowrap' }}>
             {editId === mainLeague?.carId ? (
               <input value={editName} onChange={e => setEditName(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') { renameCar(mainLeague.leagueName, mainLeague.carId, editName); setEditId(null); } }}
@@ -9224,31 +8708,22 @@ export default function App() {
       );
     }
 
-    const [openLeagues, setOpenLeagues] = useState({});
-    const toggleLeague = (l) => setOpenLeagues(prev => ({ ...prev, [l]: !prev[l] }));
-
     function LeagueBlock({ leagueName, cars, emptyMsg }) {
       if (cars.length === 0) return null;
-      const isOpen = !!openLeagues[leagueName];
       return (
-        <div style={{ marginBottom:8 }}>
+        <div style={{ marginBottom:20 }}>
           <div style={{
-            fontFamily:"'Bebas Neue',sans-serif",letterSpacing:3,fontSize:15,color:'var(--gold)',padding:'10px 14px',background:'var(--dark3)',borderBottom: isOpen ? '2px solid var(--gold-dim)' : '1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'space-between',cursor:'pointer',borderRadius: isOpen ? '4px 4px 0 0' : 4
-          }} onClick={() => toggleLeague(leagueName)}>
+            fontFamily:"'Bebas Neue',sans-serif",letterSpacing:3,fontSize:15,color:'var(--gold)',padding:'8px 12px',background:'var(--dark3)',borderBottom:'2px solid var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'space-between'
+          }}>
             <span>{leagueName}</span>
-            <div style={{ display:'flex',alignItems:'center',gap:12 }}>
-              <span style={{ fontSize:13,color:'var(--text-dim)' }}>{cars.length} voitures</span>
-              <span style={{ fontSize:14,color:'var(--gold-dim)',transition:'transform 0.2s',display:'inline-block',transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>▼</span>
-            </div>
+            <span style={{ fontSize:13,color:'var(--text-dim)' }}>{cars.length} voitures</span>
           </div>
-          {isOpen && (
-            <table className="tbl" style={{ marginBottom:0 }}>
-              <thead><tr><th></th><th>Voiture</th><th>Historique relégations</th><th>Titres</th><th></th></tr></thead>
-              <tbody>
-                {cars.map(e => <CarRow key={e.displayName || e.name} entry={e} />)}
-              </tbody>
-            </table>
-          )}
+          <table className="tbl" style={{ marginBottom:0 }}>
+            <thead><tr><th></th><th>Voiture</th><th>Historique relégations</th><th>Titres</th><th></th></tr></thead>
+            <tbody>
+              {cars.map(e => <CarRow key={e.displayName || e.name} entry={e} />)}
+            </tbody>
+          </table>
         </div>
       );
     }
@@ -9508,40 +8983,40 @@ export default function App() {
 
         <ExpandableSection id="champs" title="🏆 Plus de Championnats V1-V4" rows={topChamps} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
-            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
-            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
-            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>{Object.entries(e.leagues).map(([l, n]) => `${n}× ${l.replace('Voitures ','V')}`).join(', ')}</td>
-            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)' }}>{e.count}×</td>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
+            <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>{Object.entries(e.leagues).map(([l, n]) => `${n}× ${l.replace('Voitures ','V')}`).join(', ')}</td>
+            <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.count}×</td>
           </tr>
         )} />
         <ExpandableSection id="reg" title="🏁 Meilleure Saison Régulière (pts)" rows={topRegSeason} renderRow={(e, i) => (
           <tr key={`${e.name}-${e.season}`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
-            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
-            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
-            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.w}V {e.d}N {e.l}D</td>
-            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)' }}>{e.pts} pts</td>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
+            <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.w}V {e.d}N {e.l}D</td>
+            <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.pts} pts</td>
           </tr>
         )} />
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" rows={topTotal} renderRow={(e, i) => {
           const league = e.carId ? findLeagueByCarId(e.carId) : null;
           return (
             <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-              <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
-              <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
-              <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
-              <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>{league ? league.replace('Voitures ','V') : '—'}</td>
-              <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)' }}>{e.total} pts</td>
+              <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+              <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
+              <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
+              <td style={{ padding:'10px 6px',fontSize:12,color:'var(--text-dim)' }}>{league ? league.replace('Voitures ','V') : '—'}</td>
+              <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)' }}>{e.total} pts</td>
             </tr>
           );
         }} />
         <ExpandableSection id="rel" title="⬇ Plus de Relégations V1-V4" rows={topRelegated} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
-            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
-            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
-            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.count}×</td>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'10px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:60 }}><div style={{ width:52,height:38,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:18 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'10px 6px',fontWeight:700,fontSize:15 }}>{e.name}</td>
+            <td style={{ padding:'10px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'#e74c3c' }}>{e.count}×</td>
           </tr>
         )} />
       </div>
@@ -10389,7 +9864,6 @@ export default function App() {
         {/* Match modal */}
         <MatchModal />
       <CelebrationModal />
-      <RelegationModal />
 
         {/* Car profile modal */}
         <CarProfileModal />
@@ -10479,7 +9953,7 @@ export default function App() {
         </div>
 
         {/* Main nav */}
-        <div className="tabs" id="tabs-main">
+        <div className="tabs">
           {[
             { key: 'dashboard', label: 'Tableau de Bord' },
             { key: 'ligues', label: 'Ligues' },
@@ -10487,22 +9961,10 @@ export default function App() {
             { key: 'voitures', label: 'Voitures' },
             { key: 'historique', label: 'Historique' },
           ].map(t => (
-            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
-              const bar = e.currentTarget.parentElement;
-              const sl = bar.scrollLeft;
-              const liguesBar = document.getElementById('tabs-ligues');
-              const liguesSl = liguesBar ? liguesBar.scrollLeft : 0;
+            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={() => {
               saveScrollForTab();
               setMainTab(t.key);
               restoreScrollForTab(`${t.key}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`);
-              requestAnimationFrame(() => {
-                bar.scrollLeft = sl;
-                if (liguesBar) liguesBar.scrollLeft = liguesSl;
-                requestAnimationFrame(() => {
-                  bar.scrollLeft = sl;
-                  if (liguesBar) liguesBar.scrollLeft = liguesSl;
-                });
-              });
             }}>
               {t.label}
             </button>
@@ -10511,7 +9973,7 @@ export default function App() {
 
         {/* Sous-onglets Ligues */}
         {mainTab === 'ligues' && (
-          <div className="tabs" id="tabs-ligues" style={{ background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" style={{ background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
             {[
               { key: 'champions', label: '🏆 Tournoi des Champions' },
               { key: 'principales', label: 'Ligues Principales' },
@@ -10530,23 +9992,10 @@ export default function App() {
               { key: 'import', label: 'Importation' },
               { key: 'oubl', label: 'Oubliettes' },
             ].map(t => (
-              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
-                const bar = e.currentTarget.parentElement;
-                const sl = bar.scrollLeft;
-                const mainBar = document.getElementById('tabs-main');
-                const mainSl = mainBar ? mainBar.scrollLeft : 0;
+              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={() => {
                 saveScrollForTab();
                 setLigueSubTab(t.key);
                 restoreScrollForTab(`ligues|${t.key}|${leagueTab}|${sectionTab}|${histSubTab}`);
-                requestAnimationFrame(() => {
-                  bar.scrollLeft = sl;
-                  if (mainBar) mainBar.scrollLeft = mainSl;
-                  // Double rAF pour s'assurer que le DOM est stable
-                  requestAnimationFrame(() => {
-                    bar.scrollLeft = sl;
-                    if (mainBar) mainBar.scrollLeft = mainSl;
-                  });
-                });
               }}>
                 {t.label}
               </button>
@@ -10556,15 +10005,12 @@ export default function App() {
 
         {/* League selector for principales + bonus */}
         {((mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus') && (
-          <div className="tabs" id="tabs-leagues" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
             {LEAGUES.map(l => (
-              <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={e => {
-                const bar = e.currentTarget.parentElement;
-                const sl = bar.scrollLeft;
+              <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={() => {
                 saveScrollForTab();
                 setLeagueTab(l);
                 restoreScrollForTab(`${mainTab}|${ligueSubTab}|${l}|${sectionTab}|${histSubTab}`);
-                requestAnimationFrame(() => { bar.scrollLeft = sl; });
               }}>
                 {l}
               </button>
@@ -10574,19 +10020,16 @@ export default function App() {
 
         {/* Section tabs for principales */}
         {mainTab === 'ligues' && ligueSubTab === 'principales' && (
-          <div className="tabs" id="tabs-section" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
             {[
               { key: 'groupes', label: 'Phase de Groupes' },
               { key: 'playoffs', label: 'Playoffs' },
               { key: 'relegation', label: 'Barrage Relégation' },
             ].map(t => (
-              <button key={t.key} className={`tab ${sectionTab === t.key ? 'active' : ''}`} onClick={e => {
-                const bar = e.currentTarget.parentElement;
-                const sl = bar.scrollLeft;
+              <button key={t.key} className={`tab ${sectionTab === t.key ? 'active' : ''}`} onClick={() => {
                 saveScrollForTab();
                 setSectionTab(t.key);
                 restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${t.key}|${histSubTab}`);
-                requestAnimationFrame(() => { bar.scrollLeft = sl; });
               }}>
                 {t.label}
               </button>
@@ -10596,15 +10039,10 @@ export default function App() {
 
         {/* Sous-onglets Actuelles */}
         {mainTab === 'ligues' && ligueSubTab === 'actuelles' && (
-          <div className="tabs" id="tabs-actuelles" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
+          <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
             {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
               <button key={l} className={`tab ${actuellesLeague === l ? 'active' : ''}`}
-                onClick={e => {
-                  const bar = e.currentTarget.parentElement;
-                  const sl = bar.scrollLeft;
-                  setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null);
-                  requestAnimationFrame(() => { bar.scrollLeft = sl; });
-                }}>
+                onClick={() => { setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null); }}>
                 {l}
               </button>
             ))}
