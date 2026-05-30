@@ -1546,7 +1546,7 @@ function storageSave(data) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 2000);
+  }, 500);
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -1893,8 +1893,8 @@ function launchConfetti() {
 }
 
 export default function App() {
-  const [db, _setDb] = useState(() => {
-    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
+  const dbRef = React.useRef(null);
+  const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
     s.seasons.push(initSeason(33));
@@ -1906,10 +1906,13 @@ export default function App() {
     const tabsEl = document.querySelector('.tabs');
     tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
     savedTabsScrollLeft.current = tabsScrollRef.current;
-    // Capturer tous les .tabs
     const tabsEls = document.querySelectorAll('.tabs');
     allTabsScrollRef.current = Array.from(tabsEls).map(el => el.scrollLeft);
-    _setDb(updater);
+    _setDb(prev => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      dbRef.current = next;
+      return next;
+    });
   }, []);
   const [loaded, setLoaded] = useState(false);
   const [isPrivate, setIsPrivate] = useState(false);
@@ -2165,6 +2168,15 @@ export default function App() {
       if (dataSnap.exists()) {
         try {
           const parsed = JSON.parse(dataSnap.data().data);
+          // Ignorer si les données Firestore ont moins de matchs joués que notre state actuel
+          const currentPlayed = Object.values(dbRef.current?.seasons?.[dbRef.current?.currentSeasonIdx]?.leagues || {})
+            .reduce((sum, l) => sum + (l.matches?.length || 0) + Object.values(l.groupResults || {}).flat().filter(m => m.homeGoals !== null).length, 0);
+          const firestorePlayed = Object.values(parsed?.seasons?.[parsed?.currentSeasonIdx]?.leagues || {})
+            .reduce((sum, l) => sum + (l.matches?.length || 0) + Object.values(l.groupResults || {}).flat().filter(m => m.homeGoals !== null).length, 0);
+          if (firestorePlayed < currentPlayed) {
+            setLoaded(true);
+            return;
+          }
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
