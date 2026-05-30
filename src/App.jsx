@@ -1550,7 +1550,7 @@ function storageSave(data) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 2000);
+  }, 500);
   // Exposer le timestamp pour onSnapshot
 }
 
@@ -3587,6 +3587,7 @@ export default function App() {
   }
 
   function simRemplac() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3605,6 +3606,7 @@ export default function App() {
   }
 
   function simAvantDern() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3623,6 +3625,7 @@ export default function App() {
   }
 
   function simDerniere() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3641,6 +3644,7 @@ export default function App() {
   }
 
   function simPersev() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3659,6 +3663,7 @@ export default function App() {
   }
 
   function simDeter() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3677,6 +3682,7 @@ export default function App() {
   }
 
   function simAcharn() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3695,6 +3701,7 @@ export default function App() {
   }
 
   function simObstin() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3713,6 +3720,7 @@ export default function App() {
   }
 
   function simInsist() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3731,6 +3739,7 @@ export default function App() {
   }
 
   function simComeback() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3749,6 +3758,7 @@ export default function App() {
   }
 
   function simImport() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3915,6 +3925,7 @@ export default function App() {
   }
 
   function simOubl() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -5923,6 +5934,7 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
@@ -6217,6 +6229,7 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
@@ -8759,6 +8772,7 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
