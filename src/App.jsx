@@ -1480,6 +1480,7 @@ const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
 storageSave._lastSave = 0;
+const isLoadingFromFirebase = { current: 0 };
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
