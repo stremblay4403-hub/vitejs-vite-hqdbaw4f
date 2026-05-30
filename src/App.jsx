@@ -1717,7 +1717,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, 
         <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
           <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
-            <span style={{ display:'inline-block', marginTop:2, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+            <span style={{ display:'inline-block', marginTop:2, padding:'2px 6px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
           )}
           {streakBadge && (
             <span style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
@@ -6189,7 +6189,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6411,7 +6411,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6628,7 +6628,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -6821,7 +6821,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7014,7 +7014,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7207,7 +7207,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7400,7 +7400,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7593,7 +7593,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7786,7 +7786,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -7979,7 +7979,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -8172,7 +8172,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
