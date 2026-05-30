@@ -1479,8 +1479,7 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
-storageSave._lastSave = 0;
-const isLoadingFromFirebase = { current: 0 };
+const isLoadingFromFirebase = { current: false };
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
@@ -1508,7 +1507,7 @@ function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-  if (isLoadingFromFirebase.current > 0) return;
+  if (isLoadingFromFirebase.current) return;
 
   const { photos, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -1538,15 +1537,13 @@ function storageSave(data) {
   console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
-  let saveTimestamp = 0;
   firebaseSaveTimeout = setTimeout(() => {
-    saveTimestamp = Date.now();
-    setDoc(dataDocRef, { data: jsonToSave, updatedAt: saveTimestamp })
+    isLoadingFromFirebase.current = true;
+    setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
       .then(() => {
-        // Reset après 5s pour permettre à l'autre appareil de sync
-        setTimeout(() => { storageSave._lastSave = 0; }, 5000);
+        setTimeout(() => { isLoadingFromFirebase.current = false; }, 3000);
       })
-      .catch(e => console.warn('Firebase data save error:', e));
+      .catch(e => { console.warn('Firebase data save error:', e); isLoadingFromFirebase.current = false; });
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
@@ -1555,7 +1552,6 @@ function storageSave(data) {
     }
   }, 2000);
   // Exposer le timestamp pour onSnapshot
-  storageSave._lastSave = Date.now();
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -1911,7 +1907,6 @@ export default function App() {
   });
   // Wrapper qui capture le scroll avant chaque setDb
   const setDb = React.useCallback((updater) => {
-    storageSave._lastSave = Date.now();
     scrollPosRef.current = window.scrollY;
     const tabsEl = document.querySelector('.tabs');
     tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
@@ -2177,11 +2172,7 @@ export default function App() {
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
         try {
-          // Ignorer si on a un save plus récent en attente (dans les 6 dernières secondes)
-          if (storageSave._lastSave && Date.now() - storageSave._lastSave < 6000) {
-            setLoaded(true);
-            return;
-          }
+
           const parsed = JSON.parse(dataSnap.data().data);
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
@@ -2190,10 +2181,10 @@ export default function App() {
           const savedScrollY = window.scrollY;
           const tabsEl = document.querySelector('.tabs');
           if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
-          isLoadingFromFirebase.current++;
+          isLoadingFromFirebase.current = true;
           applyLoadedData(parsed, true);
           setTimeout(() => {
-            if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--;
+            isLoadingFromFirebase.current = false;
             if (!document.body.dataset.scrollY) {
               window.scrollTo(0, savedScrollY);
               const el = document.querySelector('.tabs');
@@ -2908,7 +2899,7 @@ export default function App() {
   }
 
   async function uploadToCloudinary(file) {
-    isLoadingFromFirebase.current++;
+    isLoadingFromFirebase.current = true;
     try {
       const compressed = await compressImage(file);
       const formData = new FormData();
@@ -2922,7 +2913,7 @@ export default function App() {
       return data.secure_url;
     } finally {
       // Laisser 5s après l'upload pour que la sauvegarde Firestore parte avant de réactiver onSnapshot
-      setTimeout(() => { if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--; }, 5000);
+      setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     }
   }
 
@@ -3776,8 +3767,8 @@ export default function App() {
   }
 
   function simTout() {
-    isLoadingFromFirebase.current++;
-    setTimeout(() => { if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--; }, 5000);
+    isLoadingFromFirebase.current = true;
+    setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
