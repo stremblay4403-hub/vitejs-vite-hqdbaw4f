@@ -1538,15 +1538,8 @@ function storageSave(data) {
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
-    isLoadingFromFirebase.current++; // bloquer onSnapshot pendant le save
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
-      .then(() => {
-        setTimeout(() => { if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--; }, 3000);
-      })
-      .catch(e => {
-        console.warn('Firebase data save error:', e);
-        if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--;
-      });
+      .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
@@ -3588,7 +3581,6 @@ export default function App() {
   }
 
   function simRemplac() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3607,7 +3599,6 @@ export default function App() {
   }
 
   function simAvantDern() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3626,7 +3617,6 @@ export default function App() {
   }
 
   function simDerniere() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3645,7 +3635,6 @@ export default function App() {
   }
 
   function simPersev() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3664,7 +3653,6 @@ export default function App() {
   }
 
   function simDeter() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3683,7 +3671,6 @@ export default function App() {
   }
 
   function simAcharn() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3702,7 +3689,6 @@ export default function App() {
   }
 
   function simObstin() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3721,7 +3707,6 @@ export default function App() {
   }
 
   function simInsist() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3740,7 +3725,6 @@ export default function App() {
   }
 
   function simComeback() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3759,7 +3743,6 @@ export default function App() {
   }
 
   function simImport() {
-    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -5934,7 +5917,6 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current++;
       const fresh = genRoundRobin(cars).map(m => {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
@@ -6229,7 +6211,6 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current++;
       const fresh = genRoundRobin(cars).map(m => {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
@@ -8772,7 +8753,6 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current++;
       const fresh = genRoundRobin(cars).map(m => {
         const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
