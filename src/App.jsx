@@ -1537,6 +1537,7 @@ function storageSave(data) {
   console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+  if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
     isLoadingFromFirebase.current = true;
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
@@ -1550,7 +1551,7 @@ function storageSave(data) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 500);
+  }, 0);
   // Exposer le timestamp pour onSnapshot
 }
 
