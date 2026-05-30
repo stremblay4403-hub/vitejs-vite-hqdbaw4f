@@ -1479,7 +1479,7 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
-const isLoadingFromFirebase = { current: 0 };
+storageSave._lastSave = 0;
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
@@ -1537,8 +1537,10 @@ function storageSave(data) {
   console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+  let saveTimestamp = 0;
   firebaseSaveTimeout = setTimeout(() => {
-    setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
+    saveTimestamp = Date.now();
+    setDoc(dataDocRef, { data: jsonToSave, updatedAt: saveTimestamp })
       .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
@@ -1547,6 +1549,8 @@ function storageSave(data) {
         .catch(e => console.warn('Firebase photos save error:', e));
     }
   }, 2000);
+  // Exposer le timestamp pour onSnapshot
+  storageSave._lastSave = Date.now();
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -1902,6 +1906,7 @@ export default function App() {
   });
   // Wrapper qui capture le scroll avant chaque setDb
   const setDb = React.useCallback((updater) => {
+    storageSave._lastSave = Date.now();
     scrollPosRef.current = window.scrollY;
     const tabsEl = document.querySelector('.tabs');
     tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
@@ -2167,6 +2172,11 @@ export default function App() {
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
         try {
+          // Ignorer si on a un save plus récent en attente
+          if (storageSave._lastSave && Date.now() - storageSave._lastSave < 4000) {
+            setLoaded(true);
+            return;
+          }
           const parsed = JSON.parse(dataSnap.data().data);
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
