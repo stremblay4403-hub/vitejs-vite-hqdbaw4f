@@ -3588,163 +3588,191 @@ export default function App() {
   }
 
   function simRemplac() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Remplaçants des Successeurs'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) {
-        league.matches = genRoundRobin(league.cars);
-      }
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simAvantDern() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Avant-dernière chance'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simDerniere() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Dernière chance'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simPersev() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Persévérance'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simDeter() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Détermination'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simAcharn() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Acharnement'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simObstin() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Obstination'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simInsist() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Insistance'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simComeback() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Comeback'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
 
   function simImport() {
+    isLoadingFromFirebase.current++;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Importation'];
       if (!league) return d;
-      if (!league.matches || league.matches.length === 0) league.matches = genRoundRobin(league.cars);
-      league.matches = league.matches.map(m => {
-        if (m.homeGoals !== null) return m;
+      const played = league.matches || [];
+      const fresh = genRoundRobin(league.cars).map(m => {
+        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        if (p) return p;
         const sc = simScore();
-        return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+        return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
+      league.matches = fresh;
       return next;
     });
   }
@@ -5907,11 +5935,13 @@ export default function App() {
 
     function simAll() {
       isLoadingFromFirebase.current++;
-      const updated = allMatches.map(m => {
-        if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
-        return m;
+      const fresh = genRoundRobin(cars).map(m => {
+        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
+        if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
+        return base;
       });
-      savePlayedMatches(updated);
+      savePlayedMatches(fresh);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -6200,11 +6230,13 @@ export default function App() {
 
     function simAll() {
       isLoadingFromFirebase.current++;
-      const updated = allMatches.map(m => {
-        if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
-        return m;
+      const fresh = genRoundRobin(cars).map(m => {
+        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
+        if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
+        return base;
       });
-      savePlayedMatches(updated);
+      savePlayedMatches(fresh);
     }
 
     function updateMatch(matchId, hg, ag) {
@@ -8741,11 +8773,13 @@ export default function App() {
 
     function simAll() {
       isLoadingFromFirebase.current++;
-      const updated = allMatches.map(m => {
-        if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
-        return m;
+      const fresh = genRoundRobin(cars).map(m => {
+        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
+        if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
+        return base;
       });
-      savePlayedMatches(updated);
+      savePlayedMatches(fresh);
     }
 
     function updateMatch(matchId, hg, ag) {
