@@ -1525,7 +1525,9 @@ function storageSave(data) {
       const leagues = {};
       Object.entries(s.leagues || {}).forEach(([l, league]) => {
         const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
-        leagues[l] = isMain ? league : { ...league, matches: [] };
+        leagues[l] = isMain
+          ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} } // ligues principales : retirer tous les matchs
+          : { ...league, matches: [] }; // ligues aux : retirer matches seulement
       });
       return { ...s, leagues };
     })
