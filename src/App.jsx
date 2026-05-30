@@ -1479,6 +1479,7 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
+storageSave._localTime = 0;
 const isLoadingFromFirebase = { current: false };
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
@@ -1538,13 +1539,11 @@ function storageSave(data) {
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+  const now = Date.now();
+  storageSave._localTime = now;
   firebaseSaveTimeout = setTimeout(() => {
-    isLoadingFromFirebase.current = true;
-    setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
-      .then(() => {
-        setTimeout(() => { isLoadingFromFirebase.current = false; }, 3000);
-      })
-      .catch(e => { console.warn('Firebase data save error:', e); isLoadingFromFirebase.current = false; });
+    setDoc(dataDocRef, { data: jsonToSave, updatedAt: now })
+      .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
@@ -2173,6 +2172,8 @@ export default function App() {
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
         try {
+          const firestoreTime = dataSnap.data().updatedAt || 0;
+          if (firestoreTime < storageSave._localTime) { setLoaded(true); return; }
 
           const parsed = JSON.parse(dataSnap.data().data);
           parsed.photos = photosData;
