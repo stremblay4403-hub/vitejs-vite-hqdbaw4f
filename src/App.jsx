@@ -5906,6 +5906,7 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
@@ -6198,6 +6199,7 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
@@ -8738,6 +8740,7 @@ export default function App() {
     }
 
     function simAll() {
+      isLoadingFromFirebase.current = true;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
