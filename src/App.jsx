@@ -1538,15 +1538,22 @@ function storageSave(data) {
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
+    isLoadingFromFirebase.current = true; // bloquer onSnapshot pendant le save
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
-      .catch(e => console.warn('Firebase data save error:', e));
+      .then(() => {
+        setTimeout(() => { isLoadingFromFirebase.current = false; }, 3000);
+      })
+      .catch(e => {
+        console.warn('Firebase data save error:', e);
+        isLoadingFromFirebase.current = false;
+      });
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 500);
+  }, 2000);
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -2168,15 +2175,6 @@ export default function App() {
       if (dataSnap.exists()) {
         try {
           const parsed = JSON.parse(dataSnap.data().data);
-          // Ignorer si les données Firestore ont moins de matchs joués que notre state actuel
-          const currentPlayed = Object.values(dbRef.current?.seasons?.[dbRef.current?.currentSeasonIdx]?.leagues || {})
-            .reduce((sum, l) => sum + (l.matches?.length || 0) + Object.values(l.groupResults || {}).flat().filter(m => m.homeGoals !== null).length, 0);
-          const firestorePlayed = Object.values(parsed?.seasons?.[parsed?.currentSeasonIdx]?.leagues || {})
-            .reduce((sum, l) => sum + (l.matches?.length || 0) + Object.values(l.groupResults || {}).flat().filter(m => m.homeGoals !== null).length, 0);
-          if (firestorePlayed < currentPlayed) {
-            setLoaded(true);
-            return;
-          }
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
