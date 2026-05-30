@@ -3601,7 +3601,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3620,7 +3620,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3639,7 +3639,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3658,7 +3658,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3677,7 +3677,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3696,7 +3696,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3715,7 +3715,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3734,7 +3734,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3753,7 +3753,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
@@ -3772,7 +3772,7 @@ export default function App() {
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
       });
-      league.matches = fresh;
+      league.matches = fresh.filter(m => m.homeGoals !== null).map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       return next;
     });
   }
