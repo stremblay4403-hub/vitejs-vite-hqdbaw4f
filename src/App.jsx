@@ -1542,6 +1542,10 @@ function storageSave(data) {
   firebaseSaveTimeout = setTimeout(() => {
     saveTimestamp = Date.now();
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: saveTimestamp })
+      .then(() => {
+        // Reset après 5s pour permettre à l'autre appareil de sync
+        setTimeout(() => { storageSave._lastSave = 0; }, 5000);
+      })
       .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
@@ -2173,8 +2177,8 @@ export default function App() {
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
         try {
-          // Ignorer si on a un save plus récent en attente
-          if (storageSave._lastSave && Date.now() - storageSave._lastSave < 4000) {
+          // Ignorer si on a un save plus récent en attente (dans les 6 dernières secondes)
+          if (storageSave._lastSave && Date.now() - storageSave._lastSave < 6000) {
             setLoaded(true);
             return;
           }
