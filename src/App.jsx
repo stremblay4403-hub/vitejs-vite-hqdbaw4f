@@ -1479,7 +1479,7 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
-const isLoadingFromFirebase = { current: false };
+const isLoadingFromFirebase = { current: 0 };
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
@@ -1507,7 +1507,7 @@ function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-  if (isLoadingFromFirebase.current) return;
+  if (isLoadingFromFirebase.current > 0) return;
 
   const { photos, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -1538,14 +1538,14 @@ function storageSave(data) {
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
-    isLoadingFromFirebase.current = true; // bloquer onSnapshot pendant le save
+    isLoadingFromFirebase.current++; // bloquer onSnapshot pendant le save
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
       .then(() => {
-        setTimeout(() => { isLoadingFromFirebase.current = false; }, 3000);
+        setTimeout(() => { if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--; }, 3000);
       })
       .catch(e => {
         console.warn('Firebase data save error:', e);
-        isLoadingFromFirebase.current = false;
+        if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--;
       });
 
     const photoCount = Object.keys(photos || {}).length;
@@ -2182,10 +2182,10 @@ export default function App() {
           const savedScrollY = window.scrollY;
           const tabsEl = document.querySelector('.tabs');
           if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
-          isLoadingFromFirebase.current = true;
+          isLoadingFromFirebase.current++;
           applyLoadedData(parsed, true);
           setTimeout(() => {
-            isLoadingFromFirebase.current = false;
+            if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--;
             if (!document.body.dataset.scrollY) {
               window.scrollTo(0, savedScrollY);
               const el = document.querySelector('.tabs');
@@ -2900,7 +2900,7 @@ export default function App() {
   }
 
   async function uploadToCloudinary(file) {
-    isLoadingFromFirebase.current = true;
+    isLoadingFromFirebase.current++;
     try {
       const compressed = await compressImage(file);
       const formData = new FormData();
@@ -2914,7 +2914,7 @@ export default function App() {
       return data.secure_url;
     } finally {
       // Laisser 5s après l'upload pour que la sauvegarde Firestore parte avant de réactiver onSnapshot
-      setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
+      setTimeout(() => { if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--; }, 5000);
     }
   }
 
@@ -3750,8 +3750,8 @@ export default function App() {
   }
 
   function simTout() {
-    isLoadingFromFirebase.current = true;
-    setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
+    isLoadingFromFirebase.current++;
+    setTimeout(() => { if (isLoadingFromFirebase.current > 0) isLoadingFromFirebase.current--; }, 5000);
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -5906,7 +5906,7 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current = true;
+      isLoadingFromFirebase.current++;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
@@ -6199,7 +6199,7 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current = true;
+      isLoadingFromFirebase.current++;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
@@ -8740,7 +8740,7 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current = true;
+      isLoadingFromFirebase.current++;
       const updated = allMatches.map(m => {
         if (m.homeGoals === null) { const s = simScore(); return { ...m, homeGoals: s.h, awayGoals: s.a }; }
         return m;
