@@ -6208,8 +6208,20 @@ export default function App() {
                       const inZonePromo = rank <= 12;
                       const inZoneRel = rank > 16;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[12]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[16]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[12];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[16 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -6433,8 +6445,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 48;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[48]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[48 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -6653,8 +6677,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 24;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[24]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[24 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -6849,8 +6885,20 @@ export default function App() {
                       const inZonePromo = rank <= 8;
                       const inZoneRel = rank > 16;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[8]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[16]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[8];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[16 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -7045,8 +7093,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 32;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[32]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[32 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -7241,8 +7301,20 @@ export default function App() {
                       const inZonePromo = rank <= 32;
                       const inZoneRel = rank > 48;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[32]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[48]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[32];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[48 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -7437,8 +7509,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 48;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[48]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[48 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -7633,8 +7717,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 24;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[24]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[24 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -7829,8 +7925,20 @@ export default function App() {
                       const inZonePromo = rank <= 8;
                       const inZoneRel = rank > 16;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[8]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[16]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[8];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[16 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -8025,8 +8133,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 76;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[76]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[76 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
@@ -8221,8 +8341,20 @@ export default function App() {
                       const inZonePromo = rank <= 16;
                       const inZoneRel = rank > 82;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
-                      const promoted = inZonePromo && (() => { const challenger = standings[16]; if (!challenger) return true; const challRemain = allMatches.filter(m => (m.homeId === challenger.id || m.awayId === challenger.id) && m.homeGoals === null).length; return s.pts > challenger.pts + challRemain * 3; })();
-                      const relegated = inZoneRel && (() => { const savior = standings[82]; if (!savior) return true; const saviorRemain = allMatches.filter(m => (m.homeId === savior.id || m.awayId === savior.id) && m.homeGoals === null).length; const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length; return s.pts + myRemain * 3 < savior.pts; })();
+                      const promoted = inZonePromo && (() => {
+                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        const firstOut = standings[16];
+                        if (!firstOut) return true;
+                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+                        return s.pts > firstOut.pts + firstOutRemain * 3;
+                      })();
+                      const relegated = inZoneRel && (() => {
+                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
+                        const lastSafe = standings[82 - 1];
+                        if (!lastSafe) return true;
+                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                      })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
