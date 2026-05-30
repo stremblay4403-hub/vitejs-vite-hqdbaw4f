@@ -1479,7 +1479,6 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
-storageSave._localTime = 0;
 const isLoadingFromFirebase = { current: false };
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
@@ -1508,7 +1507,6 @@ function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-  if (isLoadingFromFirebase.current) return;
 
   const { photos, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
