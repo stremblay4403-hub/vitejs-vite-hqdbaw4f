@@ -1516,8 +1516,7 @@ function storageSave(data) {
   );
   if (!hasData) return;
 
-  // Debounce — attendre 2s avant de sauvegarder pour éviter le spam
-  // Compression légère : retirer les matches des ligues AUX des saisons passées seulement
+  // Compression légère : retirer les matches des saisons passées
   const currentIdx = dataWithoutPhotos.currentSeasonIdx;
   const toSave = {
     ...dataWithoutPhotos,
@@ -1527,22 +1526,16 @@ function storageSave(data) {
       Object.entries(s.leagues || {}).forEach(([l, league]) => {
         const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
         leagues[l] = isMain
-          ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} } // ligues principales : retirer tous les matchs
-          : { ...league, matches: [] }; // ligues aux : retirer matches seulement
+          ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} }
+          : { ...league, matches: [] };
       });
       return { ...s, leagues };
     })
   };
 
-  const jsonToSave = JSON.stringify(toSave);
-  console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
-
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
-  if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
-  const now = Date.now();
-  storageSave._localTime = now;
   firebaseSaveTimeout = setTimeout(() => {
-    setDoc(dataDocRef, { data: jsonToSave, updatedAt: now })
+    setDoc(dataDocRef, { data: JSON.stringify(toSave), updatedAt: Date.now() })
       .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
@@ -1550,8 +1543,7 @@ function storageSave(data) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 0);
-  // Exposer le timestamp pour onSnapshot
+  }, 2000);
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -2172,9 +2164,6 @@ export default function App() {
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
         try {
-          const firestoreTime = dataSnap.data().updatedAt || 0;
-          if (firestoreTime < storageSave._localTime) { setLoaded(true); return; }
-
           const parsed = JSON.parse(dataSnap.data().data);
           parsed.photos = photosData;
           if (!parsed.brands) parsed.brands = {};
