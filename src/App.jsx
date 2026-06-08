@@ -1933,10 +1933,9 @@ export default function App() {
   }, [isPublicMode]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainTab, setMainTab] = useState("dashboard");
-  const [allCarsSearch, setAllCarsSearch] = useState('');
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
-  const [allCarsActiveLetter, setAllCarsActiveLetter] = useState('TOUS');
+  const allCarsActiveLetterRef = React.useRef('TOUS');
   const [confirmReset, setConfirmReset] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
@@ -8946,11 +8945,15 @@ export default function App() {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = useState(allCarsSearch);
+    const [search, setSearch] = useState('');
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
+    const [activeLetter, setActiveLetter] = useState(allCarsActiveLetterRef.current);
 
-    // Sync search to parent when it changes (debounced via useEffect)
-    React.useEffect(() => { setAllCarsSearch(search); }, [search]);
+    // Sauvegarder dans le ref sans causer de re-render parent
+    const setActiveLetterPersist = (letter) => {
+      allCarsActiveLetterRef.current = letter;
+      setActiveLetter(letter);
+    };
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
     const [ripSearch, setRipSearch] = useState('');
@@ -9024,7 +9027,6 @@ export default function App() {
     const letterRefs = React.useRef({});
     const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
-    const [activeLetter, setActiveLetter] = [allCarsActiveLetter, setAllCarsActiveLetter];
     const activeLetters = new Set(Object.keys(grouped));
     const displayLetter = activeLetter;
 
@@ -9105,7 +9107,7 @@ export default function App() {
                 background: displayLetter === 'TOUS' ? 'var(--gold)' : 'var(--dark3)',
                 color: displayLetter === 'TOUS' ? '#000' : 'var(--gold)',
                 border:'1px solid var(--gold-dim)' }}
-              onClick={() => setActiveLetter('TOUS')}>
+              onClick={() => setActiveLetterPersist('TOUS')}>
               Tous
             </button>
             {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
@@ -9114,7 +9116,7 @@ export default function App() {
                   background: displayLetter === letter ? 'var(--gold)' : 'var(--dark3)',
                   color: displayLetter === letter ? '#000' : 'var(--gold)',
                   border:'1px solid var(--gold-dim)' }}
-                onClick={() => setActiveLetter(letter)}>
+                onClick={() => setActiveLetterPersist(letter)}>
                 {letter}
               </button>
             ))}
