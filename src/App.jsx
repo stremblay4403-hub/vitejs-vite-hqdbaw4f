@@ -2350,11 +2350,102 @@ export default function App() {
     return { X, Y, Z, P, ELIM };
   }
 
+  const PROMO_DEST = {
+    'Successeurs': 'Ligues Principales',
+    'Successeurs aux Successeurs': 'Successeurs',
+    'Remplaçants des Successeurs': 'Successeurs aux Successeurs',
+    'Avant-dernière chance': 'Remplaçants des Successeurs',
+    'Dernière chance': 'Avant-dernière chance',
+    'Persévérance': 'Dernière chance',
+    'Détermination': 'Persévérance',
+    'Acharnement': 'Détermination',
+    'Obstination': 'Acharnement',
+    'Insistance': 'Obstination',
+    'Comeback': 'Insistance',
+    'Importation': 'Comeback',
+    'Oubliettes': 'Importation',
+  };
+  const REL_DEST = {
+    'Successeurs': 'Successeurs aux Successeurs',
+    'Successeurs aux Successeurs': 'Remplaçants des Successeurs',
+    'Remplaçants des Successeurs': 'Avant-dernière chance',
+    'Avant-dernière chance': 'Dernière chance',
+    'Dernière chance': 'Persévérance',
+    'Persévérance': 'Détermination',
+    'Détermination': 'Acharnement',
+    'Acharnement': 'Obstination',
+    'Obstination': 'Insistance',
+    'Insistance': 'Comeback',
+    'Comeback': 'Importation',
+    'Importation': 'Oubliettes',
+  };
+
+  function pushPromoNotif(carName, leagueName, isPromo) {
+    if (isPromo) {
+      const dest = PROMO_DEST[leagueName];
+      if (dest) pushNotif(`▲ ${carName} officiellement promu → ${dest}`, 'success');
+    } else {
+      const dest = REL_DEST[leagueName];
+      if (dest) pushNotif(`⬇ ${carName} officiellement relégué → ${dest}`, 'danger');
+    }
+  }
+
   function pushNotif(msg, type = 'info') {
     const id = genId();
     setNotifications(n => [...n, { id, msg, type }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
   }
+
+  // Détecter les promotions/relégations mathématiques
+  const prevMathStatus = React.useRef({});
+  React.useEffect(() => {
+    if (!currentSeason) return;
+    const AUX_NOTIF_CONFIG = {
+      'Successeurs': { numPromo: 4, numRel: 0 },
+      'Successeurs aux Successeurs': { numPromo: 12, numRel: 16 },
+      'Remplaçants des Successeurs': { numPromo: 16, numRel: 16 },
+      'Avant-dernière chance': { numPromo: 8, numRel: 8 },
+      'Dernière chance': { numPromo: 8, numRel: 16 },
+      'Persévérance': { numPromo: 16, numRel: 32 },
+      'Détermination': { numPromo: 32, numRel: 16 },
+      'Acharnement': { numPromo: 16, numRel: 16 },
+      'Obstination': { numPromo: 8, numRel: 8 },
+      'Insistance': { numPromo: 8, numRel: 16 },
+      'Comeback': { numPromo: 16, numRel: 16 },
+      'Importation': { numPromo: 16, numRel: 4 },
+      'Oubliettes': { numPromo: 4, numRel: 0 },
+    };
+    Object.entries(AUX_NOTIF_CONFIG).forEach(([leagueName, { numPromo, numRel }]) => {
+      const league = currentSeason.leagues[leagueName];
+      if (!league?.cars?.length) return;
+      const allMatches = genRoundRobin(league.cars).map(m => {
+        const p = (league.matches || []).find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
+      });
+      const standings = computeStandings(league.cars, allMatches);
+      standings.forEach((s, i) => {
+        const rank = i + 1;
+        const key = `${leagueName}-${s.id}`;
+        const firstOut = standings[numPromo];
+        const lastSafe = numRel > 0 ? standings[standings.length - numRel - 1] : null;
+        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+        const isPromo = numPromo > 0 && rank <= numPromo && (() => {
+          if (!firstOut) return true;
+          const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+          if (firstOutRemain === 0) return true;
+          return s.pts > firstOut.pts + firstOutRemain * 3;
+        })();
+        const isRel = numRel > 0 && rank > standings.length - numRel && (() => {
+          if (!lastSafe) return true;
+          return s.pts + myRemain * 3 < lastSafe.pts;
+        })();
+        const prev = prevMathStatus.current[key] || {};
+        if (isPromo && !prev.promo) pushPromoNotif(s.name, leagueName, true);
+        if (isRel && !prev.rel) pushPromoNotif(s.name, leagueName, false);
+        prevMathStatus.current[key] = { promo: !!isPromo, rel: !!isRel };
+      });
+    });
+  }, [currentSeason?.leagues]);
 
   function checkAndNotifyQualifications(leagueName, prevQuals, newQuals) {
     const league = currentSeason.leagues[leagueName];
