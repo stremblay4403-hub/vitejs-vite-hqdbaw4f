@@ -2183,6 +2183,7 @@ export default function App() {
           const tabsEl = document.querySelector('.tabs');
           if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
           isLoadingFromFirebase.current = true;
+          mathStatusInitialized.current = false;
           applyLoadedData(parsed, true);
           setTimeout(() => {
             isLoadingFromFirebase.current = false;
@@ -2400,7 +2401,7 @@ export default function App() {
   const prevMathStatus = React.useRef({});
   const mathStatusInitialized = React.useRef(false);
   React.useEffect(() => {
-    if (!currentSeason) return;
+    if (!currentSeason || !loaded) return;
     const AUX_NOTIF_CONFIG = {
       'Successeurs': { numPromo: 4, numRel: 0 },
       'Successeurs aux Successeurs': { numPromo: 12, numRel: 16 },
@@ -2467,7 +2468,7 @@ export default function App() {
       if (rel && !prev.rel) pushPromoNotif(carName, leagueName, false);
     });
     prevMathStatus.current = newStatus;
-  }, [currentSeason?.leagues]);
+  }, [currentSeason?.leagues, loaded]);
 
   function checkAndNotifyQualifications(leagueName, prevQuals, newQuals) {
     const league = currentSeason.leagues[leagueName];
