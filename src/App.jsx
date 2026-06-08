@@ -2398,6 +2398,7 @@ export default function App() {
 
   // Détecter les promotions/relégations mathématiques
   const prevMathStatus = React.useRef({});
+  const mathStatusInitialized = React.useRef(false);
   React.useEffect(() => {
     if (!currentSeason) return;
     const AUX_NOTIF_CONFIG = {
@@ -2415,36 +2416,57 @@ export default function App() {
       'Importation': { numPromo: 16, numRel: 4 },
       'Oubliettes': { numPromo: 4, numRel: 0 },
     };
-    Object.entries(AUX_NOTIF_CONFIG).forEach(([leagueName, { numPromo, numRel }]) => {
+
+    const computeStatus = () => {
+      const status = {};
+      Object.entries(AUX_NOTIF_CONFIG).forEach(([leagueName, { numPromo, numRel }]) => {
+        const league = currentSeason.leagues[leagueName];
+        if (!league?.cars?.length) return;
+        const allMatches = genRoundRobin(league.cars).map(m => {
+          const p = (league.matches || []).find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+          return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
+        });
+        const standings = computeStandings(league.cars, allMatches);
+        standings.forEach((s, i) => {
+          const rank = i + 1;
+          const key = `${leagueName}-${s.id}`;
+          const firstOut = standings[numPromo];
+          const lastSafe = numRel > 0 ? standings[standings.length - numRel - 1] : null;
+          const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+          const isPromo = numPromo > 0 && rank <= numPromo && (() => {
+            if (!firstOut) return true;
+            const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+            if (firstOutRemain === 0) return true;
+            return s.pts > firstOut.pts + firstOutRemain * 3;
+          })();
+          const isRel = numRel > 0 && rank > standings.length - numRel && (() => {
+            if (!lastSafe) return true;
+            return s.pts + myRemain * 3 < lastSafe.pts;
+          })();
+          status[key] = { promo: !!isPromo, rel: !!isRel };
+        });
+      });
+      return status;
+    };
+
+    if (!mathStatusInitialized.current) {
+      // Premier chargement — initialiser sans notifier
+      prevMathStatus.current = computeStatus();
+      mathStatusInitialized.current = true;
+      return;
+    }
+
+    // Chargements suivants — comparer et notifier les nouveaux
+    const newStatus = computeStatus();
+    Object.entries(newStatus).forEach(([key, { promo, rel }]) => {
+      const prev = prevMathStatus.current[key] || {};
+      const [leagueName, carId] = key.split('-');
       const league = currentSeason.leagues[leagueName];
-      if (!league?.cars?.length) return;
-      const allMatches = genRoundRobin(league.cars).map(m => {
-        const p = (league.matches || []).find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
-        return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
-      });
-      const standings = computeStandings(league.cars, allMatches);
-      standings.forEach((s, i) => {
-        const rank = i + 1;
-        const key = `${leagueName}-${s.id}`;
-        const firstOut = standings[numPromo];
-        const lastSafe = numRel > 0 ? standings[standings.length - numRel - 1] : null;
-        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-        const isPromo = numPromo > 0 && rank <= numPromo && (() => {
-          if (!firstOut) return true;
-          const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-          if (firstOutRemain === 0) return true;
-          return s.pts > firstOut.pts + firstOutRemain * 3;
-        })();
-        const isRel = numRel > 0 && rank > standings.length - numRel && (() => {
-          if (!lastSafe) return true;
-          return s.pts + myRemain * 3 < lastSafe.pts;
-        })();
-        const prev = prevMathStatus.current[key] || {};
-        if (isPromo && !prev.promo) pushPromoNotif(s.name, leagueName, true);
-        if (isRel && !prev.rel) pushPromoNotif(s.name, leagueName, false);
-        prevMathStatus.current[key] = { promo: !!isPromo, rel: !!isRel };
-      });
+      const carName = league?.cars?.find(c => c.id === carId)?.name || carId;
+      if (promo && !prev.promo) pushPromoNotif(carName, leagueName, true);
+      if (rel && !prev.rel) pushPromoNotif(carName, leagueName, false);
     });
+    prevMathStatus.current = newStatus;
   }, [currentSeason?.leagues]);
 
   function checkAndNotifyQualifications(leagueName, prevQuals, newQuals) {
