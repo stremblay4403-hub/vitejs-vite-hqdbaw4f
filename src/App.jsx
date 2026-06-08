@@ -1936,6 +1936,7 @@ export default function App() {
   const [allCarsSearch, setAllCarsSearch] = useState('');
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
+  const [allCarsActiveLetter, setAllCarsActiveLetter] = useState('TOUS');
   const [confirmReset, setConfirmReset] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
@@ -9020,7 +9021,7 @@ export default function App() {
     const letterRefs = React.useRef({});
     const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ#'.split('');
 
-    const [activeLetter, setActiveLetter] = useState('TOUS');
+    const [activeLetter, setActiveLetter] = [allCarsActiveLetter, setAllCarsActiveLetter];
     const activeLetters = new Set(Object.keys(grouped));
     const displayLetter = activeLetter;
 
