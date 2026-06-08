@@ -8946,7 +8946,7 @@ export default function App() {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = [allCarsSearch, setAllCarsSearch];
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
