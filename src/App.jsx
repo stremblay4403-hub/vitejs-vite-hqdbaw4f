@@ -8946,8 +8946,11 @@ export default function App() {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = [allCarsSearch, setAllCarsSearch];
+    const [search, setSearch] = useState(allCarsSearch);
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
+
+    // Sync search to parent when it changes (debounced via useEffect)
+    React.useEffect(() => { setAllCarsSearch(search); }, [search]);
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
     const [ripSearch, setRipSearch] = useState('');
