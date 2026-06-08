@@ -1936,6 +1936,7 @@ export default function App() {
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
   const allCarsActiveLetterRef = React.useRef('TOUS');
+  const allCarsSearchRef = React.useRef('');
   const [confirmReset, setConfirmReset] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
@@ -8945,11 +8946,16 @@ export default function App() {
   }
 
   function AllCarsView() {
-    const [search, setSearch] = useState('');
+    const [search, setSearch] = useState(allCarsSearchRef.current);
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
+
+    const setSearchPersist = (val) => {
+      allCarsSearchRef.current = val;
+      setSearch(val);
+    };
+
     const [activeLetter, setActiveLetter] = useState(allCarsActiveLetterRef.current);
 
-    // Sauvegarder dans le ref sans causer de re-render parent
     const setActiveLetterPersist = (letter) => {
       allCarsActiveLetterRef.current = letter;
       setActiveLetter(letter);
@@ -9085,7 +9091,7 @@ export default function App() {
             <input
               placeholder="🔍 Rechercher..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={e => setSearchPersist(e.target.value)}
               style={{ width:200 }}
             />
             <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>
