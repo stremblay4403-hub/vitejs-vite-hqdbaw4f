@@ -2434,7 +2434,7 @@ export default function App() {
       'Persévérance': { numPromo: 16, numRel: 32 },
       'Détermination': { numPromo: 32, numRel: 16 },
       'Acharnement': { numPromo: 16, numRel: 16 },
-      'Obstination': { numPromo: 8, numRel: 8 },
+      'Obstination': { numPromo: 16, numRel: 8 },
       'Insistance': { numPromo: 8, numRel: 16 },
       'Comeback': { numPromo: 16, numRel: 16 },
       'Importation': { numPromo: 16, numRel: 4 },
@@ -2485,7 +2485,9 @@ export default function App() {
     const newStatus = computeStatus();
     Object.entries(newStatus).forEach(([key, { promo, rel }]) => {
       const prev = prevMathStatus.current[key] || {};
-      const [leagueName, carId] = key.split('-');
+      const sepIdx = key.lastIndexOf('-');
+      const leagueName = key.slice(0, sepIdx);
+      const carId = key.slice(sepIdx + 1);
       const league = currentSeason.leagues[leagueName];
       const carName = league?.cars?.find(c => c.id === carId)?.name || carId;
       if (promo && !prev.promo) pushPromoNotif(carName, leagueName, true);
