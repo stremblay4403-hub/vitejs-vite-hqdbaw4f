@@ -1521,15 +1521,25 @@ function storageSave(data) {
   const toSave = {
     ...dataWithoutPhotos,
     seasons: dataWithoutPhotos.seasons.map((s, i) => {
-      if (i === currentIdx) return s;
-      const leagues = {};
+      const compLeagues = {};
       Object.entries(s.leagues || {}).forEach(([l, league]) => {
         const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
-        leagues[l] = isMain
-          ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} } // ligues principales : retirer tous les matchs
-          : { ...league, matches: [] }; // ligues aux : retirer matches seulement
+        if (i === currentIdx) {
+          // Saison courante : garder tout pour principales, compresser les matchs joués des auxiliaires
+          if (isMain) {
+            compLeagues[l] = league;
+          } else {
+            // Garder seulement les matchs joués (sans les non-joués qui seront régénérés)
+            compLeagues[l] = { ...league, matches: (league.matches || []).filter(m => m.homeGoals !== null) };
+          }
+        } else {
+          // Saisons passées : tout compresser
+          compLeagues[l] = isMain
+            ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} }
+            : { cars: league.cars, completed: league.completed };
+        }
       });
-      return { ...s, leagues };
+      return { ...s, leagues: compLeagues };
     })
   };
 
