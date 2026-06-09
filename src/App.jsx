@@ -1525,15 +1525,16 @@ function storageSave(data) {
       Object.entries(s.leagues || {}).forEach(([l, league]) => {
         const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
         if (i === currentIdx) {
-          // Saison courante : garder tout pour principales, compresser les matchs joués des auxiliaires
           if (isMain) {
             compLeagues[l] = league;
           } else {
-            // Garder seulement les matchs joués (sans les non-joués qui seront régénérés)
-            compLeagues[l] = { ...league, matches: (league.matches || []).filter(m => m.homeGoals !== null) };
+            // Format compressé : clés courtes
+            const minMatches = (league.matches || [])
+              .filter(m => m.homeGoals !== null)
+              .map(m => ({ h: m.homeId, a: m.awayId, hg: m.homeGoals, ag: m.awayGoals }));
+            compLeagues[l] = { ...league, matches: minMatches };
           }
         } else {
-          // Saisons passées : tout compresser
           compLeagues[l] = isMain
             ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} }
             : { cars: league.cars, completed: league.completed };
@@ -1549,11 +1550,17 @@ function storageSave(data) {
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
     isLoadingFromFirebase.current = true;
+    const safetyTimer = setTimeout(() => { isLoadingFromFirebase.current = false; }, 8000);
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
       .then(() => {
+        clearTimeout(safetyTimer);
         setTimeout(() => { isLoadingFromFirebase.current = false; }, 3000);
       })
-      .catch(e => { console.warn('Firebase data save error:', e); isLoadingFromFirebase.current = false; });
+      .catch(e => { 
+        clearTimeout(safetyTimer);
+        console.warn('Firebase data save error:', e); 
+        isLoadingFromFirebase.current = false; 
+      });
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
@@ -2236,6 +2243,12 @@ export default function App() {
           (league.cars || []).forEach(car => {
             if (migrations[car.name]) car.name = migrations[car.name];
           });
+          // Décompresser les matchs en format court {h,a,hg,ag} → {homeId,awayId,homeGoals,awayGoals}
+          if (league.matches?.length > 0 && league.matches[0].h !== undefined) {
+            league.matches = league.matches.map(m => ({
+              homeId: m.h, awayId: m.a, homeGoals: m.hg, awayGoals: m.ag
+            }));
+          }
         });
         AUXILIARY_LEAGUES.forEach(l => {
           if (!s.leagues[l]) s.leagues[l] = initAuxLeague(l, null);
