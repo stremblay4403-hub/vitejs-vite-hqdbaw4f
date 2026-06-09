@@ -2442,6 +2442,7 @@ export default function App() {
           })();
           const isRel = numRel > 0 && rank > standings.length - numRel && (() => {
             if (!lastSafe) return true;
+            if (myRemain === 0) return true;
             return s.pts + myRemain * 3 < lastSafe.pts;
           })();
           status[key] = { promo: !!isPromo, rel: !!isRel };
@@ -6399,7 +6400,7 @@ export default function App() {
                         const lastSafe = standings[16 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -6636,7 +6637,7 @@ export default function App() {
                         const lastSafe = standings[48 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -6868,7 +6869,7 @@ export default function App() {
                         const lastSafe = standings[24 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7076,7 +7077,7 @@ export default function App() {
                         const lastSafe = standings[16 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7284,7 +7285,7 @@ export default function App() {
                         const lastSafe = standings[32 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7492,7 +7493,7 @@ export default function App() {
                         const lastSafe = standings[48 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7700,7 +7701,7 @@ export default function App() {
                         const lastSafe = standings[48 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7908,7 +7909,7 @@ export default function App() {
                         const lastSafe = standings[24 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8116,7 +8117,7 @@ export default function App() {
                         const lastSafe = standings[16 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8324,7 +8325,7 @@ export default function App() {
                         const lastSafe = standings[76 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8532,7 +8533,7 @@ export default function App() {
                         const lastSafe = standings[82 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        return s.pts + myRemain * 3 < lastSafe.pts; // même si on gagne tout, on ne dépasse pas lastSafe au minimum
+                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
