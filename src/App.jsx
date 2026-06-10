@@ -1509,7 +1509,7 @@ function storageSave(data) {
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
   if (isLoadingFromFirebase.current) return;
 
-  const { photos, ...dataWithoutPhotos } = data;
+  const { photos, photoTimes, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
     Object.values(s.leagues || {}).some(l => l?.cars?.length > 0)
   );
@@ -1564,7 +1564,7 @@ function storageSave(data) {
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
-      setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() })
+      setDoc(photosDocRef, { data: JSON.stringify(photos), times: JSON.stringify(photoTimes || {}), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
   }, 500);
@@ -1916,7 +1916,7 @@ function launchConfetti() {
 
 export default function App() {
   const dbRef = React.useRef(null);
-  const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, brands: {},
+  const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, photoTimes: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
     s.seasons.push(initSeason(33));
@@ -2181,9 +2181,11 @@ export default function App() {
 
     // Listener temps réel Firebase — se met à jour automatiquement
     let photosData = {};
+    let photoTimesData = {};
     const unsubPhotos = onSnapshot(photosDocRef, (photosSnap) => {
       if (photosSnap.exists()) {
         photosData = JSON.parse(photosSnap.data().data);
+        photoTimesData = JSON.parse(photosSnap.data().times || '{}');
       }
     });
 
@@ -2193,6 +2195,7 @@ export default function App() {
 
           const parsed = JSON.parse(dataSnap.data().data);
           parsed.photos = photosData;
+          parsed.photoTimes = photoTimesData;
           if (!parsed.brands) parsed.brands = {};
           if (!parsed.histOverrides) parsed.histOverrides = {};
           if (!parsed.rip) parsed.rip = [];
@@ -2221,19 +2224,35 @@ export default function App() {
   }, []);
 
   function applyLoadedData(saved, isFromFirebase = false) {
-    // Si les données viennent de Firebase, fusionner les photos en donnant la
-    // priorité aux photos locales (les plus récentes, écrites de façon synchrone
-    // dans localStorage à chaque changement). Ça évite qu'une photo qu'on vient
-    // de changer soit écrasée par un instantané photos en retard après une
-    // simulation. Les nouvelles photos venues de Firebase (clés absentes en
-    // local) sont quand même ajoutées.
+    // Si les données viennent de Firebase, fusionner les photos par horodatage :
+    // pour chaque voiture on garde la version la plus récente (locale vs distante).
+    // Une photo qu'on vient de changer porte un horodatage tout frais et gagne donc
+    // sur un instantané en retard (les vieilles photos ne reviennent pas), tandis
+    // qu'une photo modifiée sur un autre appareil (horodatage distant plus récent)
+    // est bien récupérée. En cas d'égalité (ex. anciennes photos sans horodatage),
+    // le distant l'emporte, ce qui permet la synchro multi-appareils.
     if (isFromFirebase) {
       const localData = storageLoad();
-      saved.photos = { ...(saved?.photos || {}), ...(localData?.photos || {}) };
+      const remotePhotos = saved?.photos || {};
+      const remoteTimes = saved?.photoTimes || {};
+      const localPhotos = localData?.photos || {};
+      const localTimes = localData?.photoTimes || {};
+      const mergedPhotos = { ...remotePhotos };
+      const mergedTimes = { ...remoteTimes };
+      Object.keys(localPhotos).forEach(id => {
+        const lt = localTimes[id] || 0;
+        const rt = remoteTimes[id] || 0;
+        if (!(id in remotePhotos) || lt > rt) {
+          mergedPhotos[id] = localPhotos[id];
+          mergedTimes[id] = Math.max(lt, rt);
+        }
+      });
+      saved.photos = mergedPhotos;
+      saved.photoTimes = mergedTimes;
     }
 
     if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
-      const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, brands: saved.brands || {}, histOverrides: saved.histOverrides || {} };
+      const fresh = { seasons: [], currentSeasonIdx: 0, photos: saved.photos || {}, photoTimes: saved.photoTimes || {}, brands: saved.brands || {}, histOverrides: saved.histOverrides || {} };
       fresh.seasons.push(initSeason(33));
       setDb(fresh);
     } else {
@@ -3060,7 +3079,7 @@ export default function App() {
   }
 
   function setCarPhoto(carId, url) {
-    setDb(d => ({ ...d, photos: { ...(d.photos || {}), [carId]: url } }));
+    setDb(d => ({ ...d, photos: { ...(d.photos || {}), [carId]: url }, photoTimes: { ...(d.photoTimes || {}), [carId]: Date.now() } }));
   }
   function getCarStats(carId, matches) {
     let w = 0, d = 0, l = 0;
