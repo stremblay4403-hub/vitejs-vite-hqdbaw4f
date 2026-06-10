@@ -2182,28 +2182,23 @@ export default function App() {
     // Listener temps réel Firebase — se met à jour automatiquement
     let photosData = {};
     let photoTimesData = {};
-    let photosInitDone = false;
     const unsubPhotos = onSnapshot(photosDocRef, (photosSnap) => {
       if (!photosSnap.exists()) return;
       photosData = JSON.parse(photosSnap.data().data);
       photoTimesData = JSON.parse(photosSnap.data().times || '{}');
-      // Le tout premier instantané correspond au chargement initial : on laisse
-      // le listener des données l'appliquer pour ne pas perturber la séquence de
-      // démarrage. On ne fait du temps réel qu'à partir des instantanés suivants.
-      if (!photosInitDone) { photosInitDone = true; return; }
-      // Y a-t-il une photo distante réellement nouvelle ou plus récente que la
-      // nôtre ? (localStorage est toujours à jour.) Ce test ignore aussi l'écho
-      // de nos propres écritures : on a déjà la photo, donc rien à appliquer.
-      const local = storageLoad() || {};
-      const lPhotos = local.photos || {};
-      const lTimes = local.photoTimes || {};
-      const hasUpdate = Object.keys(photosData).some(id => {
+      // Appliquer en direct toute photo distante dont l'URL diffère de la nôtre,
+      // SAUF si notre photo locale est strictement plus récente (on ne l'écrase
+      // pas). On compare à dbRef.current qui reflète toujours l'état affiché.
+      // La comparaison d'URL ignore aussi l'écho de nos propres écritures.
+      const cur = dbRef.current || {};
+      const cPhotos = cur.photos || {};
+      const cTimes = cur.photoTimes || {};
+      const changed = Object.keys(photosData).some(id => {
         const rt = photoTimesData[id] || 0;
-        const ct = lTimes[id] || 0;
-        return ((rt > ct) || !(id in lPhotos)) && lPhotos[id] !== photosData[id];
+        const ct = cTimes[id] || 0;
+        return !(ct > rt) && cPhotos[id] !== photosData[id];
       });
-      if (!hasUpdate) return;
-      // Appliquer en direct, sans jamais écraser une photo locale plus récente.
+      if (!changed) return; // rien de neuf (ex. écho de notre propre écriture)
       // On bloque brièvement la sauvegarde pour ne pas réécrire les documents en
       // écho (la photo vient déjà de Firestore).
       isLoadingFromFirebase.current = true;
@@ -2215,7 +2210,7 @@ export default function App() {
         Object.keys(photosData).forEach(id => {
           const rt = photoTimesData[id] || 0;
           const ct = dTimes[id] || 0;
-          if (((rt > ct) || !(id in dPhotos)) && nextPhotos[id] !== photosData[id]) {
+          if (!(ct > rt) && nextPhotos[id] !== photosData[id]) {
             nextPhotos[id] = photosData[id];
             nextTimes[id] = Math.max(rt, ct);
           }
@@ -3115,7 +3110,23 @@ export default function App() {
   }
 
   function setCarPhoto(carId, url) {
-    setDb(d => ({ ...d, photos: { ...(d.photos || {}), [carId]: url }, photoTimes: { ...(d.photoTimes || {}), [carId]: Date.now() } }));
+    const ts = Date.now();
+    // Construire la carte complète à partir de l'état courant (dbRef est à jour ;
+    // l'état après setDb ne l'est pas encore au moment de cet appel).
+    const cur = dbRef.current || {};
+    const photos = { ...(cur.photos || {}), [carId]: url };
+    const photoTimes = { ...(cur.photoTimes || {}), [carId]: ts };
+    setDb(d => ({ ...d, photos: { ...(d.photos || {}), [carId]: url }, photoTimes: { ...(d.photoTimes || {}), [carId]: ts } }));
+    // Écrire tout de suite le document photos dans Firestore, sans dépendre du
+    // garde-fou de sauvegarde (souvent actif juste après l'upload Cloudinary, ce
+    // qui retardait l'écriture). Ça garantit la synchro temps réel sur les autres
+    // appareils ouverts.
+    if (!isPublicModeRef.current) {
+      try {
+        setDoc(photosDocRef, { data: JSON.stringify(photos), times: JSON.stringify(photoTimes), updatedAt: ts })
+          .catch(e => console.warn('Firebase photos save error:', e));
+      } catch (e) { console.warn('Firebase photos save error:', e); }
+    }
   }
   function getCarStats(carId, matches) {
     let w = 0, d = 0, l = 0;
