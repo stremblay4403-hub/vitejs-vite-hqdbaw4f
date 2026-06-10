@@ -2182,11 +2182,47 @@ export default function App() {
     // Listener temps réel Firebase — se met à jour automatiquement
     let photosData = {};
     let photoTimesData = {};
+    let photosInitDone = false;
     const unsubPhotos = onSnapshot(photosDocRef, (photosSnap) => {
-      if (photosSnap.exists()) {
-        photosData = JSON.parse(photosSnap.data().data);
-        photoTimesData = JSON.parse(photosSnap.data().times || '{}');
-      }
+      if (!photosSnap.exists()) return;
+      photosData = JSON.parse(photosSnap.data().data);
+      photoTimesData = JSON.parse(photosSnap.data().times || '{}');
+      // Le tout premier instantané correspond au chargement initial : on laisse
+      // le listener des données l'appliquer pour ne pas perturber la séquence de
+      // démarrage. On ne fait du temps réel qu'à partir des instantanés suivants.
+      if (!photosInitDone) { photosInitDone = true; return; }
+      // Y a-t-il une photo distante réellement nouvelle ou plus récente que la
+      // nôtre ? (localStorage est toujours à jour.) Ce test ignore aussi l'écho
+      // de nos propres écritures : on a déjà la photo, donc rien à appliquer.
+      const local = storageLoad() || {};
+      const lPhotos = local.photos || {};
+      const lTimes = local.photoTimes || {};
+      const hasUpdate = Object.keys(photosData).some(id => {
+        const rt = photoTimesData[id] || 0;
+        const ct = lTimes[id] || 0;
+        return ((rt > ct) || !(id in lPhotos)) && lPhotos[id] !== photosData[id];
+      });
+      if (!hasUpdate) return;
+      // Appliquer en direct, sans jamais écraser une photo locale plus récente.
+      // On bloque brièvement la sauvegarde pour ne pas réécrire les documents en
+      // écho (la photo vient déjà de Firestore).
+      isLoadingFromFirebase.current = true;
+      setDb(d => {
+        const dPhotos = d.photos || {};
+        const dTimes = d.photoTimes || {};
+        const nextPhotos = { ...dPhotos };
+        const nextTimes = { ...dTimes };
+        Object.keys(photosData).forEach(id => {
+          const rt = photoTimesData[id] || 0;
+          const ct = dTimes[id] || 0;
+          if (((rt > ct) || !(id in dPhotos)) && nextPhotos[id] !== photosData[id]) {
+            nextPhotos[id] = photosData[id];
+            nextTimes[id] = Math.max(rt, ct);
+          }
+        });
+        return { ...d, photos: nextPhotos, photoTimes: nextTimes };
+      });
+      setTimeout(() => { isLoadingFromFirebase.current = false; }, 2000);
     });
 
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
