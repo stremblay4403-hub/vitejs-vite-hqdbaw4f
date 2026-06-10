@@ -2221,14 +2221,15 @@ export default function App() {
   }, []);
 
   function applyLoadedData(saved, isFromFirebase = false) {
-    // Si les données viennent de Firebase et que le localStorage local a plus de photos, garder les photos locales
+    // Si les données viennent de Firebase, fusionner les photos en donnant la
+    // priorité aux photos locales (les plus récentes, écrites de façon synchrone
+    // dans localStorage à chaque changement). Ça évite qu'une photo qu'on vient
+    // de changer soit écrasée par un instantané photos en retard après une
+    // simulation. Les nouvelles photos venues de Firebase (clés absentes en
+    // local) sont quand même ajoutées.
     if (isFromFirebase) {
       const localData = storageLoad();
-      const localPhotoCount = Object.keys(localData?.photos || {}).length;
-      const firebasePhotoCount = Object.keys(saved?.photos || {}).length;
-      if (localPhotoCount > firebasePhotoCount) {
-        saved.photos = localData.photos;
-      }
+      saved.photos = { ...(saved?.photos || {}), ...(localData?.photos || {}) };
     }
 
     if (saved.seasons && saved.seasons.length === 1 && saved.seasons[0].season === 1) {
