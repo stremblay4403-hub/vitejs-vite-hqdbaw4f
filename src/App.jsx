@@ -2565,6 +2565,9 @@ export default function App() {
       const next = computeAuxStatus(l);
       const league = currentSeason.leagues[l];
       const getName = id => league?.cars?.find(c => c.id === id)?.name || id;
+      if (l.startsWith('Actuelles') || l === 'Successeurs') {
+        console.log(`[AuxNotif] ${l} loaded=${auxLoadedRef.current} promo=${next.promo.size} rel=${next.rel.size} newPromo=${[...next.promo].filter(id=>!prev.promo.has(id)).length}`);
+      }
       next.promo.forEach(id => { if (!prev.promo.has(id)) pushPromoNotif(getName(id), l, true); });
       next.rel.forEach(id   => { if (!prev.rel.has(id))   pushPromoNotif(getName(id), l, false); });
       auxStatusRef.current[l] = next;
