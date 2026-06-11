@@ -2316,6 +2316,8 @@ export default function App() {
           if (!s.leagues[l]) s.leagues[l] = initAuxLeague(l, null);
         });
       });
+      loadedForNotifs.current = false;
+      auxLoadedRef.current = false;
       setDb(saved);
       storageSave(saved);
     }
@@ -2519,6 +2521,9 @@ export default function App() {
       const fl = p.homeId === m.awayId;
       return { ...m, homeGoals: fl ? p.awayGoals : p.homeGoals, awayGoals: fl ? p.homeGoals : p.awayGoals };
     });
+    const totalCount = allMatches.length;
+    const playedCount = allMatches.filter(m => m.homeGoals !== null).length;
+    const allDone = totalCount > 0 && playedCount === totalCount;
     const standings = computeStandings(league.cars, allMatches);
     const tot = standings.length;
     const totalPer = league.cars.length - 1;
@@ -2529,12 +2534,16 @@ export default function App() {
       const myRemain = totalPer - (s.gp || 0);
       if (numPromo > 0 && rank <= numPromo) {
         const foRemain = firstOut ? totalPer - (firstOut.gp || 0) : 0;
-        if (!firstOut || foRemain === 0 || s.pts > firstOut.pts + foRemain * 3)
-          promoSet.add(s.id);
+        const confirmed = allDone
+          || !firstOut
+          || (foRemain === 0 ? s.pts >= firstOut.pts : s.pts > firstOut.pts + foRemain * 3);
+        if (confirmed) promoSet.add(s.id);
       }
       if (numRel > 0 && rank > tot - numRel) {
-        if (!lastSafe || myRemain === 0 || s.pts + myRemain * 3 < lastSafe.pts)
-          relSet.add(s.id);
+        const confirmed = allDone
+          || !lastSafe
+          || (myRemain === 0 ? s.pts <= lastSafe.pts : s.pts + myRemain * 3 < lastSafe.pts);
+        if (confirmed) relSet.add(s.id);
       }
     });
     return { promo: promoSet, rel: relSet };
@@ -2556,13 +2565,8 @@ export default function App() {
       const next = computeAuxStatus(l);
       const league = currentSeason.leagues[l];
       const getName = id => league?.cars?.find(c => c.id === id)?.name || id;
-      const newPromo = [...next.promo].filter(id => !prev.promo.has(id));
-      const newRel   = [...next.rel].filter(id => !prev.rel.has(id));
-      if (next.promo.size > 0 || next.rel.size > 0 || newPromo.length > 0 || newRel.length > 0) {
-        console.log(`[AuxNotif] ${l}: promo=${next.promo.size} rel=${next.rel.size} newPromo=${newPromo.length} newRel=${newRel.length} matches=${league?.matches?.length||0}`);
-      }
-      newPromo.forEach(id => pushPromoNotif(getName(id), l, true));
-      newRel.forEach(id   => pushPromoNotif(getName(id), l, false));
+      next.promo.forEach(id => { if (!prev.promo.has(id)) pushPromoNotif(getName(id), l, true); });
+      next.rel.forEach(id   => { if (!prev.rel.has(id))   pushPromoNotif(getName(id), l, false); });
       auxStatusRef.current[l] = next;
     });
   }, [currentSeason, loaded]);
@@ -2820,12 +2824,14 @@ export default function App() {
     });
     setDb(d => ({ ...d, seasons: [...d.seasons, ns], currentSeasonIdx: d.seasons.length }));
     loadedForNotifs.current = false;
+    auxLoadedRef.current = false;
   }
 
   function switchSeason(idx) {
     setDb(d => ({ ...d, currentSeasonIdx: idx }));
     setSectionTab("groupes");
     loadedForNotifs.current = false;
+    auxLoadedRef.current = false;
   }
 
   function getOrCreateGroupMatches(league, group) {
@@ -3771,6 +3777,7 @@ export default function App() {
       } catch(e) { console.warn('Auto-export failed', e); }
     }, 500);
     loadedForNotifs.current = false;
+    auxLoadedRef.current = false;
     setIsProcessing(false);
     }, 50); // laisse le temps au UI de montrer "En cours..."
   }
@@ -4228,6 +4235,7 @@ export default function App() {
 
   function resetData() {
     loadedForNotifs.current = false;
+    auxLoadedRef.current = false;
     const fresh = { 
       seasons: [], 
       currentSeasonIdx: 0, 
@@ -6216,26 +6224,26 @@ export default function App() {
                         const firstOut = standings[4];
                         if (!firstOut) return true;
                         const foRemain = (cars.length - 1) - (firstOut.gp || 0);
-                        return s.pts > firstOut.pts + foRemain * 3;
+                        return foRemain === 0 ? s.pts >= firstOut.pts : s.pts > firstOut.pts + foRemain * 3;
                       })();
-                      const sucSucc = inZoneSucSucc && (() => {   // relégué → Successeurs aux Successeurs
+                      const sucSucc = inZoneSucSucc && (() => {
                         if (allDone) return true;
                         const lastSafe = standings[total - 12 - 1];
                         if (!lastSafe) return true;
-                        return s.pts + myRemain * 3 < lastSafe.pts;
+                        return myRemain === 0 ? s.pts <= lastSafe.pts : s.pts + myRemain * 3 < lastSafe.pts;
                       })();
-                      // → Actuelles (rangs 25-72) : confirmé dès que c'est officiel —
-                      // garantie de ne plus pouvoir monter dans le top 24 NI tomber dans le bas 12
                       const actuelles = inZoneActuelles && (() => {
                         if (allDone) return true;
-                        const stayBoundary = standings[23];             // rang 24 (dernière qui reste)
-                        const sucSuccBoundary = standings[total - 12];  // rang 73 (1re vers SucSucc)
-                        const safeFromTop = stayBoundary ? (s.pts + myRemain * 3 < stayBoundary.pts) : false;
-                        let safeFromBottom = true;
-                        if (sucSuccBoundary) {
-                          const bRemain = (cars.length - 1) - (sucSuccBoundary.gp || 0);
-                          safeFromBottom = s.pts > sucSuccBoundary.pts + bRemain * 3;
-                        }
+                        const stayBoundary = standings[23];
+                        const sucSuccBoundary = standings[total - 12];
+                        const foRemainTop = stayBoundary ? (cars.length - 1) - (stayBoundary.gp || 0) : 0;
+                        const safeFromTop = stayBoundary
+                          ? (foRemainTop === 0 ? s.pts < stayBoundary.pts : s.pts + myRemain * 3 < stayBoundary.pts)
+                          : false;
+                        const bRemain = sucSuccBoundary ? (cars.length - 1) - (sucSuccBoundary.gp || 0) : 0;
+                        const safeFromBottom = sucSuccBoundary
+                          ? (bRemain === 0 ? s.pts > sucSuccBoundary.pts : s.pts > sucSuccBoundary.pts + bRemain * 3)
+                          : true;
                         return safeFromTop && safeFromBottom;
                       })();
                       const borderColor = promoted ? 'var(--green)' : sucSucc ? '#e74c3c' : actuelles ? 'var(--gold-dim)' : 'transparent';
@@ -6776,14 +6784,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[48 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7008,14 +7016,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[24 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7216,14 +7224,14 @@ export default function App() {
                         const firstOut = standings[8];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[16 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7424,14 +7432,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[32 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7632,14 +7640,14 @@ export default function App() {
                         const firstOut = standings[32];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[48 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -7840,14 +7848,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[48 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8048,14 +8056,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[24 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8256,14 +8264,14 @@ export default function App() {
                         const firstOut = standings[8];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[16 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8464,14 +8472,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[76 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -8672,14 +8680,14 @@ export default function App() {
                         const firstOut = standings[16];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
                         const lastSafe = standings[82 - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
@@ -9083,7 +9091,7 @@ export default function App() {
                         const firstOut = standings[4];
                         if (!firstOut) return true;
                         const foRemain = (cars.length - 1) - (firstOut.gp || 0);
-                        return s.pts > firstOut.pts + foRemain * 3;
+                        return foRemain === 0 ? s.pts >= firstOut.pts : s.pts > firstOut.pts + foRemain * 3;
                       })();
                       const borderColor = promoted ? 'var(--green)' : 'transparent';
                       const photo = getCarPhoto(s.id);
