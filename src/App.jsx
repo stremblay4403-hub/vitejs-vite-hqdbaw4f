@@ -2317,6 +2317,7 @@ export default function App() {
         });
       });
       loadedForNotifs.current = false;
+      firebaseReadyRef.current = true;
       setDb(saved);
       storageSave(saved);
     }
@@ -2550,9 +2551,9 @@ export default function App() {
 
   const auxStatusRef = useRef({});
   const auxLoadedRef = useRef(false);
+  const firebaseReadyRef = useRef(false);
   useEffect(() => {
-    console.log('[auxEffect] déclenché loaded=', loaded, 'currentSeason=', !!currentSeason, 'auxLoaded=', auxLoadedRef.current);
-    if (!currentSeason || !loaded) return;
+    if (!currentSeason || !loaded || !firebaseReadyRef.current) return;
     const allLeagues = Object.keys(AUX_NOTIF_CONFIG);
     allLeagues.forEach(l => {
       const next = computeAuxStatus(l);
@@ -2825,6 +2826,7 @@ export default function App() {
     setDb(d => ({ ...d, seasons: [...d.seasons, ns], currentSeasonIdx: d.seasons.length }));
     loadedForNotifs.current = false;
     auxLoadedRef.current = false;
+    firebaseReadyRef.current = false;
   }
 
   function switchSeason(idx) {
