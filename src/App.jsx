@@ -2440,6 +2440,8 @@ export default function App() {
     'Importation': 'Comeback',
     'Oubliettes': 'Importation',
   };
+  // Les 12 ligues Actuelles promeuvent leur top 4 vers les Successeurs
+  for (let i = 1; i <= 12; i++) PROMO_DEST[`Actuelles ${i}`] = 'Successeurs';
   const REL_DEST = {
     'Successeurs': 'Successeurs aux Successeurs',
     'Successeurs aux Successeurs': 'Remplaçants des Successeurs',
@@ -2477,7 +2479,7 @@ export default function App() {
   React.useEffect(() => {
     if (!currentSeason || !loaded) return;
     const AUX_NOTIF_CONFIG = {
-      'Successeurs': { numPromo: 4, numRel: 0 },
+      'Successeurs': { numPromo: 4, numRel: 12 },
       'Successeurs aux Successeurs': { numPromo: 12, numRel: 16 },
       'Remplaçants des Successeurs': { numPromo: 16, numRel: 16 },
       'Avant-dernière chance': { numPromo: 8, numRel: 8 },
@@ -2491,6 +2493,8 @@ export default function App() {
       'Importation': { numPromo: 16, numRel: 4 },
       'Oubliettes': { numPromo: 4, numRel: 0 },
     };
+    // Les 12 ligues Actuelles : top 4 promu vers les Successeurs, aucune relégation
+    for (let i = 1; i <= 12; i++) AUX_NOTIF_CONFIG[`Actuelles ${i}`] = { numPromo: 4, numRel: 0 };
 
     const computeStatus = () => {
       const status = {};
@@ -6185,14 +6189,47 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 4;
-                      const sucSucc = rank >= 73;
-                      const actuelles = rank >= 25 && rank < 73;
+                      const total = standings.length;
+                      const allDone = totalCount > 0 && playedCount === totalCount;
+                      const myRemain = (cars.length - 1) - (s.gp || 0);
+                      const inZonePromo = rank <= 4;                            // → Ligues Principales (V1-V4)
+                      const inZoneSucSucc = rank > total - 12;                  // bas 12 → Successeurs aux Successeurs
+                      const inZoneActuelles = rank >= 25 && rank <= total - 12; // → Actuelles 1-12
+                      const promoted = inZonePromo && (() => {
+                        if (allDone) return true;
+                        const firstOut = standings[4];
+                        if (!firstOut) return true;
+                        const foRemain = (cars.length - 1) - (firstOut.gp || 0);
+                        return s.pts > firstOut.pts + foRemain * 3;
+                      })();
+                      const sucSucc = inZoneSucSucc && (() => {   // relégué → Successeurs aux Successeurs
+                        if (allDone) return true;
+                        const lastSafe = standings[total - 12 - 1];
+                        if (!lastSafe) return true;
+                        return s.pts + myRemain * 3 < lastSafe.pts;
+                      })();
+                      // → Actuelles (rangs 25-72) : confirmé dès que c'est officiel —
+                      // garantie de ne plus pouvoir monter dans le top 24 NI tomber dans le bas 12
+                      const actuelles = inZoneActuelles && (() => {
+                        if (allDone) return true;
+                        const stayBoundary = standings[23];             // rang 24 (dernière qui reste)
+                        const sucSuccBoundary = standings[total - 12];  // rang 73 (1re vers SucSucc)
+                        const safeFromTop = stayBoundary ? (s.pts + myRemain * 3 < stayBoundary.pts) : false;
+                        let safeFromBottom = true;
+                        if (sucSuccBoundary) {
+                          const bRemain = (cars.length - 1) - (sucSuccBoundary.gp || 0);
+                          safeFromBottom = s.pts > sucSuccBoundary.pts + bRemain * 3;
+                        }
+                        return safeFromTop && safeFromBottom;
+                      })();
                       const borderColor = promoted ? 'var(--green)' : sucSucc ? '#e74c3c' : actuelles ? 'var(--gold-dim)' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
                                   : sucSucc ? { label:'⬇⬇ SUC.SUCC', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }
                                   : actuelles ? { label:'⬇ ACTUELLES', bg:'rgba(201,168,76,0.2)', color:'var(--gold)' }
+                                  : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' }
+                                  : inZoneActuelles ? { label:'⬇', bg:'rgba(201,168,76,0.12)', color:'var(--gold)' }
+                                  : inZoneSucSucc ? { label:'⬇⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' }
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
                         <LeaderboardRow key={s.id}
@@ -6477,29 +6514,30 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 12;
-                      const inZoneRel = rank > 16;
-                      // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
+                      const total = standings.length;
+                      const allDone = totalCount > 0 && playedCount === totalCount;
+                      const myRemain = (cars.length - 1) - (s.gp || 0);
+                      const inZonePromo = rank <= 12;                 // → Successeurs
+                      const inZoneRel = rank > total - 16;            // bas 16 → Remplaçants des Successeurs
                       const promoted = inZonePromo && (() => {
-                        // Le premier hors zone (index=numPromoted) ne peut plus rattraper
+                        if (allDone) return true;
                         const firstOut = standings[12];
                         if (!firstOut) return true;
-                        const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
-                        if (firstOutRemain === 0) return true; return s.pts > firstOut.pts + firstOutRemain * 3;
+                        const foRemain = (cars.length - 1) - (firstOut.gp || 0);
+                        return s.pts > firstOut.pts + foRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
-                        // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[16 - 1];
+                        if (allDone) return true;
+                        const lastSafe = standings[total - 16 - 1];
                         if (!lastSafe) return true;
-                        const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
-                        if (myRemain === 0) return true; return s.pts + myRemain * 3 < lastSafe.pts;
+                        return s.pts + myRemain * 3 < lastSafe.pts;
                       })();
                       const rowBg = promoted ? 'rgba(39,174,96,0.07)' : relegated ? 'rgba(192,57,43,0.09)' : 'transparent';
                       const borderColor = promoted ? 'var(--green)' : relegated ? '#e74c3c' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const diff = s.gf - s.ga;
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
-                                            const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
+                      const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <LeaderboardRow key={s.id}
                           rank={rank} rankDiff={null}
@@ -9021,10 +9059,20 @@ export default function App() {
               <div>
                     {filteredStandings.map(s => {
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const promoted = rank <= 4;
+                      const total = standings.length;
+                      const allDone = totalCount > 0 && playedCount === totalCount;
+                      const inZonePromo = rank <= 4;
+                      const promoted = inZonePromo && (() => {
+                        if (allDone) return true;
+                        const firstOut = standings[4];
+                        if (!firstOut) return true;
+                        const foRemain = (cars.length - 1) - (firstOut.gp || 0);
+                        return s.pts > firstOut.pts + foRemain * 3;
+                      })();
                       const borderColor = promoted ? 'var(--green)' : 'transparent';
                       const photo = getCarPhoto(s.id);
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
+                                  : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' }
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
                         <LeaderboardRow key={s.id}
