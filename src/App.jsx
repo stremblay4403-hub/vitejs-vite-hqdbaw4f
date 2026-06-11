@@ -2501,20 +2501,32 @@ export default function App() {
       Object.entries(AUX_NOTIF_CONFIG).forEach(([leagueName, { numPromo, numRel }]) => {
         const league = currentSeason.leagues[leagueName];
         if (!league?.cars?.length) return;
+        // Reconstruire allMatches en cherchant dans les deux sens (orientation homeId/awayId peut varier)
+        const playedMatches = league.matches || [];
         const allMatches = genRoundRobin(league.cars).map(m => {
-          const p = (league.matches || []).find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
-          return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
+          const p = playedMatches.find(pm =>
+            (pm.homeId === m.homeId && pm.awayId === m.awayId) ||
+            (pm.homeId === m.awayId  && pm.awayId === m.homeId)
+          );
+          if (!p) return m;
+          const flipped = p.homeId === m.awayId;
+          return { ...m,
+            homeGoals: flipped ? p.awayGoals : p.homeGoals,
+            awayGoals: flipped ? p.homeGoals : p.awayGoals,
+          };
         });
         const standings = computeStandings(league.cars, allMatches);
+        const totalMatchesPerCar = league.cars.length - 1;
         standings.forEach((s, i) => {
           const rank = i + 1;
           const key = `${leagueName}-${s.id}`;
           const firstOut = standings[numPromo];
           const lastSafe = numRel > 0 ? standings[standings.length - numRel - 1] : null;
-          const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
+          // Utiliser gp pour les matchs restants — fiable quelle que soit l'orientation stockée
+          const myRemain = totalMatchesPerCar - (s.gp || 0);
           const isPromo = numPromo > 0 && rank <= numPromo && (() => {
             if (!firstOut) return true;
-            const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
+            const firstOutRemain = totalMatchesPerCar - (firstOut.gp || 0);
             if (firstOutRemain === 0) return true;
             return s.pts > firstOut.pts + firstOutRemain * 3;
           })();
@@ -2523,7 +2535,7 @@ export default function App() {
             if (myRemain === 0) return true;
             return s.pts + myRemain * 3 < lastSafe.pts;
           })();
-          status[key] = { promo: !!isPromo, rel: !!isRel };
+          status[key] = { promo: !!isPromo, rel: !!isRel, name: s.name, league: leagueName };
         });
       });
       return status;
@@ -2538,15 +2550,11 @@ export default function App() {
 
     // Chargements suivants — comparer et notifier les nouveaux
     const newStatus = computeStatus();
-    Object.entries(newStatus).forEach(([key, { promo, rel }]) => {
+    Object.entries(newStatus).forEach(([key, { promo, rel, name, league: leagueName }]) => {
       const prev = prevMathStatus.current[key] || {};
-      const sepIdx = key.lastIndexOf('-');
-      const leagueName = key.slice(0, sepIdx);
-      const carId = key.slice(sepIdx + 1);
-      const league = currentSeason.leagues[leagueName];
-      const carName = league?.cars?.find(c => c.id === carId)?.name || carId;
-      if (promo && !prev.promo) pushPromoNotif(carName, leagueName, true);
-      if (rel && !prev.rel) pushPromoNotif(carName, leagueName, false);
+      // Utiliser name/leagueName directement depuis le statut calculé — évite tout décalage
+      if (promo && !prev.promo) pushPromoNotif(name, leagueName, true);
+      if (rel && !prev.rel) pushPromoNotif(name, leagueName, false);
     });
     prevMathStatus.current = newStatus;
   }, [currentSeason?.leagues, loaded]);
