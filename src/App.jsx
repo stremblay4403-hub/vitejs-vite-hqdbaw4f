@@ -2538,7 +2538,10 @@ export default function App() {
         const confirmed = allDone
           || !firstOut
           || (foRemain === 0 ? s.pts >= firstOut.pts : s.pts > firstOut.pts + foRemain * 3);
-        if (confirmed) promoSet.add(s.id);
+        if (confirmed) {
+          console.log(`[AuxConfirm] ${leagueName} ${s.name} rank=${rank} pts=${s.pts} gp=${s.gp} totalPer=${totalPer} firstOut=${firstOut?.pts} foGp=${firstOut?.gp} foRemain=${foRemain} allDone=${allDone} played=${playedCount}/${totalCount}`);
+          promoSet.add(s.id);
+        }
       }
       if (numRel > 0 && rank > tot - numRel) {
         const confirmed = allDone
