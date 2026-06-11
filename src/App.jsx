@@ -2317,7 +2317,6 @@ export default function App() {
         });
       });
       loadedForNotifs.current = false;
-      auxLoadedRef.current = false;
       setDb(saved);
       storageSave(saved);
     }
@@ -3783,6 +3782,7 @@ export default function App() {
   }
 
   function simAllActuelles() {
+    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -3790,14 +3790,15 @@ export default function App() {
         const lName = `Actuelles ${i}`;
         const league = s.leagues[lName];
         if (!league) continue;
-        if (!league.matches || league.matches.length === 0) {
-          league.matches = genRoundRobin(league.cars);
-        }
-        league.matches = league.matches.map(m => {
-          if (m.homeGoals !== null) return m;
+        const played = league.matches || [];
+        const fresh = genRoundRobin(league.cars).map(m => {
+          const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+          if (p) return p;
           const sc = simScore();
-          return { ...m, homeGoals: sc.h, awayGoals: sc.a };
+          return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
         });
+        league.matches = fresh.filter(m => m.homeGoals !== null)
+          .map(m => ({ homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals }));
       }
       return next;
     });
