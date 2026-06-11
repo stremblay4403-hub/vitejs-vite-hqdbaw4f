@@ -1036,19 +1036,44 @@ function initAuxLeague(leagueName, existingCars) {
 }
 
 function genRoundRobin(cars) {
-  const n = cars.length;
-  const matches = [];
+  // Round-robin par la méthode du cercle.
+  // Effectif IMPAIR : on ajoute un 'bye' (repos) fictif, sinon l'algorithme
+  // génère des matchs voiture-contre-elle-même et rate des paires.
   const ids = cars.map(c => c.id);
+  if (ids.length % 2 === 1) ids.push(null); // bye
+  const n = ids.length;
+  const matches = [];
   const fixed = ids[0];
   const rotating = [...ids.slice(1)];
   for (let r = 0; r < n - 1; r++) {
     const circle = [fixed, ...rotating];
     for (let i = 0; i < n / 2; i++) {
-      matches.push({ id: genId(), homeId: circle[i], awayId: circle[n - 1 - i], homeGoals: null, awayGoals: null, day: r + 1 });
+      const h = circle[i], a = circle[n - 1 - i];
+      if (h === null || a === null) continue; // journée de repos
+      matches.push({ id: genId(), homeId: h, awayId: a, homeGoals: null, awayGoals: null, day: r + 1 });
     }
     rotating.splice(0, 0, rotating.pop());
   }
   return matches;
+}
+
+// Retrouve un match joué quelle que soit l'orientation stockée (domicile/extérieur),
+// retourne les buts NORMALISÉS dans l'orientation du match généré m.
+// Parcours en sens inverse : en cas de doublon dans les données, le plus récent gagne.
+// Les self-matchs hérités (voiture contre elle-même) sont ignorés.
+function findPlayedMatch(playedList, m) {
+  if (!playedList) return undefined;
+  for (let i = playedList.length - 1; i >= 0; i--) {
+    const pm = playedList[i];
+    if (pm.homeId === pm.awayId) continue;
+    if (pm.homeId === m.homeId && pm.awayId === m.awayId) {
+      return { homeId: m.homeId, awayId: m.awayId, homeGoals: pm.homeGoals, awayGoals: pm.awayGoals };
+    }
+    if (pm.homeId === m.awayId && pm.awayId === m.homeId) {
+      return { homeId: m.homeId, awayId: m.awayId, homeGoals: pm.awayGoals, awayGoals: pm.homeGoals };
+    }
+  }
+  return undefined;
 }
 
 function initSeason(seasonNum) {
@@ -1092,6 +1117,7 @@ function computeStandings(cars, matches) {
   cars.forEach(c => { stats[c.id] = { id: c.id, name: c.name, gp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 }; });
   matches.forEach(m => {
     if (m.homeGoals === null || m.awayGoals === null) return;
+    if (m.homeId === m.awayId) return; // self-match hérité de l'ancien bug : ignorer
     const h = stats[m.homeId]; const a = stats[m.awayId];
     if (!h || !a) return;
     h.gp++; a.gp++;
@@ -2471,7 +2497,6 @@ export default function App() {
   };
 
   function pushPromoNotif(carName, leagueName, isPromo) {
-    console.log('[pushPromoNotif] appelé:', carName, leagueName, isPromo, new Error().stack.split('\n')[1]);
     if (isPromo) {
       const dest = PROMO_DEST[leagueName];
       if (dest) pushNotif(`▲ ${carName} officiellement promu → ${dest}`, 'success');
@@ -2514,13 +2539,8 @@ export default function App() {
     if (!league?.cars?.length) return { promo: promoSet, rel: relSet };
     const played = league.matches || [];
     const allMatches = genRoundRobin(league.cars).map(m => {
-      const p = played.find(pm =>
-        (pm.homeId === m.homeId && pm.awayId === m.awayId) ||
-        (pm.homeId === m.awayId  && pm.awayId === m.homeId)
-      );
-      if (!p) return m;
-      const fl = p.homeId === m.awayId;
-      return { ...m, homeGoals: fl ? p.awayGoals : p.homeGoals, awayGoals: fl ? p.homeGoals : p.awayGoals };
+      const p = findPlayedMatch(played, m);
+      return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
     });
     const totalCount = allMatches.length;
     const playedCount = allMatches.filter(m => m.homeGoals !== null).length;
@@ -2538,10 +2558,7 @@ export default function App() {
         const confirmed = allDone
           || !firstOut
           || (foRemain === 0 ? s.pts >= firstOut.pts : s.pts > firstOut.pts + foRemain * 3);
-        if (confirmed) {
-          console.log(`[AuxConfirm] ${leagueName} ${s.name} rank=${rank} pts=${s.pts} gp=${s.gp} totalPer=${totalPer} firstOut=${firstOut?.pts} foGp=${firstOut?.gp} foRemain=${foRemain} allDone=${allDone} played=${playedCount}/${totalCount}`);
-          promoSet.add(s.id);
-        }
+        if (confirmed) promoSet.add(s.id);
       }
       if (numRel > 0 && rank > tot - numRel) {
         const confirmed = allDone
@@ -3799,7 +3816,7 @@ export default function App() {
         if (!league) continue;
         const played = league.matches || [];
         const fresh = genRoundRobin(league.cars).map(m => {
-          const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+          const p = findPlayedMatch(played, m);
           if (p) return p;
           const sc = simScore();
           return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3838,7 +3855,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3857,7 +3874,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3876,7 +3893,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3895,7 +3912,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3914,7 +3931,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3933,7 +3950,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3952,7 +3969,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3971,7 +3988,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -3990,7 +4007,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -4009,7 +4026,7 @@ export default function App() {
       if (!league) return d;
       const played = league.matches || [];
       const fresh = genRoundRobin(league.cars).map(m => {
-        const p = played.find(pm => pm.homeId === m.homeId && pm.awayId === m.awayId);
+        const p = findPlayedMatch(played, m);
         if (p) return p;
         const sc = simScore();
         return { homeId: m.homeId, awayId: m.awayId, homeGoals: sc.h, awayGoals: sc.a };
@@ -6134,7 +6151,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c=>c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -6180,7 +6197,7 @@ export default function App() {
     function simAll() {
       isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
         if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
         return base;
@@ -6462,7 +6479,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -6508,7 +6525,7 @@ export default function App() {
     function simAll() {
       isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
         if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
         return base;
@@ -6711,7 +6728,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -6943,7 +6960,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -7151,7 +7168,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -7359,7 +7376,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -7567,7 +7584,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -7775,7 +7792,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -7983,7 +8000,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -8191,7 +8208,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -8399,7 +8416,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -8607,7 +8624,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -8816,7 +8833,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c => c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -9006,7 +9023,7 @@ export default function App() {
     const allMatches = React.useMemo(() => {
       if (cars.length === 0) return [];
       return genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         return p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
       });
     }, [cars.map(c=>c.id).join(','), playedMatches.map(m => m.homeId + m.homeGoals + '-' + m.awayGoals).join('|')]);
@@ -9052,7 +9069,7 @@ export default function App() {
     function simAll() {
       isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
-        const p = playedMatches.find(s => s.homeId === m.homeId && s.awayId === m.awayId);
+        const p = findPlayedMatch(playedMatches, m);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
         if (base.homeGoals === null) { const sc = simScore(); return { ...base, homeGoals: sc.h, awayGoals: sc.a }; }
         return base;
