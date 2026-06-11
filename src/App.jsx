@@ -2556,8 +2556,13 @@ export default function App() {
       const next = computeAuxStatus(l);
       const league = currentSeason.leagues[l];
       const getName = id => league?.cars?.find(c => c.id === id)?.name || id;
-      next.promo.forEach(id => { if (!prev.promo.has(id)) pushPromoNotif(getName(id), l, true); });
-      next.rel.forEach(id  => { if (!prev.rel.has(id))   pushPromoNotif(getName(id), l, false); });
+      const newPromo = [...next.promo].filter(id => !prev.promo.has(id));
+      const newRel   = [...next.rel].filter(id => !prev.rel.has(id));
+      if (next.promo.size > 0 || next.rel.size > 0 || newPromo.length > 0 || newRel.length > 0) {
+        console.log(`[AuxNotif] ${l}: promo=${next.promo.size} rel=${next.rel.size} newPromo=${newPromo.length} newRel=${newRel.length} matches=${league?.matches?.length||0}`);
+      }
+      newPromo.forEach(id => pushPromoNotif(getName(id), l, true));
+      newRel.forEach(id   => pushPromoNotif(getName(id), l, false));
       auxStatusRef.current[l] = next;
     });
   }, [currentSeason, loaded]);
