@@ -2554,24 +2554,21 @@ export default function App() {
   useEffect(() => {
     if (!currentSeason || !loaded) return;
     const allLeagues = Object.keys(AUX_NOTIF_CONFIG);
-    if (!auxLoadedRef.current) {
-      // Init silencieuse — même comportement que qualsRef
-      allLeagues.forEach(l => { auxStatusRef.current[l] = computeAuxStatus(l); });
-      auxLoadedRef.current = true;
-      return;
-    }
     allLeagues.forEach(l => {
-      const prev = auxStatusRef.current[l] || { promo: new Set(), rel: new Set() };
       const next = computeAuxStatus(l);
-      const league = currentSeason.leagues[l];
-      const getName = id => league?.cars?.find(c => c.id === id)?.name || id;
-      if (l.startsWith('Actuelles') || l === 'Successeurs') {
-        console.log(`[AuxNotif] ${l} loaded=${auxLoadedRef.current} promo=${next.promo.size} rel=${next.rel.size} newPromo=${[...next.promo].filter(id=>!prev.promo.has(id)).length}`);
+      if (!auxLoadedRef.current) {
+        // Init silencieuse : mémoriser sans notifier
+        auxStatusRef.current[l] = next;
+      } else {
+        const prev = auxStatusRef.current[l] || { promo: new Set(), rel: new Set() };
+        const league = currentSeason.leagues[l];
+        const getName = id => league?.cars?.find(c => c.id === id)?.name || id;
+        next.promo.forEach(id => { if (!prev.promo.has(id)) pushPromoNotif(getName(id), l, true); });
+        next.rel.forEach(id   => { if (!prev.rel.has(id))   pushPromoNotif(getName(id), l, false); });
+        auxStatusRef.current[l] = next;
       }
-      next.promo.forEach(id => { if (!prev.promo.has(id)) pushPromoNotif(getName(id), l, true); });
-      next.rel.forEach(id   => { if (!prev.rel.has(id))   pushPromoNotif(getName(id), l, false); });
-      auxStatusRef.current[l] = next;
     });
+    auxLoadedRef.current = true;
   }, [currentSeason, loaded]);
 
   function checkAndNotifyQualifications(leagueName, prevQuals, newQuals) {
