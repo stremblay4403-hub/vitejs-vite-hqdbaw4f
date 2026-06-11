@@ -2519,7 +2519,7 @@ export default function App() {
     'Successeurs':                   { numPromo: 4,  numRel: 12 },
     'Successeurs aux Successeurs':   { numPromo: 12, numRel: 16 },
     'Remplaçants des Successeurs':   { numPromo: 16, numRel: 16 },
-    'Avant-dernière chance':         { numPromo: 8,  numRel: 8  },
+    'Avant-dernière chance':         { numPromo: 16, numRel: 8  },
     'Dernière chance':               { numPromo: 8,  numRel: 16 },
     'Persévérance':                  { numPromo: 16, numRel: 32 },
     'Détermination':                 { numPromo: 32, numRel: 16 },
