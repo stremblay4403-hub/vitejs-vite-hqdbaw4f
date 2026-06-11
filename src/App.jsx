@@ -1528,10 +1528,12 @@ function storageSave(data) {
           if (isMain) {
             compLeagues[l] = league;
           } else {
-            // Format compressé : clés courtes
+            // Format ultra-compact : [idxHome, idxAway, hg, ag] — indices dans league.cars
+            const carIdx = {};
+            (league.cars || []).forEach((c, ii) => { carIdx[c.id] = ii; });
             const minMatches = (league.matches || [])
               .filter(m => m.homeGoals !== null)
-              .map(m => ({ h: m.homeId, a: m.awayId, hg: m.homeGoals, ag: m.awayGoals }));
+              .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
             compLeagues[l] = { ...league, matches: minMatches };
           }
         } else {
@@ -2293,11 +2295,21 @@ export default function App() {
           (league.cars || []).forEach(car => {
             if (migrations[car.name]) car.name = migrations[car.name];
           });
-          // Décompresser les matchs en format court {h,a,hg,ag} → {homeId,awayId,homeGoals,awayGoals}
-          if (league.matches?.length > 0 && league.matches[0].h !== undefined) {
-            league.matches = league.matches.map(m => ({
-              homeId: m.h, awayId: m.a, homeGoals: m.hg, awayGoals: m.ag
-            }));
+          // Décompresser les matchs selon le format stocké :
+          // - Ancien format objet {h,a,hg,ag} → rétrocompatibilité
+          // - Nouveau format tableau [idxH,idxA,hg,ag] → indices dans league.cars
+          if (league.matches?.length > 0) {
+            const first = league.matches[0];
+            if (Array.isArray(first)) {
+              const cars = league.cars || [];
+              league.matches = league.matches
+                .filter(m => cars[m[0]] && cars[m[1]])
+                .map(m => ({ homeId: cars[m[0]].id, awayId: cars[m[1]].id, homeGoals: m[2], awayGoals: m[3] }));
+            } else if (first.h !== undefined) {
+              league.matches = league.matches.map(m => ({
+                homeId: m.h, awayId: m.a, homeGoals: m.hg, awayGoals: m.ag
+              }));
+            }
           }
         });
         AUXILIARY_LEAGUES.forEach(l => {
