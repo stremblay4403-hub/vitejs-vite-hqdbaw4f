@@ -2471,6 +2471,7 @@ export default function App() {
   };
 
   function pushPromoNotif(carName, leagueName, isPromo) {
+    console.log('[pushPromoNotif] appelé:', carName, leagueName, isPromo, new Error().stack.split('\n')[1]);
     if (isPromo) {
       const dest = PROMO_DEST[leagueName];
       if (dest) pushNotif(`▲ ${carName} officiellement promu → ${dest}`, 'success');
