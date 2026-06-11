@@ -2234,7 +2234,6 @@ export default function App() {
           const tabsEl = document.querySelector('.tabs');
           if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
           isLoadingFromFirebase.current = true;
-          mathStatusInitialized.current = false;
           applyLoadedData(parsed, true);
           setTimeout(() => {
             isLoadingFromFirebase.current = false;
@@ -2474,90 +2473,82 @@ export default function App() {
   }
 
   // Détecter les promotions/relégations mathématiques
-  const prevMathStatus = React.useRef({});
-  const mathStatusInitialized = React.useRef(false);
-  React.useEffect(() => {
+  // --- Notifications promo/relégation ligues auxiliaires ---
+  // Même pattern que les ligues principales (qualsRef) : Set par ligue, useRef, init silencieuse
+  const AUX_NOTIF_CONFIG = {
+    'Successeurs':                   { numPromo: 4,  numRel: 12 },
+    'Successeurs aux Successeurs':   { numPromo: 12, numRel: 16 },
+    'Remplaçants des Successeurs':   { numPromo: 16, numRel: 16 },
+    'Avant-dernière chance':         { numPromo: 8,  numRel: 8  },
+    'Dernière chance':               { numPromo: 8,  numRel: 16 },
+    'Persévérance':                  { numPromo: 16, numRel: 32 },
+    'Détermination':                 { numPromo: 32, numRel: 16 },
+    'Acharnement':                   { numPromo: 16, numRel: 16 },
+    'Obstination':                   { numPromo: 16, numRel: 8  },
+    'Insistance':                    { numPromo: 8,  numRel: 16 },
+    'Comeback':                      { numPromo: 16, numRel: 16 },
+    'Importation':                   { numPromo: 16, numRel: 4  },
+    'Oubliettes':                    { numPromo: 4,  numRel: 0  },
+  };
+  for (let _i = 1; _i <= 12; _i++) AUX_NOTIF_CONFIG[`Actuelles ${_i}`] = { numPromo: 4, numRel: 0 };
+
+  function computeAuxStatus(leagueName) {
+    const { numPromo, numRel } = AUX_NOTIF_CONFIG[leagueName] || {};
+    const league = currentSeason?.leagues[leagueName];
+    const promoSet = new Set(), relSet = new Set();
+    if (!league?.cars?.length) return { promo: promoSet, rel: relSet };
+    const played = league.matches || [];
+    const allMatches = genRoundRobin(league.cars).map(m => {
+      const p = played.find(pm =>
+        (pm.homeId === m.homeId && pm.awayId === m.awayId) ||
+        (pm.homeId === m.awayId  && pm.awayId === m.homeId)
+      );
+      if (!p) return m;
+      const fl = p.homeId === m.awayId;
+      return { ...m, homeGoals: fl ? p.awayGoals : p.homeGoals, awayGoals: fl ? p.homeGoals : p.awayGoals };
+    });
+    const standings = computeStandings(league.cars, allMatches);
+    const tot = standings.length;
+    const totalPer = league.cars.length - 1;
+    const firstOut = standings[numPromo];
+    const lastSafe = numRel > 0 ? standings[tot - numRel - 1] : null;
+    standings.forEach((s, i) => {
+      const rank = i + 1;
+      const myRemain = totalPer - (s.gp || 0);
+      if (numPromo > 0 && rank <= numPromo) {
+        const foRemain = firstOut ? totalPer - (firstOut.gp || 0) : 0;
+        if (!firstOut || foRemain === 0 || s.pts > firstOut.pts + foRemain * 3)
+          promoSet.add(s.id);
+      }
+      if (numRel > 0 && rank > tot - numRel) {
+        if (!lastSafe || myRemain === 0 || s.pts + myRemain * 3 < lastSafe.pts)
+          relSet.add(s.id);
+      }
+    });
+    return { promo: promoSet, rel: relSet };
+  }
+
+  const auxStatusRef = useRef({});
+  const auxLoadedRef = useRef(false);
+  useEffect(() => {
     if (!currentSeason || !loaded) return;
-    const AUX_NOTIF_CONFIG = {
-      'Successeurs': { numPromo: 4, numRel: 12 },
-      'Successeurs aux Successeurs': { numPromo: 12, numRel: 16 },
-      'Remplaçants des Successeurs': { numPromo: 16, numRel: 16 },
-      'Avant-dernière chance': { numPromo: 8, numRel: 8 },
-      'Dernière chance': { numPromo: 8, numRel: 16 },
-      'Persévérance': { numPromo: 16, numRel: 32 },
-      'Détermination': { numPromo: 32, numRel: 16 },
-      'Acharnement': { numPromo: 16, numRel: 16 },
-      'Obstination': { numPromo: 16, numRel: 8 },
-      'Insistance': { numPromo: 8, numRel: 16 },
-      'Comeback': { numPromo: 16, numRel: 16 },
-      'Importation': { numPromo: 16, numRel: 4 },
-      'Oubliettes': { numPromo: 4, numRel: 0 },
-    };
-    // Les 12 ligues Actuelles : top 4 promu vers les Successeurs, aucune relégation
-    for (let i = 1; i <= 12; i++) AUX_NOTIF_CONFIG[`Actuelles ${i}`] = { numPromo: 4, numRel: 0 };
-
-    const computeStatus = () => {
-      const status = {};
-      Object.entries(AUX_NOTIF_CONFIG).forEach(([leagueName, { numPromo, numRel }]) => {
-        const league = currentSeason.leagues[leagueName];
-        if (!league?.cars?.length) return;
-        // Reconstruire allMatches en cherchant dans les deux sens (orientation homeId/awayId peut varier)
-        const playedMatches = league.matches || [];
-        const allMatches = genRoundRobin(league.cars).map(m => {
-          const p = playedMatches.find(pm =>
-            (pm.homeId === m.homeId && pm.awayId === m.awayId) ||
-            (pm.homeId === m.awayId  && pm.awayId === m.homeId)
-          );
-          if (!p) return m;
-          const flipped = p.homeId === m.awayId;
-          return { ...m,
-            homeGoals: flipped ? p.awayGoals : p.homeGoals,
-            awayGoals: flipped ? p.homeGoals : p.awayGoals,
-          };
-        });
-        const standings = computeStandings(league.cars, allMatches);
-        const totalMatchesPerCar = league.cars.length - 1;
-        standings.forEach((s, i) => {
-          const rank = i + 1;
-          const key = `${leagueName}-${s.id}`;
-          const firstOut = standings[numPromo];
-          const lastSafe = numRel > 0 ? standings[standings.length - numRel - 1] : null;
-          // Utiliser gp pour les matchs restants — fiable quelle que soit l'orientation stockée
-          const myRemain = totalMatchesPerCar - (s.gp || 0);
-          const isPromo = numPromo > 0 && rank <= numPromo && (() => {
-            if (!firstOut) return true;
-            const firstOutRemain = totalMatchesPerCar - (firstOut.gp || 0);
-            if (firstOutRemain === 0) return true;
-            return s.pts > firstOut.pts + firstOutRemain * 3;
-          })();
-          const isRel = numRel > 0 && rank > standings.length - numRel && (() => {
-            if (!lastSafe) return true;
-            if (myRemain === 0) return true;
-            return s.pts + myRemain * 3 < lastSafe.pts;
-          })();
-          status[key] = { promo: !!isPromo, rel: !!isRel, name: s.name, league: leagueName };
-        });
-      });
-      return status;
-    };
-
-    if (!mathStatusInitialized.current) {
-      // Premier chargement — initialiser sans notifier
-      prevMathStatus.current = computeStatus();
-      mathStatusInitialized.current = true;
+    const allLeagues = Object.keys(AUX_NOTIF_CONFIG);
+    if (!auxLoadedRef.current) {
+      // Init silencieuse — même comportement que qualsRef
+      allLeagues.forEach(l => { auxStatusRef.current[l] = computeAuxStatus(l); });
+      auxLoadedRef.current = true;
       return;
     }
-
-    // Chargements suivants — comparer et notifier les nouveaux
-    const newStatus = computeStatus();
-    Object.entries(newStatus).forEach(([key, { promo, rel, name, league: leagueName }]) => {
-      const prev = prevMathStatus.current[key] || {};
-      // Utiliser name/leagueName directement depuis le statut calculé — évite tout décalage
-      if (promo && !prev.promo) pushPromoNotif(name, leagueName, true);
-      if (rel && !prev.rel) pushPromoNotif(name, leagueName, false);
+    allLeagues.forEach(l => {
+      const prev = auxStatusRef.current[l] || { promo: new Set(), rel: new Set() };
+      const next = computeAuxStatus(l);
+      const league = currentSeason.leagues[l];
+      const getName = id => league?.cars?.find(c => c.id === id)?.name || id;
+      next.promo.forEach(id => { if (!prev.promo.has(id)) pushPromoNotif(getName(id), l, true); });
+      next.rel.forEach(id  => { if (!prev.rel.has(id))   pushPromoNotif(getName(id), l, false); });
+      auxStatusRef.current[l] = next;
     });
-    prevMathStatus.current = newStatus;
-  }, [currentSeason?.leagues, loaded]);
+  }, [currentSeason, loaded]);
 
   function checkAndNotifyQualifications(leagueName, prevQuals, newQuals) {
     const league = currentSeason.leagues[leagueName];
