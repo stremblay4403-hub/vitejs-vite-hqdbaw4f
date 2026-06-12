@@ -4600,9 +4600,9 @@ export default function App() {
                         return (
                           <div key={car.id} style={{ background:'var(--dark3)',borderRadius:6,overflow:'hidden',border:'1px solid rgba(39,174,96,0.4)' }}>
                             {/* Photo */}
-                            <div style={{ position:'relative',height:140,background:'var(--dark2)' }}>
+                            <div style={{ position:'relative',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>
                               {photo
-                                ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
+                                ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
                                 : <div style={{ height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:56 }}>🚗</div>}
                               <div style={{ position:'absolute',top:8,left:8,background:'rgba(39,174,96,0.9)',borderRadius:4,padding:'2px 8px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:'#000' }}>#{i + 1}</div>
                               <div style={{ position:'absolute',top:8,right:8,background:'rgba(0,0,0,0.7)',borderRadius:4,padding:'2px 8px',fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--gold)' }}>{car.pts} pts</div>
@@ -4612,7 +4612,9 @@ export default function App() {
                               <div style={{ fontWeight:700,fontSize:16,color:'var(--text)',marginBottom:8 }}>{car.name}</div>
                               <select
                                 value={destLeague}
+                                disabled={isPublicMode}
                                 onChange={e => {
+                                  if (isPublicMode) return;
                                   setDb(prev => ({ ...prev, succPromotions: { ...(prev.succPromotions || {}), [car.id]: e.target.value } }));
                                 }}
                                 style={{ width:'100%',background:destLeague ? 'rgba(39,174,96,0.15)' :'var(--dark2)',border:`1px solid ${destLeague ? 'var(--green)' :'var(--border)'}`,borderRadius:4,padding:'6px 8px',color:destLeague ? 'var(--green)' :'var(--text-dim)',fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:1 }}>
