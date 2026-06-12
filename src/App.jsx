@@ -1525,7 +1525,6 @@ function unlockScroll() {
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.overflowX = '';
-  delete document.body.dataset.scrollY; // CRUCIAL : sinon la restauration de scroll reste désactivée à jamais
   window.scrollTo(0, sy);
 }
 
@@ -4653,7 +4652,7 @@ export default function App() {
       if (openDayRef.current) {
         openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       }
-    }, [groupOpenDay]);
+    });
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
@@ -4784,13 +4783,7 @@ export default function App() {
                 return (
                   <div key={day} style={{ marginBottom:3 }} ref={isOpen ? openDayRef : null}>
                     {/* Journée header */}
-                    <div onClick={e => {
-                      if (isOpen) {
-                        const hdr = e.currentTarget;
-                        setOpenDay(null);
-                        requestAnimationFrame(() => hdr.scrollIntoView({ block: 'nearest', behavior: 'instant' }));
-                      } else setOpenDay(day);
-                    }}
+                    <div onClick={() => setOpenDay(isOpen ? null : day)}
                       style={{
                         display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none'
                       }}>
@@ -5298,7 +5291,7 @@ export default function App() {
       if (openDayRef.current) {
         openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       }
-    }, [relOpenDay]);
+    });
 
     const days = [...new Set(relMatches.map(m => m.day))].sort((a,b) => a - b);
     const nextUnplayedDay = days.find(d => relMatches.filter(m => m.day === d).some(m => m.homeGoals === null));
@@ -5427,13 +5420,7 @@ export default function App() {
                     const isOpen = openDay === day;
                     return (
                       <div key={day} style={{ marginBottom:3 }} ref={isOpen ? openDayRef : null}>
-                        <div onClick={e => {
-                      if (isOpen) {
-                        const hdr = e.currentTarget;
-                        setOpenDay(null);
-                        requestAnimationFrame(() => hdr.scrollIntoView({ block: 'nearest', behavior: 'instant' }));
-                      } else setOpenDay(day);
-                    }}
+                        <div onClick={() => setOpenDay(isOpen ? null : day)}
                           style={{
                             display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,userSelect:'none'
                           }}>
