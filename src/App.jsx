@@ -1525,6 +1525,7 @@ function unlockScroll() {
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.overflowX = '';
+  delete document.body.dataset.scrollY; // CRUCIAL : sinon la restauration de scroll reste désactivée à jamais
   window.scrollTo(0, sy);
 }
 
@@ -4652,7 +4653,7 @@ export default function App() {
       if (openDayRef.current) {
         openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       }
-    });
+    }, [groupOpenDay]);
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
@@ -5297,7 +5298,7 @@ export default function App() {
       if (openDayRef.current) {
         openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
       }
-    });
+    }, [relOpenDay]);
 
     const days = [...new Set(relMatches.map(m => m.day))].sort((a,b) => a - b);
     const nextUnplayedDay = days.find(d => relMatches.filter(m => m.day === d).some(m => m.homeGoals === null));
