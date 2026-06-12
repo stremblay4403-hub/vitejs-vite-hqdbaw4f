@@ -4783,7 +4783,13 @@ export default function App() {
                 return (
                   <div key={day} style={{ marginBottom:3 }} ref={isOpen ? openDayRef : null}>
                     {/* Journée header */}
-                    <div onClick={() => setOpenDay(isOpen ? null : day)}
+                    <div onClick={e => {
+                      if (isOpen) {
+                        const hdr = e.currentTarget;
+                        setOpenDay(null);
+                        requestAnimationFrame(() => hdr.scrollIntoView({ block: 'nearest', behavior: 'instant' }));
+                      } else setOpenDay(day);
+                    }}
                       style={{
                         display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,transition:'all 0.15s',userSelect:'none'
                       }}>
@@ -5420,7 +5426,13 @@ export default function App() {
                     const isOpen = openDay === day;
                     return (
                       <div key={day} style={{ marginBottom:3 }} ref={isOpen ? openDayRef : null}>
-                        <div onClick={() => setOpenDay(isOpen ? null : day)}
+                        <div onClick={e => {
+                      if (isOpen) {
+                        const hdr = e.currentTarget;
+                        setOpenDay(null);
+                        requestAnimationFrame(() => hdr.scrollIntoView({ block: 'nearest', behavior: 'instant' }));
+                      } else setOpenDay(day);
+                    }}
                           style={{
                             display:'flex',alignItems:'center',gap:8,padding:'7px 10px',cursor:'pointer',borderRadius:isOpen ? '3px 3px 0 0' :3,background:isOpen ? 'rgba(201,168,76,0.1)' :'var(--dark3)',border:`1px solid ${isOpen ? 'var(--gold-dim)' :'var(--border)'}`,userSelect:'none'
                           }}>
