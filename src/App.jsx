@@ -1525,6 +1525,7 @@ function unlockScroll() {
   document.body.style.top = '';
   document.body.style.width = '';
   document.body.style.overflowX = '';
+  delete document.body.dataset.scrollY; // CRUCIAL : sinon l'effet de restauration du scroll reste désactivé à jamais
   window.scrollTo(0, sy);
 }
 
