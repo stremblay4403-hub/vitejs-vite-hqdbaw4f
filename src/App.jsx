@@ -1990,6 +1990,8 @@ export default function App() {
   const contentRef = React.useRef(null);
   const scrollPosRef = React.useRef(0);
   const poRoundScrollRef = React.useRef({}); // scrollTop interne de chaque ronde de playoff (survit aux remontages)
+  const groupListScrollRef = React.useRef(0); // scrollTop du conteneur des journées de groupe (survit aux remontages)
+  const relListScrollRef = React.useRef(0);   // scrollTop du conteneur des journées de barrages
   const tabsScrollRef = React.useRef(0);
   const tabScrollPos = React.useRef({});
 
@@ -4648,14 +4650,8 @@ export default function App() {
     const standings = getGroupStandings(leagueTab, activeGroup);
     const groupCars = getGroupCars(leagueTab, activeGroup);
     const listRef = React.useRef(null);
-    const listScrollPos = React.useRef(0);
+    const listScrollPos = groupListScrollRef; // ref au niveau de l'app : survit aux remontages de GroupesView
     const openDayRef = React.useRef(null);
-
-    React.useLayoutEffect(() => {
-      if (openDayRef.current) {
-        openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-      }
-    });
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
@@ -4774,7 +4770,7 @@ export default function App() {
               <div className="card-title">Matchs — Groupe {activeGroup + 1}</div>
               <span className="text-dim" style={{ fontSize:11,marginLeft:'auto' }}>17 journées · 9 matchs chacune</span>
             </div>
-            <div ref={listRef}
+            <div ref={el => { listRef.current = el; if (el) el.scrollTop = listScrollPos.current; }}
               onScroll={e => { listScrollPos.current = e.currentTarget.scrollTop; }}
               style={{ maxHeight:600, overflowY:'auto', padding:'6px' }}>
               {matches.length === 0 && <div className="text-dim text-center" style={{ padding:24 }}>Chargement...</div>}
@@ -5290,13 +5286,8 @@ export default function App() {
     const [openDay, setOpenDay] = [relOpenDay, setRelOpenDay];
 
     const listRef = React.useRef(null);
+    const listScrollPos = relListScrollRef; // ref au niveau de l'app : survit aux remontages
     const openDayRef = React.useRef(null);
-
-    React.useLayoutEffect(() => {
-      if (openDayRef.current) {
-        openDayRef.current.scrollIntoView({ block: 'nearest', behavior: 'instant' });
-      }
-    });
 
     const days = [...new Set(relMatches.map(m => m.day))].sort((a,b) => a - b);
     const nextUnplayedDay = days.find(d => relMatches.filter(m => m.day === d).some(m => m.homeGoals === null));
@@ -5417,7 +5408,9 @@ export default function App() {
                   <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Tout simuler</button>
                 </div>
 
-                <div style={{ maxHeight:480,overflowY:'auto' }}>
+                <div ref={el => { listRef.current = el; if (el) el.scrollTop = listScrollPos.current; }}
+                  onScroll={e => { listScrollPos.current = e.currentTarget.scrollTop; }}
+                  style={{ maxHeight:480,overflowY:'auto' }}>
                   {days.map(day => {
                     const dayMatches = relMatches.filter(m => m.day === day);
                     const dayPlayed = dayMatches.filter(m => m.homeGoals !== null).length;
