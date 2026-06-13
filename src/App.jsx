@@ -1989,6 +1989,7 @@ export default function App() {
   const recordsScrollPos = React.useRef(0);
   const contentRef = React.useRef(null);
   const scrollPosRef = React.useRef(0);
+  const poRoundScrollRef = React.useRef({}); // scrollTop interne de chaque ronde de playoff (survit aux remontages)
   const tabsScrollRef = React.useRef(0);
   const tabScrollPos = React.useRef({});
 
@@ -5193,7 +5194,9 @@ export default function App() {
               ⚡ Simuler {label}
             </button>
           </div>
-          <div className="card-body" style={{ maxHeight:round === 'r1' ? 520 :420,overflowY:'auto' }}>
+          <div className="card-body" style={{ maxHeight:round === 'r1' ? 520 :420,overflowY:'auto' }}
+            ref={el => { if (el) el.scrollTop = poRoundScrollRef.current[round] || 0; }}
+            onScroll={e => { poRoundScrollRef.current[round] = e.currentTarget.scrollTop; }}>
             <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round === 'r1' ? 240 :round === 'r2' ? 260 :280}px,1fr))`,gap:12 }}>
               {matches.map(m => <POMatchCard key={m.id} m={m} compact={round === 'r1'} />)}
             </div>
