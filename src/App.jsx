@@ -2422,20 +2422,21 @@ export default function App() {
           const maxPts = car.pts + remPts(car.id);
           const carsBelow = current.slice(rank + 1);
 
-          const canSurpassX = carsBelow.filter(other => other.pts + remPts(other.id) > minPts);
+          // >= et non > : une voiture qui peut ÉGALER nos points est une menace (le départage peut basculer contre nous)
+          const canSurpassX = carsBelow.filter(other => other.pts + remPts(other.id) >= minPts);
           if (rank < PLAYOFFS && canSurpassX.length < PLAYOFFS - rank) {
             X.add(car.id);
           }
 
           if (!X.has(car.id)) {
-            const canSurpassP = carsBelow.filter(other => other.pts + remPts(other.id) > minPts);
+            const canSurpassP = carsBelow.filter(other => other.pts + remPts(other.id) >= minPts);
             if (rank < POINTS_ZONE && canSurpassP.length < POINTS_ZONE - rank) {
               P.add(car.id);
             }
           }
 
           if (rank === 0) {
-            const anyCanSurpass = carsBelow.some(other => other.pts + remPts(other.id) > minPts);
+            const anyCanSurpass = carsBelow.some(other => other.pts + remPts(other.id) >= minPts);
             if (!anyCanSurpass) Y.add(car.id);
           }
 
