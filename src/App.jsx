@@ -1953,7 +1953,8 @@ export default function App() {
   });
   // Wrapper qui capture le scroll avant chaque setDb
   const setDb = React.useCallback((updater) => {
-    scrollPosRef.current = window.scrollY;
+    // Si le scroll est verrouillé (modal/simulation), window.scrollY vaut 0 ; lire la vraie position depuis dataset.scrollY
+    scrollPosRef.current = document.body.dataset.scrollY ? parseInt(document.body.dataset.scrollY) : window.scrollY;
     const tabsEl = document.querySelector('.tabs');
     tabsScrollRef.current = tabsEl ? tabsEl.scrollLeft : 0;
     savedTabsScrollLeft.current = tabsScrollRef.current;
@@ -4794,7 +4795,7 @@ export default function App() {
                         ? <span className="badge badge-green" style={{ fontSize:10 }}>✓ Complète</span>
                         : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/9</span>}
                       {!dayComplete && (
-                        <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ lockScroll(); simulateDay(leagueTab, activeGroup); setOpenDay(day); requestAnimationFrame(() => unlockScroll()); } }}>
+                        <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateDay(leagueTab, activeGroup); setOpenDay(day); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
                           🎲
                         </button>
                       )}
@@ -5402,7 +5403,7 @@ export default function App() {
                 {/* Sim bar */}
                 <div className="sim-bar" style={{ marginBottom:8 }}>
                   <button className="btn btn-sm btn-sim"
-                    style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ simulateRelDay(); setOpenDay(nextUnplayedDay); } }}>
+                    style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateRelDay(); setOpenDay(nextUnplayedDay); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
                     ▶ Journée {(nextUnplayedDay ?? '—')}
                   </button>
                   <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simulateRelAll(); }}>⚡ Tout simuler</button>
@@ -5430,7 +5431,7 @@ export default function App() {
                             ? <span className="badge badge-green" style={{ fontSize:10 }}>✓</span>
                             : <span className="text-dim" style={{ fontSize:11 }}>{dayPlayed}/4</span>}
                           {!dayComplete && (
-                            <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ simulateRelDay(); setOpenDay(day); } }}>🎲</button>
+                            <button className="btn btn-xs btn-sim" style={{ marginLeft:4, display: isPublicMode ? 'none' : undefined }} onClick={e => { e.stopPropagation(); if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateRelDay(); setOpenDay(day); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>🎲</button>
                           )}
                           <span style={{ color:'var(--text-dim)',fontSize:11,marginLeft:4 }}>{isOpen ? '▲' : '▼'}</span>
                         </div>
