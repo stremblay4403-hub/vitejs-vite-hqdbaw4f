@@ -2423,24 +2423,34 @@ export default function App() {
       } else {
         current.forEach((car, rank) => {
           const minPts = car.pts;
-          const maxPts = car.pts + remPts(car.id);
+          const carRem = remPts(car.id);
+          const maxPts = car.pts + carRem;
           const carsBelow = current.slice(rank + 1);
 
-          // >= et non > : une voiture qui peut ÉGALER nos points est une menace (le départage peut basculer contre nous)
-          const canSurpassX = carsBelow.filter(other => other.pts + remPts(other.id) >= minPts);
+          // Une voiture "en dessous" est une menace si elle peut nous DÉPASSER en points,
+          // ou nous ÉGALER tant que le départage n'est pas figé (au moins une des deux a encore un match).
+          // Si les deux ont terminé tous leurs matchs, l'ordre actuel est définitif → pas une menace.
+          const isThreat = other => {
+            const om = other.pts + remPts(other.id);
+            if (om > minPts) return true;
+            if (om === minPts) return remPts(other.id) > 0 || carRem > 0;
+            return false;
+          };
+
+          const canSurpassX = carsBelow.filter(isThreat);
           if (rank < PLAYOFFS && canSurpassX.length < PLAYOFFS - rank) {
             X.add(car.id);
           }
 
           if (!X.has(car.id)) {
-            const canSurpassP = carsBelow.filter(other => other.pts + remPts(other.id) >= minPts);
+            const canSurpassP = carsBelow.filter(isThreat);
             if (rank < POINTS_ZONE && canSurpassP.length < POINTS_ZONE - rank) {
               P.add(car.id);
             }
           }
 
           if (rank === 0) {
-            const anyCanSurpass = carsBelow.some(other => other.pts + remPts(other.id) >= minPts);
+            const anyCanSurpass = carsBelow.some(isThreat);
             if (!anyCanSurpass) Y.add(car.id);
           }
 
