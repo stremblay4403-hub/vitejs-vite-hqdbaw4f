@@ -5571,27 +5571,34 @@ export default function App() {
 
     let totalW = 0, totalD = 0, totalL = 0, totalGF = 0, totalGA = 0, totalGP = 0;
     let totalBonusPts = 0, champCount = 0, relCount = 0;
+    const ALL_PROFILE_LEAGUES = [...LEAGUES, ...AUXILIARY_LEAGUES];
     db.seasons.forEach(s => {
-      const l = s.leagues[leagueName];
-      if (!l) return;
-      const carInSeason = l.cars.find(c => c.id === carId);
-      if (!carInSeason) return;
+      // Retrouver la ligue de la voiture CETTE saison (elle peut changer de ligue via promotion/relégation)
+      let foundLn = null, lid = null;
+      for (const ln of ALL_PROFILE_LEAGUES) {
+        const lg = s.leagues[ln];
+        if (!lg) continue;
+        const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+        if (entry) { foundLn = ln; lid = entry.id; break; }
+      }
+      if (!foundLn) return;
+      const l = s.leagues[foundLn];
       Object.values(l.groupResults || {}).forEach(matches => {
         matches.forEach(m => {
           if (m.homeGoals === null) return;
-          if (m.homeId === carId) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
-          if (m.awayId === carId) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
+          if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
+          if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
         });
       });
       (l.matches || []).forEach(m => {
         if (m.homeGoals === null) return;
-        if (m.homeId === carId) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
-        if (m.awayId === carId) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
+        if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
+        if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
       });
-      if (s.champions[leagueName] === carId) champCount++;
-      if (s.relegated[leagueName] === carId) relCount++;
-      const bp = computeBonusPoints(s, leagueName);
-      totalBonusPts += bp[carId] || 0;
+      if (s.champions[foundLn] === lid) champCount++;
+      if (s.relegated[foundLn] === lid) relCount++;
+      const bp = computeBonusPoints(s, foundLn);
+      totalBonusPts += bp[lid] || 0;
     });
     const winPct = totalGP > 0 ? Math.round(totalW / totalGP * 100) : 0;
     const totalPtsRatio = totalW * 3 + totalD; // points obtenus (3 par victoire, 1 par nul)
@@ -5625,7 +5632,15 @@ export default function App() {
       });
     });
     db.seasons.forEach(s => {
-      const bp = computeBonusPoints(s, leagueName)[carId] || 0;
+      let foundLn = null, lid = null;
+      for (const ln of ALL_PROFILE_LEAGUES) {
+        const lg = s.leagues[ln];
+        if (!lg) continue;
+        const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+        if (entry) { foundLn = ln; lid = entry.id; break; }
+      }
+      if (!foundLn) return;
+      const bp = computeBonusPoints(s, foundLn)[lid] || 0;
       if (bp >= 3) playoffsCount++;
     });
 
