@@ -4497,11 +4497,11 @@ export default function App() {
 
                   {/* Top 5 pts annexes cumulatif — calculé en direct */}
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
-                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 5 Pts Annexes — Total Cumulatif</div>
+                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 10 Pts Annexes — Total Cumulatif</div>
                     {(() => {
                       const allBonus = computeAllSeasonsBonus(l);
-                      const top5 = allBonus.slice(0, 5);
-                      if (!top5 || top5.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
+                      const top10 = allBonus.slice(0, 10);
+                      if (!top10 || top10.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
 
                       // Rang précédent : même méthode que BonusView — exclure la dernière saison app
                       const prevRankMap = {};
@@ -4522,7 +4522,7 @@ export default function App() {
 
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-                          {top5.map((e, i) => {
+                          {top10.map((e, i) => {
                             const prevRank = prevRankMap[e.name];
                             const diff = prevRank != null ? prevRank - (i + 1) : null;
                             const photo = getCarPhoto(e.id) || getCarPhotoByName(e.name);
@@ -5584,6 +5584,8 @@ export default function App() {
       totalBonusPts += bp[carId] || 0;
     });
     const winPct = totalGP > 0 ? Math.round(totalW / totalGP * 100) : 0;
+    const totalPtsRatio = totalW * 3 + totalD; // points obtenus (3 par victoire, 1 par nul)
+    const ptsRatio = totalGP > 0 ? totalPtsRatio / (totalGP * 3) : 0; // ratio /1.000 façon football
     const diff = totalGF - totalGA;
 
     const histByLeague = {};
@@ -5677,7 +5679,7 @@ export default function App() {
               { val: totalW, lbl: 'Victoires' },
               { val: totalD, lbl: 'Nuls' },
               { val: totalL, lbl: 'Défaites' },
-              { val: `${winPct}%`, lbl: 'Taux victoire' },
+              { val: ptsRatio.toFixed(3), lbl: '% de points' },
               { val: totalGF, lbl: 'Buts pour' },
               { val: totalGA, lbl: 'Buts contre' },
               { val: diff >= 0 ? `+${diff}` : `${diff}`, lbl: 'Différence' },
