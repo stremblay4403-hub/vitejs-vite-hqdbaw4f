@@ -2072,6 +2072,7 @@ export default function App() {
   }
   const [celebrationModal, setCelebrationModal] = useState(null);
   const [relegationModal, setRelegationModal] = useState(null);
+  const [seasonTrophiesModal, setSeasonTrophiesModal] = useState(null);
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
 
@@ -2152,6 +2153,121 @@ export default function App() {
   }
 
 
+
+  // ── Trophées de fin de saison régulière (par ligue principale) ──
+  function isGroupPlayDone(season, leagueName) {
+    const league = season?.leagues?.[leagueName];
+    if (!league) return false;
+    return Array.from({ length: GROUPS }, (_, g) => {
+      const gc = (league.cars || []).filter(c => c.group === g);
+      const matches = league.groupResults?.[g] || [];
+      const expected = gc.length * (gc.length - 1) / 2;
+      return expected > 0 && matches.filter(m => m.homeGoals !== null).length >= expected;
+    }).every(Boolean);
+  }
+
+  function computeSeasonTrophies(season, leagueName) {
+    const league = season?.leagues?.[leagueName];
+    if (!league) return null;
+    const cars = league.cars || [];
+    const stats = {};
+    cars.forEach(c => { stats[c.id] = { id: c.id, name: c.name, pts:0, gp:0, gf:0, ga:0, matches:[] }; });
+    Object.values(league.groupResults || {}).flat().forEach(m => {
+      if (m.homeGoals === null || m.awayGoals === null) return;
+      const h = stats[m.homeId], a = stats[m.awayId];
+      if (h) {
+        h.gp++; h.gf += m.homeGoals; h.ga += m.awayGoals;
+        const res = m.homeGoals > m.awayGoals ? 'W' : m.homeGoals < m.awayGoals ? 'L' : 'D';
+        if (res === 'W') h.pts += 3; else if (res === 'D') h.pts += 1;
+        h.matches.push({ day: m.day, res });
+      }
+      if (a) {
+        a.gp++; a.gf += m.awayGoals; a.ga += m.homeGoals;
+        const res = m.awayGoals > m.homeGoals ? 'W' : m.awayGoals < m.homeGoals ? 'L' : 'D';
+        if (res === 'W') a.pts += 3; else if (res === 'D') a.pts += 1;
+        a.matches.push({ day: m.day, res });
+      }
+    });
+    const arr = Object.values(stats).filter(s => s.gp > 0);
+    if (arr.length === 0) return null;
+
+    const mostPts = [...arr].sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf)[0];
+    const mostGoals = [...arr].sort((a, b) => b.gf - a.gf || b.pts - a.pts)[0];
+    const fewestConceded = [...arr].sort((a, b) => a.ga - b.ga || b.pts - a.pts)[0];
+
+    let best = null;
+    arr.forEach(s => {
+      const ordered = [...s.matches].sort((x, y) => x.day - y.day);
+      let cur = 0, max = 0;
+      ordered.forEach(mm => { if (mm.res === 'W') { cur++; if (cur > max) max = cur; } else cur = 0; });
+      if (!best || max > best.streak) best = { id: s.id, name: s.name, streak: max };
+    });
+
+    return {
+      mostPts:        { id: mostPts.id,        name: mostPts.name,        value: mostPts.pts },
+      mostGoals:      { id: mostGoals.id,      name: mostGoals.name,      value: mostGoals.gf },
+      fewestConceded: { id: fewestConceded.id, name: fewestConceded.name, value: fewestConceded.ga },
+      longestStreak:  { id: best.id,           name: best.name,           value: best.streak },
+    };
+  }
+
+  function SeasonTrophiesModal() {
+    if (!seasonTrophiesModal) return null;
+    const { leagueName, seasonNum, trophies } = seasonTrophiesModal;
+    const items = [
+      { key:'pts',  icon:'🥇', label:'MEILLEUR POINTAGE',  t:trophies.mostPts,        unit:'PTS',                accent:'var(--gold)' },
+      { key:'att',  icon:'⚽', label:'MEILLEURE ATTAQUE',   t:trophies.mostGoals,      unit:'BUTS MARQUÉS',       accent:'#27ae60' },
+      { key:'def',  icon:'🛡️', label:'MEILLEURE DÉFENSE',   t:trophies.fewestConceded, unit:'BUTS ENCAISSÉS',     accent:'#5dade2' },
+      { key:'str',  icon:'🔥', label:'PLUS LONGUE SÉRIE',   t:trophies.longestStreak,  unit:'VICTOIRES D\'AFFILÉE', accent:'#e67e22' },
+    ];
+    return (
+      <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.93)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'24px 16px', overflowY:'auto' }}
+        onClick={() => setSeasonTrophiesModal(null)}>
+        <div style={{ width:'100%', maxWidth:440, margin:'auto 0' }} onClick={e => e.stopPropagation()}>
+          <div style={{ textAlign:'center', marginBottom:18 }}>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:40, color:'var(--gold)', letterSpacing:4, lineHeight:1 }}>🏆 TROPHÉES 🏆</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'var(--text)', letterSpacing:3, marginTop:4 }}>{leagueName.toUpperCase()}</div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'var(--text-dim)', letterSpacing:3 }}>SAISON S{seasonNum} — SAISON RÉGULIÈRE</div>
+          </div>
+
+          <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
+            {items.map(({ key, icon, label, t, unit, accent }) => {
+              const photo = getCarPhoto(t.id);
+              const brand = getCarBrand(t.id);
+              return (
+                <div key={key} style={{ background:'var(--dark1)', border:`1px solid ${accent}`, borderRadius:14, overflow:'hidden', boxShadow:`0 0 26px ${accent}22` }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:`${accent}1f`, borderBottom:`1px solid ${accent}55` }}>
+                    <span style={{ fontSize:18 }}>{icon}</span>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:2, color:accent }}>{label}</span>
+                  </div>
+                  <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {photo
+                      ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                      : <span style={{ fontSize:46 }}>🚗</span>}
+                  </div>
+                  <div style={{ padding:'10px 12px', display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
+                    <div style={{ minWidth:0 }}>
+                      {brand && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'var(--text-dim)', letterSpacing:2 }}>{brand}</div>}
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'var(--text)', letterSpacing:2, lineHeight:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</div>
+                    </div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:accent, letterSpacing:1, lineHeight:1 }}>{t.value}</span>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:10, color:'var(--text-dim)', letterSpacing:2 }}>{unit}</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <button className="btn btn-gold" style={{ width:'100%', padding:'14px', marginTop:18, fontSize:16, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}
+            onClick={() => setSeasonTrophiesModal(null)}>
+            Fermer
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function getStreakBadge(carId, leagueName) {
     const league = currentSeason.leagues[leagueName];
@@ -2588,6 +2704,7 @@ export default function App() {
   const auxStatusRef = useRef({});
   const auxLoadedRef = useRef(false);
   const firebaseReadyRef = useRef(false);
+  const shownTrophiesRef = useRef(null); // suivi des trophées déjà affichés (clé saison-ligue)
   useEffect(() => {
     if (!currentSeason || !loaded || !firebaseReadyRef.current) return;
     const allLeagues = Object.keys(AUX_NOTIF_CONFIG);
@@ -2651,6 +2768,27 @@ export default function App() {
       checkAndNotifyQualifications(l, prev, next);
       qualsRef.current[l] = next;
     });
+  }, [currentSeason, loaded]);
+
+  // Trophées de fin de saison régulière : popup automatique dès qu'une ligue principale a terminé ses matchs de groupe
+  useEffect(() => {
+    if (!loaded || !firebaseReadyRef.current || !currentSeason) return;
+    // Init silencieuse au 1er passage : enregistre les ligues déjà terminées pour ne pas les afficher rétroactivement
+    if (shownTrophiesRef.current === null) {
+      shownTrophiesRef.current = {};
+      LEAGUES.forEach(l => {
+        if (isGroupPlayDone(currentSeason, l)) shownTrophiesRef.current[`${currentSeason.season}-${l}`] = true;
+      });
+      return;
+    }
+    for (const l of LEAGUES) {
+      const key = `${currentSeason.season}-${l}`;
+      if (!shownTrophiesRef.current[key] && isGroupPlayDone(currentSeason, l)) {
+        shownTrophiesRef.current[key] = true;
+        const trophies = computeSeasonTrophies(currentSeason, l);
+        if (trophies) { setSeasonTrophiesModal({ leagueName: l, seasonNum: currentSeason.season, trophies }); break; }
+      }
+    }
   }, [currentSeason, loaded]);
 
   function getCarBrand(carId) { return db.brands?.[carId] || ''; }  function setCarBrand(carId, brand) {
@@ -10758,6 +10896,7 @@ export default function App() {
         <MatchModal />
       <CelebrationModal />
       <RelegationModal />
+      <SeasonTrophiesModal />
 
         {/* Car profile modal */}
         <CarProfileModal />
