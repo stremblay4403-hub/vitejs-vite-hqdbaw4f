@@ -2347,7 +2347,6 @@ export default function App() {
           if (!s.leagues[l]) s.leagues[l] = initAuxLeague(l, null);
         });
       });
-      loadedForNotifs.current = false;
       firebaseReadyRef.current = true;
       setDb(saved);
       storageSave(saved);
@@ -2626,7 +2625,7 @@ export default function App() {
   const loadedForNotifs = useRef(false);
 
   useEffect(() => {
-    if (!loaded) return; // attendre le chargement complet du storage
+    if (!currentSeason || !loaded || !firebaseReadyRef.current) return; // aligné sur les notifs auxiliaires : init après le 1er chargement Firebase
 
     if (!loadedForNotifs.current) {
       LEAGUES.forEach(l => {
