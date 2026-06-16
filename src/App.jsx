@@ -1579,9 +1579,10 @@ function storageSave(data) {
   console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+  // Écriture quasi-immédiate (comme les photos) pour une synchro temps réel instantanée.
+  // 20 ms suffisent à fusionner une rafale de setDb d'une même action sans délai perceptible.
+  // Les opérations en masse restent protégées plus haut par le garde isLoadingFromFirebase.
   firebaseSaveTimeout = setTimeout(() => {
-    // L'écho de notre propre écriture est ignoré à la réception via le champ "writer" (CLIENT_ID).
-    // On ne bloque donc plus les sauvegardes suivantes : chaque match part immédiatement.
     setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now(), writer: CLIENT_ID })
       .catch(e => console.warn('Firebase data save error:', e));
 
@@ -1590,7 +1591,7 @@ function storageSave(data) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), times: JSON.stringify(photoTimes || {}), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 250);
+  }, 20);
   // Exposer le timestamp pour onSnapshot
 }
 
