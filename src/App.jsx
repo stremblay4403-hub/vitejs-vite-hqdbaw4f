@@ -1509,6 +1509,8 @@ const isLoadingFromFirebase = { current: false };
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
+// Identifiant unique de cet appareil/session : permet d'ignorer l'écho de nos propres écritures à la réception
+const CLIENT_ID = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
 
 // Scroll lock — empêche le navigateur mobile de remonter pendant les re-renders
 function lockScroll() {
@@ -1578,25 +1580,17 @@ function storageSave(data) {
 
   if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
   firebaseSaveTimeout = setTimeout(() => {
-    isLoadingFromFirebase.current = true;
-    const safetyTimer = setTimeout(() => { isLoadingFromFirebase.current = false; }, 8000);
-    setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now() })
-      .then(() => {
-        clearTimeout(safetyTimer);
-        setTimeout(() => { isLoadingFromFirebase.current = false; }, 3000);
-      })
-      .catch(e => { 
-        clearTimeout(safetyTimer);
-        console.warn('Firebase data save error:', e); 
-        isLoadingFromFirebase.current = false; 
-      });
+    // L'écho de notre propre écriture est ignoré à la réception via le champ "writer" (CLIENT_ID).
+    // On ne bloque donc plus les sauvegardes suivantes : chaque match part immédiatement.
+    setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now(), writer: CLIENT_ID })
+      .catch(e => console.warn('Firebase data save error:', e));
 
     const photoCount = Object.keys(photos || {}).length;
     if (photoCount > 0) {
       setDoc(photosDocRef, { data: JSON.stringify(photos), times: JSON.stringify(photoTimes || {}), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 500);
+  }, 250);
   // Exposer le timestamp pour onSnapshot
 }
 
@@ -2411,6 +2405,8 @@ export default function App() {
 
     const unsubData = onSnapshot(dataDocRef, (dataSnap) => {
       if (dataSnap.exists()) {
+        // Ignorer l'écho de nos propres écritures (même appareil) : pas de re-application, pas de revert
+        if (dataSnap.data().writer === CLIENT_ID) { setLoaded(true); return; }
         try {
 
           const parsed = JSON.parse(dataSnap.data().data);
@@ -2431,7 +2427,7 @@ export default function App() {
               const el = document.querySelector('.tabs');
               if (el) el.scrollLeft = savedTabsScrollLeft.current;
             }
-          }, 4000);
+          }, 1200);
         } catch(e) {
           console.warn('Firebase parse error:', e);
         }
