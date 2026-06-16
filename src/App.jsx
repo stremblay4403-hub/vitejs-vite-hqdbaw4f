@@ -1780,7 +1780,7 @@ function isMathematicallySecured(standings, carIndex, threshold, allMatches, isT
   }
 }
 
-function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
+function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
@@ -1815,6 +1815,15 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, pts, 
           )}
           {streakBadge && (
             <span style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
+          )}
+          {recentForm && recentForm.length > 0 && (
+            <div style={{ display:'flex', gap:2, marginTop:3 }}>
+              {recentForm.map((r, idx) => {
+                const c = r === 'W' ? '#27ae60' : r === 'L' ? '#e74c3c' : '#7f8c8d';
+                const lbl = r === 'W' ? 'V' : r === 'L' ? 'D' : 'N';
+                return <span key={idx} style={{ width:14, height:14, borderRadius:3, background:c, color:'#fff', fontSize:9, fontWeight:700, display:'flex', alignItems:'center', justifyContent:'center', lineHeight:1 }}>{lbl}</span>;
+              })}
+            </div>
           )}
         </div>
       )}
@@ -2194,6 +2203,8 @@ export default function App() {
     const mostPts = [...arr].sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf)[0];
     const mostGoals = [...arr].sort((a, b) => b.gf - a.gf || b.pts - a.pts)[0];
     const fewestConceded = [...arr].sort((a, b) => a.ga - b.ga || b.pts - a.pts)[0];
+    const worstDefense = [...arr].sort((a, b) => b.ga - a.ga || a.pts - b.pts)[0];
+    const fewestPts = [...arr].sort((a, b) => a.pts - b.pts || (a.gf - a.ga) - (b.gf - b.ga))[0];
 
     let best = null;
     arr.forEach(s => {
@@ -2208,6 +2219,8 @@ export default function App() {
       mostGoals:      { id: mostGoals.id,      name: mostGoals.name,      value: mostGoals.gf },
       fewestConceded: { id: fewestConceded.id, name: fewestConceded.name, value: fewestConceded.ga },
       longestStreak:  { id: best.id,           name: best.name,           value: best.streak },
+      worstDefense:   { id: worstDefense.id,   name: worstDefense.name,   value: worstDefense.ga },
+      fewestPts:      { id: fewestPts.id,      name: fewestPts.name,      value: fewestPts.pts },
     };
   }
 
@@ -2215,11 +2228,13 @@ export default function App() {
     if (!seasonTrophiesModal) return null;
     const { leagueName, seasonNum, trophies } = seasonTrophiesModal;
     const items = [
-      { key:'pts',  icon:'🥇', label:'MEILLEUR POINTAGE',  t:trophies.mostPts,        unit:'PTS',                accent:'var(--gold)' },
-      { key:'att',  icon:'⚽', label:'MEILLEURE ATTAQUE',   t:trophies.mostGoals,      unit:'BUTS MARQUÉS',       accent:'#27ae60' },
-      { key:'def',  icon:'🛡️', label:'MEILLEURE DÉFENSE',   t:trophies.fewestConceded, unit:'BUTS ENCAISSÉS',     accent:'#5dade2' },
-      { key:'str',  icon:'🔥', label:'PLUS LONGUE SÉRIE',   t:trophies.longestStreak,  unit:'VICTOIRES D\'AFFILÉE', accent:'#e67e22' },
-    ];
+      { key:'pts',  icon:'🥇', label:'MEILLEUR POINTAGE',  t:trophies.mostPts,        unit:'PTS',                accent:'var(--gold)', neg:false },
+      { key:'att',  icon:'⚽', label:'MEILLEURE ATTAQUE',   t:trophies.mostGoals,      unit:'BUTS MARQUÉS',       accent:'#27ae60', neg:false },
+      { key:'def',  icon:'🛡️', label:'MEILLEURE DÉFENSE',   t:trophies.fewestConceded, unit:'BUTS ENCAISSÉS',     accent:'#5dade2', neg:false },
+      { key:'str',  icon:'🔥', label:'PLUS LONGUE SÉRIE',   t:trophies.longestStreak,  unit:'VICTOIRES D\'AFFILÉE', accent:'#e67e22', neg:false },
+      { key:'wdef', icon:'🥅', label:'PIRE DÉFENSE',        t:trophies.worstDefense,   unit:'BUTS ENCAISSÉS',     accent:'#e74c3c', neg:true },
+      { key:'wpts', icon:'🔻', label:'PIRE POINTAGE',       t:trophies.fewestPts,      unit:'PTS',                accent:'#e74c3c', neg:true },
+    ].filter(it => it.t);
     return (
       <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.93)', zIndex:9999, display:'flex', alignItems:'flex-start', justifyContent:'center', padding:'24px 16px', overflowY:'auto' }}
         onClick={() => setSeasonTrophiesModal(null)}>
@@ -2231,31 +2246,39 @@ export default function App() {
           </div>
 
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            {items.map(({ key, icon, label, t, unit, accent }) => {
+            {items.map(({ key, icon, label, t, unit, accent, neg }, i) => {
               const photo = getCarPhoto(t.id);
               const brand = getCarBrand(t.id);
+              const firstNeg = neg && (i === 0 || !items[i-1].neg);
               return (
-                <div key={key} style={{ background:'var(--dark1)', border:`1px solid ${accent}`, borderRadius:14, overflow:'hidden', boxShadow:`0 0 26px ${accent}22` }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:`${accent}1f`, borderBottom:`1px solid ${accent}55` }}>
-                    <span style={{ fontSize:18 }}>{icon}</span>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:2, color:accent }}>{label}</span>
-                  </div>
-                  <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                    {photo
-                      ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
-                      : <span style={{ fontSize:46 }}>🚗</span>}
-                  </div>
-                  <div style={{ padding:'10px 12px', display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
-                    <div style={{ minWidth:0 }}>
-                      {brand && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'var(--text-dim)', letterSpacing:2 }}>{brand}</div>}
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'var(--text)', letterSpacing:2, lineHeight:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</div>
+                <React.Fragment key={key}>
+                  {firstNeg && (
+                    <div style={{ textAlign:'center', fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'#e74c3c', letterSpacing:3, margin:'4px 0 -2px' }}>
+                      — REVERS DE LA SAISON —
                     </div>
-                    <div style={{ textAlign:'right', flexShrink:0 }}>
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:accent, letterSpacing:1, lineHeight:1 }}>{t.value}</span>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:10, color:'var(--text-dim)', letterSpacing:2 }}>{unit}</div>
+                  )}
+                  <div style={{ background:'var(--dark1)', border:`1px solid ${accent}`, borderRadius:14, overflow:'hidden', boxShadow:`0 0 26px ${accent}22`, opacity: neg ? 0.92 : 1 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 12px', background:`${accent}1f`, borderBottom:`1px solid ${accent}55` }}>
+                      <span style={{ fontSize:18 }}>{icon}</span>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:2, color:accent }}>{label}</span>
+                    </div>
+                    <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      {photo
+                        ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                        : <span style={{ fontSize:46 }}>🚗</span>}
+                    </div>
+                    <div style={{ padding:'10px 12px', display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
+                      <div style={{ minWidth:0 }}>
+                        {brand && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'var(--text-dim)', letterSpacing:2 }}>{brand}</div>}
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'var(--text)', letterSpacing:2, lineHeight:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</div>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:34, color:accent, letterSpacing:1, lineHeight:1 }}>{t.value}</span>
+                        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:10, color:'var(--text-dim)', letterSpacing:2 }}>{unit}</div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                </React.Fragment>
               );
             })}
           </div>
@@ -2289,6 +2312,23 @@ export default function App() {
     if (losses >= 4) return { icon:'❄️', label:'EN FROID', color:'#5dade2' };
     if (wins === 5) return { icon:'🔥🔥', label:'INARRÊTABLE', color:'#e74c3c' };
     return null;
+  }
+
+  // Forme récente : 5 derniers résultats (V/N/D), du plus ancien au plus récent
+  function getRecentForm(carId, leagueName) {
+    const league = currentSeason.leagues[leagueName];
+    if (!league) return [];
+    const allMatches = [
+      ...Object.values(league.groupResults || {}).flat(),
+      ...(league.matches || [])
+    ].filter(m => (m.homeId === carId || m.awayId === carId) && m.homeGoals !== null)
+      .sort((a, b) => a.day - b.day);
+    return allMatches.slice(-5).map(m => {
+      const isHome = m.homeId === carId;
+      const f = isHome ? m.homeGoals : m.awayGoals;
+      const a = isHome ? m.awayGoals : m.homeGoals;
+      return f > a ? 'W' : f < a ? 'L' : 'D';
+    });
   }
 
   // Surveiller les nouveaux champions pour déclencher les confettis
@@ -4883,11 +4923,13 @@ export default function App() {
                         })();
                         const rankDiff = prevRank !== null ? prevRank - (i + 1) : null;
                         const streakBadge = getStreakBadge(s.id, leagueTab);
+                        const recentForm = getRecentForm(s.id, leagueTab);
                         return (
                           <LeaderboardRow key={s.id}
                             rank={i+1} rankDiff={rankDiff}
                             carId={s.id} leagueName={leagueTab}
                             name={s.name} photo={photo} badge={badge} streakBadge={streakBadge}
+                            recentForm={recentForm}
                             pts={s.pts} w={s.w} d={s.d} l={s.l}
                             gf={s.gf} ga={s.ga} gp={s.gp}
                             borderColor={borderColor}
@@ -5939,26 +5981,53 @@ export default function App() {
               Historique Matchs — S33+
             </div>
             <table className="tbl">
-              <thead><tr><th>S.</th><th>Grp</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Pts Ann.</th><th></th></tr></thead>
+              <thead><tr><th>S.</th><th>Grp</th><th>Rang</th><th>Pts</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Pts Ann.</th><th></th></tr></thead>
               <tbody>
                 {db.seasons.map(s => {
-                  const l = s.leagues[leagueName];
-                  if (!l) return null;
-                  const carInSeason = l.cars.find(c => c.id === carId);
-                  if (!carInSeason) return null;
+                  let foundLn = null, lid = null, carInSeason = null;
+                  for (const ln of ALL_PROFILE_LEAGUES) {
+                    const lg = s.leagues[ln];
+                    if (!lg) continue;
+                    const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+                    if (entry) { foundLn = ln; lid = entry.id; carInSeason = entry; break; }
+                  }
+                  if (!foundLn) return null;
+                  const l = s.leagues[foundLn];
                   let w=0,d=0,lo=0,gf=0,ga=0;
                   Object.values(l.groupResults || {}).forEach(ms => ms.forEach(m => {
                     if (m.homeGoals === null) return;
-                    if (m.homeId === carId) { gf+=m.homeGoals; ga+=m.awayGoals; if(m.homeGoals>m.awayGoals)w++; else if(m.homeGoals<m.awayGoals)lo++; else d++; }
-                    if (m.awayId === carId) { gf+=m.awayGoals; ga+=m.homeGoals; if(m.awayGoals>m.homeGoals)w++; else if(m.awayGoals<m.homeGoals)lo++; else d++; }
+                    if (m.homeId === lid) { gf+=m.homeGoals; ga+=m.awayGoals; if(m.homeGoals>m.awayGoals)w++; else if(m.homeGoals<m.awayGoals)lo++; else d++; }
+                    if (m.awayId === lid) { gf+=m.awayGoals; ga+=m.homeGoals; if(m.awayGoals>m.homeGoals)w++; else if(m.awayGoals<m.homeGoals)lo++; else d++; }
                   }));
-                  const bp = computeBonusPoints(s, leagueName)[carId] || 0;
-                  const isChamp = s.champions[leagueName] === carId;
-                  const isRel = s.relegated[leagueName] === carId;
+                  (l.matches || []).forEach(m => {
+                    if (m.homeGoals === null) return;
+                    if (m.homeId === lid) { gf+=m.homeGoals; ga+=m.awayGoals; if(m.homeGoals>m.awayGoals)w++; else if(m.homeGoals<m.awayGoals)lo++; else d++; }
+                    if (m.awayId === lid) { gf+=m.awayGoals; ga+=m.homeGoals; if(m.awayGoals>m.homeGoals)w++; else if(m.awayGoals<m.homeGoals)lo++; else d++; }
+                  });
+                  const seasonPts = w*3 + d;
+                  const hasGroup = carInSeason.group !== undefined && carInSeason.group !== null;
+                  let rank = null;
+                  if (hasGroup && l.groupResults) {
+                    const gc = l.cars.filter(c => c.group === carInSeason.group);
+                    const gms = (l.groupResults[carInSeason.group] || []).filter(m => m.homeGoals !== null);
+                    const standings = computeStandings(gc, gms);
+                    const idx = standings.findIndex(c => c.id === lid);
+                    if (idx >= 0) rank = idx + 1;
+                  } else if (l.matches) {
+                    const standings = computeStandings(l.cars, (l.matches || []).filter(m => m.homeGoals !== null));
+                    const idx = standings.findIndex(c => c.id === lid);
+                    if (idx >= 0) rank = idx + 1;
+                  }
+                  const bp = computeBonusPoints(s, foundLn)[lid] || 0;
+                  const isChamp = s.champions[foundLn] === lid;
+                  const isRel = s.relegated[foundLn] === lid;
+                  const grpLabel = hasGroup ? `G${carInSeason.group+1}` : foundLn.replace('Voitures ','V');
                   return (
                     <tr key={s.season}>
                       <td className="rank">{s.season}</td>
-                      <td><span className="badge badge-blue">G{carInSeason.group+1}</span></td>
+                      <td><span className="badge badge-blue">{grpLabel}</span></td>
+                      <td>{rank ? `#${rank}` : '—'}</td>
+                      <td className="pts-val">{seasonPts}</td>
                       <td>{w}</td><td>{d}</td><td>{lo}</td><td>{gf}</td><td>{ga}</td>
                       <td className="pts-val">{bp}</td>
                       <td>{isChamp && '🏆'}{isRel && '⬇'}</td>
@@ -5966,7 +6035,7 @@ export default function App() {
                   );
                 })}
                 {db.seasons.length === 0 && (
-                  <tr><td colSpan={9} className="text-dim text-center" style={{ padding:12 }}>Aucune saison jouée</td></tr>
+                  <tr><td colSpan={11} className="text-dim text-center" style={{ padding:12 }}>Aucune saison jouée</td></tr>
                 )}
               </tbody>
             </table>
