@@ -1521,6 +1521,9 @@ let firebaseSaveTimeout = null;
 let lastDataWriteAt = 0;
 let pendingDataWrite = null;
 const MIN_DATA_WRITE_INTERVAL = 1100;
+// Horodatage du dernier état distant appliqué — sert au filet de sécurité (polling)
+// pour ne pas réappliquer ce que le listener temps réel a déjà appliqué.
+let lastAppliedUpdatedAt = 0;
 // Identifiant unique de cet appareil/session : permet d'ignorer l'écho de nos propres écritures à la réception
 const CLIENT_ID = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
 
@@ -2437,6 +2440,7 @@ export default function App() {
         try {
 
           const parsed = JSON.parse(dataSnap.data().data);
+          lastAppliedUpdatedAt = dataSnap.data().updatedAt || 0;
           parsed.photos = photosData;
           parsed.photoTimes = photoTimesData;
           if (!parsed.brands) parsed.brands = {};
@@ -2462,7 +2466,30 @@ export default function App() {
       setLoaded(true);
     }, () => setLoaded(true));
 
-    return () => { unsubData(); unsubPhotos(); };
+    // Filet de sécurité : si le listener temps réel cale (rafale d'écritures → backoff Firestore),
+    // on vérifie le document toutes les 3 s et on applique tout état plus récent qu'on aurait raté.
+    // N'applique rien si le listener fait déjà son travail (updatedAt déjà à jour) → coût minimal.
+    const pollInterval = setInterval(async () => {
+      try {
+        const snap = await getDoc(dataDocRef);
+        if (!snap.exists()) return;
+        const d = snap.data();
+        if (d.writer === CLIENT_ID) return;                      // notre propre écriture
+        if ((d.updatedAt || 0) <= lastAppliedUpdatedAt) return;  // déjà à jour (listener OK)
+        const parsed = JSON.parse(d.data);
+        parsed.photos = photosData;
+        parsed.photoTimes = photoTimesData;
+        if (!parsed.brands) parsed.brands = {};
+        if (!parsed.histOverrides) parsed.histOverrides = {};
+        if (!parsed.rip) parsed.rip = [];
+        lastAppliedUpdatedAt = d.updatedAt || 0;
+        isLoadingFromFirebase.current = true;
+        applyLoadedData(parsed, true);
+        setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
+      } catch (e) { /* ignore */ }
+    }, 3000);
+
+    return () => { unsubData(); unsubPhotos(); clearInterval(pollInterval); };
   }, []);
 
   function applyLoadedData(saved, isFromFirebase = false) {
