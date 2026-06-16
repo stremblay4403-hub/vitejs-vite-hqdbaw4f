@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot } from 'firebase/firestore';
 
 const PublicModeContext = React.createContext(false);
 
@@ -2467,11 +2467,11 @@ export default function App() {
     }, () => setLoaded(true));
 
     // Filet de sécurité : si le listener temps réel cale (rafale d'écritures → backoff Firestore),
-    // on vérifie le document toutes les 3 s et on applique tout état plus récent qu'on aurait raté.
-    // N'applique rien si le listener fait déjà son travail (updatedAt déjà à jour) → coût minimal.
+    // on lit le document DIRECTEMENT DU SERVEUR toutes les 2 s et on applique tout état plus récent.
+    // getDocFromServer contourne le cache (getDoc renverrait la version périmée du listener calé).
     const pollInterval = setInterval(async () => {
       try {
-        const snap = await getDoc(dataDocRef);
+        const snap = await getDocFromServer(dataDocRef);
         if (!snap.exists()) return;
         const d = snap.data();
         if (d.writer === CLIENT_ID) return;                      // notre propre écriture
@@ -2482,12 +2482,12 @@ export default function App() {
         if (!parsed.brands) parsed.brands = {};
         if (!parsed.histOverrides) parsed.histOverrides = {};
         if (!parsed.rip) parsed.rip = [];
-        lastAppliedUpdatedAt = d.updatedAt || 0;
         isLoadingFromFirebase.current = true;
         applyLoadedData(parsed, true);
+        lastAppliedUpdatedAt = d.updatedAt || 0; // marquer APRÈS application réussie
         setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
-      } catch (e) { /* ignore */ }
-    }, 3000);
+      } catch (e) { /* hors ligne ou erreur réseau : on réessaiera au prochain cycle */ }
+    }, 2000);
 
     return () => { unsubData(); unsubPhotos(); clearInterval(pollInterval); };
   }, []);
