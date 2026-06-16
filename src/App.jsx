@@ -1505,10 +1505,22 @@ const firestoreDb = getFirestore(firebaseApp);
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
-const isLoadingFromFirebase = { current: false };
+// Drapeau auto-expirant : si un code oublie de le remettre à false, il se débloque seul après 6s
+// (évite le gel de la synchro où plus aucune écriture ne part). Les fenêtres légitimes sont ≤ 5s.
+let _lffFlag = false, _lffAt = 0;
+const isLoadingFromFirebase = {
+  get current() { return _lffFlag && (Date.now() - _lffAt < 6000); },
+  set current(v) { _lffFlag = v; if (v) _lffAt = Date.now(); }
+};
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
+// Throttle « bord d'attaque » pour les écritures du gros document de données :
+// écriture immédiate au repos (instantané comme les photos), regroupement des rafales
+// pour rester sous la limite Firestore (~1 écriture/s/document) → évite le gel en jouant vite.
+let lastDataWriteAt = 0;
+let pendingDataWrite = null;
+const MIN_DATA_WRITE_INTERVAL = 1100;
 // Identifiant unique de cet appareil/session : permet d'ignorer l'écho de nos propres écritures à la réception
 const CLIENT_ID = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
 
@@ -1578,21 +1590,33 @@ function storageSave(data) {
   const jsonToSave = JSON.stringify(toSave);
   console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
 
-  if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
-  // Écriture quasi-immédiate (comme les photos) pour une synchro temps réel instantanée.
-  // 20 ms suffisent à fusionner une rafale de setDb d'une même action sans délai perceptible.
-  // Les opérations en masse restent protégées plus haut par le garde isLoadingFromFirebase.
-  firebaseSaveTimeout = setTimeout(() => {
-    setDoc(dataDocRef, { data: jsonToSave, updatedAt: Date.now(), writer: CLIENT_ID })
-      .catch(e => console.warn('Firebase data save error:', e));
+  // Mémoriser le dernier état à écrire (une rafale n'écrira que le plus récent)
+  pendingDataWrite = { jsonToSave, photos, photoTimes };
 
-    const photoCount = Object.keys(photos || {}).length;
+  const flush = () => {
+    if (!pendingDataWrite) return;
+    const { jsonToSave: j, photos: ph, photoTimes: pt } = pendingDataWrite;
+    pendingDataWrite = null;
+    lastDataWriteAt = Date.now();
+    if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
+    setDoc(dataDocRef, { data: j, updatedAt: Date.now(), writer: CLIENT_ID })
+      .catch(e => console.warn('Firebase data save error:', e));
+    const photoCount = Object.keys(ph || {}).length;
     if (photoCount > 0) {
-      setDoc(photosDocRef, { data: JSON.stringify(photos), times: JSON.stringify(photoTimes || {}), updatedAt: Date.now() })
+      setDoc(photosDocRef, { data: JSON.stringify(ph), times: JSON.stringify(pt || {}), updatedAt: Date.now() })
         .catch(e => console.warn('Firebase photos save error:', e));
     }
-  }, 20);
-  // Exposer le timestamp pour onSnapshot
+  };
+
+  const elapsed = Date.now() - lastDataWriteAt;
+  if (elapsed >= MIN_DATA_WRITE_INTERVAL) {
+    // Au repos depuis ≥ 1,1 s → écriture immédiate (instantané comme les photos)
+    flush();
+  } else {
+    // En pleine rafale → planifier l'écriture du dernier état pour rester sous la limite Firestore
+    if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+    firebaseSaveTimeout = setTimeout(flush, MIN_DATA_WRITE_INTERVAL - elapsed);
+  }
 }
 
 // ── Chargement async ───────────────────────────────────────────────
@@ -1967,6 +1991,10 @@ export default function App() {
     _setDb(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       dbRef.current = next;
+      // Sauvegarde immédiate (au moment du handler, avant le gros rendu) → synchro temps réel
+      // aussi rapide que les photos. Le garde isLoadingFromFirebase évite la re-sauvegarde des
+      // données reçues (anti ping-pong), et le mode public bloque toute écriture.
+      try { storageSave(next); } catch (e) { /* ignore */ }
       return next;
     });
   }, []);
@@ -2508,8 +2536,8 @@ export default function App() {
 
   useEffect(() => {
     if (!loaded) return;
-    storageSave(db);
-    // Restaurer systématiquement scrollY et scrollLeft des tabs après chaque re-render
+    // La sauvegarde est désormais déclenchée immédiatement dans setDb (temps réel).
+    // Cet effet ne garde que la restauration du scroll après re-render.
     requestAnimationFrame(() => {
       if (!document.body.dataset.scrollY) {
         window.scrollTo(0, scrollPosRef.current);
@@ -3996,7 +4024,6 @@ export default function App() {
   }
 
   function simAllActuelles() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4037,7 +4064,6 @@ export default function App() {
   }
 
   function simRemplac() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4056,7 +4082,6 @@ export default function App() {
   }
 
   function simAvantDern() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4075,7 +4100,6 @@ export default function App() {
   }
 
   function simDerniere() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4094,7 +4118,6 @@ export default function App() {
   }
 
   function simPersev() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4113,7 +4136,6 @@ export default function App() {
   }
 
   function simDeter() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4132,7 +4154,6 @@ export default function App() {
   }
 
   function simAcharn() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4151,7 +4172,6 @@ export default function App() {
   }
 
   function simObstin() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4170,7 +4190,6 @@ export default function App() {
   }
 
   function simInsist() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4189,7 +4208,6 @@ export default function App() {
   }
 
   function simComeback() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4227,8 +4245,6 @@ export default function App() {
   }
 
   function simTout() {
-    isLoadingFromFirebase.current = true;
-    setTimeout(() => { isLoadingFromFirebase.current = false; }, 5000);
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -4375,7 +4391,6 @@ export default function App() {
   }
 
   function simOubl() {
-    isLoadingFromFirebase.current = true;
     setDb(d => {
       const next = JSON.parse(JSON.stringify(d));
       const s = next.seasons[next.currentSeasonIdx];
@@ -6426,7 +6441,6 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
         const p = findPlayedMatch(playedMatches, m);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
@@ -6754,7 +6768,6 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
         const p = findPlayedMatch(playedMatches, m);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
@@ -9298,7 +9311,6 @@ export default function App() {
     }
 
     function simAll() {
-      isLoadingFromFirebase.current = true;
       const fresh = genRoundRobin(cars).map(m => {
         const p = findPlayedMatch(playedMatches, m);
         const base = p ? { ...m, homeGoals: p.homeGoals, awayGoals: p.awayGoals } : m;
