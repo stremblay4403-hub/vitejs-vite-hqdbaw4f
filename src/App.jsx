@@ -1609,12 +1609,14 @@ function storageSave(data) {
   };
 
   const elapsed = Date.now() - lastDataWriteAt;
-  if (elapsed >= MIN_DATA_WRITE_INTERVAL) {
+  if (firebaseSaveTimeout) {
+    // Une écriture est déjà planifiée : elle écrira le dernier état (pendingDataWrite est à jour).
+    // NE PAS la repousser, sinon en jouant en continu elle ne partirait jamais (= le gel observé).
+  } else if (elapsed >= MIN_DATA_WRITE_INTERVAL) {
     // Au repos depuis ≥ 1,1 s → écriture immédiate (instantané comme les photos)
     flush();
   } else {
-    // En pleine rafale → planifier l'écriture du dernier état pour rester sous la limite Firestore
-    if (firebaseSaveTimeout) clearTimeout(firebaseSaveTimeout);
+    // En pleine rafale → planifier UNE écriture du dernier état (cadence ~1 écriture/1,1 s)
     firebaseSaveTimeout = setTimeout(flush, MIN_DATA_WRITE_INTERVAL - elapsed);
   }
 }
@@ -1991,10 +1993,6 @@ export default function App() {
     _setDb(prev => {
       const next = typeof updater === 'function' ? updater(prev) : updater;
       dbRef.current = next;
-      // Sauvegarde immédiate (au moment du handler, avant le gros rendu) → synchro temps réel
-      // aussi rapide que les photos. Le garde isLoadingFromFirebase évite la re-sauvegarde des
-      // données reçues (anti ping-pong), et le mode public bloque toute écriture.
-      try { storageSave(next); } catch (e) { /* ignore */ }
       return next;
     });
   }, []);
@@ -2536,8 +2534,8 @@ export default function App() {
 
   useEffect(() => {
     if (!loaded) return;
-    // La sauvegarde est désormais déclenchée immédiatement dans setDb (temps réel).
-    // Cet effet ne garde que la restauration du scroll après re-render.
+    // Sauvegarde via l'effet standard (fiable). Le throttle gère la cadence d'écriture Firestore.
+    storageSave(db);
     requestAnimationFrame(() => {
       if (!document.body.dataset.scrollY) {
         window.scrollTo(0, scrollPosRef.current);
