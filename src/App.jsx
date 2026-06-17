@@ -1571,7 +1571,7 @@ function unlockScroll() {
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
-  if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) { console.log('[SYNC] écriture ignorée (mode public)'); return; }
+  if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
   if (isLoadingFromFirebase.current) { console.log('[SYNC] écriture BLOQUÉE (chargement Firebase en cours)'); return; }
 
   try {
@@ -2032,6 +2032,10 @@ export default function App() {
     });
   }, []);
   const [loaded, setLoaded] = useState(false);
+  // Compteur pour FORCER un re-rendu garanti après chaque application de données Firebase.
+  // Un changement d'état primitif est toujours « commit » par React, même si le changement de
+  // référence du db passait inaperçu (cas observé : playoffs appliqués au db mais affichage figé).
+  const [, setSyncTick] = useState(0);
   const [isPrivate, setIsPrivate] = useState(false);
   const ADMIN_PASSWORD = 'Tungtungtung440';
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
@@ -2647,6 +2651,12 @@ export default function App() {
       firebaseReadyRef.current = true;
       setDb(saved);
       storageSave(saved);
+      // Re-rendu garanti, dans un cycle React séparé (≈150 ms plus tard), pour que la vue
+      // (bracket playoffs notamment) reflète bien le db fraîchement appliqué, même si le
+      // rendu déclenché par setDb n'avait pas « commit » visuellement.
+      if (isFromFirebase) {
+        setTimeout(() => setSyncTick(t => (t + 1) % 1000000), 150);
+      }
     }
   }
 
