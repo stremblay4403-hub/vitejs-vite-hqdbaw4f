@@ -1535,10 +1535,8 @@ function flushDataWrite() {
   lastDataWriteAt = Date.now();
   if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
   const _ua = Date.now();
-  console.log('[SYNC] ÉCRITURE Firestore envoyée → updatedAt=', _ua);
   setDoc(dataDocRef, { data: j, updatedAt: _ua, writer: CLIENT_ID })
-    .then(() => console.log('[SYNC] ✓ écriture confirmée par Firestore, updatedAt=', _ua))
-    .catch(e => console.warn('[SYNC] ✗ erreur écriture Firestore:', e));
+    .catch(e => console.warn('Firebase data save error:', e));
   const photoCount = Object.keys(ph || {}).length;
   if (photoCount > 0) {
     setDoc(photosDocRef, { data: JSON.stringify(ph), times: JSON.stringify(pt || {}), updatedAt: Date.now() })
@@ -1572,17 +1570,7 @@ function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-  if (isLoadingFromFirebase.current) { console.log('[SYNC] écriture BLOQUÉE (chargement Firebase en cours)'); return; }
-
-  try {
-    const cs = data.seasons?.[data.currentSeasonIdx];
-    let poCount = 0;
-    ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].forEach(l => {
-      const pr = cs?.leagues?.[l]?.playoffResults || {};
-      poCount += Object.values(pr).filter(m => m && m.homeGoals !== null && m.homeGoals !== undefined).length;
-    });
-    console.log('[SYNC] sauvegarde demandée — matchs playoffs joués (ligues princ.):', poCount);
-  } catch {}
+  if (isLoadingFromFirebase.current) return;
 
   const { photos, photoTimes, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -2054,6 +2042,7 @@ export default function App() {
   const allCarsActiveLetterRef = React.useRef('TOUS');
   const allCarsSearchRef = React.useRef('');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [confirmResetSeason, setConfirmResetSeason] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
   const recordsScrollPos = React.useRef(0);
@@ -2475,28 +2464,16 @@ export default function App() {
       if (unsubData) { try { unsubData(); } catch(e){} }
       unsubData = onSnapshot(dataDocRef, (dataSnap) => {
         if (dataSnap.exists()) {
-          const _w = dataSnap.data().writer;
-          const _u0 = dataSnap.data().updatedAt || 0;
-          console.log('[SYNC] ← reçu updatedAt=', _u0, '| writer=', _w, '| moi=', CLIENT_ID, '| déjà appliqué=', lastAppliedUpdatedAt);
           // Ignorer l'écho de nos propres écritures (même appareil) : pas de re-application, pas de revert
-          if (dataSnap.data().writer === CLIENT_ID) { console.log('[SYNC]   → ignoré (mon propre écho)'); setLoaded(true); return; }
+          if (dataSnap.data().writer === CLIENT_ID) { setLoaded(true); return; }
           // Ignorer un instantané plus ancien que ce qu'on a déjà appliqué (ex. cache renvoyé
           // au redémarrage du listener) — évite un retour en arrière visuel passager
           const u = dataSnap.data().updatedAt || 0;
-          if (u > 0 && u <= lastAppliedUpdatedAt) { console.log('[SYNC]   → ignoré (déjà appliqué)'); setLoaded(true); return; }
+          if (u > 0 && u <= lastAppliedUpdatedAt) { setLoaded(true); return; }
           try {
 
             const parsed = JSON.parse(dataSnap.data().data);
             lastAppliedUpdatedAt = u;
-            try {
-              const cs = parsed.seasons?.[parsed.currentSeasonIdx];
-              let poCount = 0;
-              ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].forEach(l => {
-                const pr = cs?.leagues?.[l]?.playoffResults || {};
-                poCount += Object.values(pr).filter(m => m && m.homeGoals !== null && m.homeGoals !== undefined).length;
-              });
-              console.log('[SYNC]   → APPLIQUÉ ✓ matchs playoffs joués dans ces données:', poCount);
-            } catch {}
             parsed.photos = photosData;
             parsed.photoTimes = photoTimesData;
             if (!parsed.brands) parsed.brands = {};
@@ -3734,6 +3711,44 @@ export default function App() {
 
     return true;
   }, [currentSeason, db.succPromotions]);
+
+  // Remet à zéro UNIQUEMENT la saison en cours (matchs de groupes, playoffs, barrages,
+  // champions) en gardant les voitures/ligues actuelles ET toutes les saisons passées.
+  // groupResults/matches vidés → les calendriers se régénèrent automatiquement.
+  function resetCurrentSeason() {
+    setDb(d => {
+      const seasons = [...d.seasons];
+      const s = { ...seasons[d.currentSeasonIdx] };
+      const leagues = { ...s.leagues };
+      Object.keys(leagues).forEach(lname => {
+        const lg = leagues[lname];
+        if (!lg) return;
+        if (LEAGUES.includes(lname)) {
+          leagues[lname] = {
+            ...lg,
+            groupResults: {},
+            playoffResults: {},
+            relegationResults: {},
+            playoffSeeds: undefined,
+            relegationCars: undefined,
+            completed: { groups: false, playoffs: false, relegation: false },
+          };
+        } else {
+          leagues[lname] = { ...lg, matches: [], completed: false };
+        }
+      });
+      s.leagues = leagues;
+      s.champions = {};
+      s.relegated = {};
+      s.tournoiChampions = null;
+      seasons[d.currentSeasonIdx] = s;
+      return { ...d, seasons };
+    });
+    // Permettre aux modales de trophées de se ré-afficher pour cette saison réinitialisée
+    if (shownTrophiesRef && shownTrophiesRef.current) {
+      Object.keys(shownTrophiesRef.current).forEach(k => { delete shownTrophiesRef.current[k]; });
+    }
+  }
 
   function handleNextSeason() {
     setIsProcessing(true);
@@ -11211,6 +11226,18 @@ export default function App() {
             </button>
           ))}
           {!isPublicMode && <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }} onClick={simTout}>⚡ Simuler Tout</button>}
+          {!isPublicMode && (
+            !confirmResetSeason
+              ? <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(231,76,60,0.12)',borderColor:'#c0392b',color:'#e74c3c' }}
+                  onClick={() => setConfirmResetSeason(true)}>♻️ Reset saison</button>
+              : <span style={{ display:'inline-flex',gap:6,alignItems:'center',flexShrink:0 }}>
+                  <span style={{ fontSize:12,color:'#e74c3c' }}>Remettre S{currentSeason?.season} à zéro ?</span>
+                  <button className="btn btn-sm" style={{ background:'#c0392b',color:'#fff',fontSize:12 }}
+                    onClick={() => { resetCurrentSeason(); setConfirmResetSeason(false); }}>✓ Oui</button>
+                  <button className="btn btn-dark btn-sm" style={{ fontSize:12 }}
+                    onClick={() => setConfirmResetSeason(false)}>✕ Non</button>
+                </span>
+          )}
           {!isPublicMode && seasonReady && (
             <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(39,174,96,0.2)',borderColor:'var(--green)',color:'var(--green)',opacity:isProcessing ? 0.5 :1 }} onClick={handleNextSeason} disabled={isProcessing}>
               {isProcessing ? '⏳ En cours...' : '🏁 Saison Suivante'}
