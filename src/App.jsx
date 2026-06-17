@@ -1599,9 +1599,25 @@ function storageSave(data) {
             compLeagues[l] = { ...league, matches: minMatches };
           }
         } else {
-          compLeagues[l] = isMain
-            ? { ...league, matches: [], groupResults: {}, playoffResults: {}, relegationResults: {} }
-            : { cars: league.cars, completed: league.completed };
+          // Saison passée : COMPRESSER les matchs (au lieu de les supprimer) pour PRÉSERVER
+          // l'historique (S33+). Format compact [idxHome, idxAway, hg, ag] — indices dans league.cars.
+          const carIdx = {};
+          (league.cars || []).forEach((c, ii) => { carIdx[c.id] = ii; });
+          if (isMain) {
+            const compGroups = {};
+            Object.entries(league.groupResults || {}).forEach(([g, matches]) => {
+              compGroups[g] = (matches || [])
+                .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
+                .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
+            });
+            // playoffResults/relegationResults non nécessaires à l'historique → allégés
+            compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {} };
+          } else {
+            const minMatches = (league.matches || [])
+              .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
+              .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
+            compLeagues[l] = { ...league, matches: minMatches };
+          }
         }
       });
       return { ...s, leagues: compLeagues };
@@ -2560,11 +2576,49 @@ export default function App() {
               }));
             }
           }
+          // Décompresser groupResults compact (saisons passées, ligues principales) :
+          // chaque groupe peut être un tableau de tableaux [idxH, idxA, hg, ag] → objets matchs
+          if (league.groupResults) {
+            const cars = league.cars || [];
+            Object.keys(league.groupResults).forEach(g => {
+              const arr = league.groupResults[g];
+              if (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0])) {
+                league.groupResults[g] = arr
+                  .filter(m => cars[m[0]] && cars[m[1]])
+                  .map((m, idx) => ({
+                    id: `g${g}m${idx}`, group: +g,
+                    homeId: cars[m[0]].id, awayId: cars[m[1]].id,
+                    homeGoals: m[2], awayGoals: m[3]
+                  }));
+              }
+            });
+          }
         });
         AUXILIARY_LEAGUES.forEach(l => {
           if (!s.leagues[l]) s.leagues[l] = initAuxLeague(l, null);
         });
       });
+      // Anti-perte de données : si les données distantes ont perdu l'historique d'une saison
+      // (groupResults/matches vides) mais qu'on l'a encore en mémoire (localStorage), on le
+      // réinjecte — puis storageSave le ré-enregistrera compressé. Récupère S33 effacé par
+      // l'ancien code qui supprimait les saisons passées au lieu de les compresser.
+      if (isFromFirebase && dbRef.current && Array.isArray(dbRef.current.seasons)) {
+        const localSeasons = dbRef.current.seasons;
+        (saved.seasons || []).forEach(s => {
+          const localS = localSeasons.find(ls => ls && ls.season === s.season);
+          if (!localS) return;
+          Object.entries(s.leagues || {}).forEach(([lname, league]) => {
+            const localL = localS.leagues?.[lname];
+            if (!localL || !league) return;
+            const remoteGroupsEmpty = !league.groupResults || Object.values(league.groupResults).every(g => !g || g.length === 0);
+            const localGroupsHas = localL.groupResults && Object.values(localL.groupResults).some(g => g && g.length > 0);
+            if (remoteGroupsEmpty && localGroupsHas) league.groupResults = localL.groupResults;
+            const remoteMatchesEmpty = !league.matches || league.matches.length === 0;
+            const localMatchesHas = Array.isArray(localL.matches) && localL.matches.length > 0;
+            if (remoteMatchesEmpty && localMatchesHas) league.matches = localL.matches;
+          });
+        });
+      }
       firebaseReadyRef.current = true;
       setDb(saved);
       storageSave(saved);
