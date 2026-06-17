@@ -1534,8 +1534,11 @@ function flushDataWrite() {
   pendingDataWrite = null;
   lastDataWriteAt = Date.now();
   if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
-  setDoc(dataDocRef, { data: j, updatedAt: Date.now(), writer: CLIENT_ID })
-    .catch(e => console.warn('Firebase data save error:', e));
+  const _ua = Date.now();
+  console.log('[SYNC] ÉCRITURE Firestore envoyée → updatedAt=', _ua);
+  setDoc(dataDocRef, { data: j, updatedAt: _ua, writer: CLIENT_ID })
+    .then(() => console.log('[SYNC] ✓ écriture confirmée par Firestore, updatedAt=', _ua))
+    .catch(e => console.warn('[SYNC] ✗ erreur écriture Firestore:', e));
   const photoCount = Object.keys(ph || {}).length;
   if (photoCount > 0) {
     setDoc(photosDocRef, { data: JSON.stringify(ph), times: JSON.stringify(pt || {}), updatedAt: Date.now() })
@@ -1568,8 +1571,18 @@ function unlockScroll() {
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
 
-  if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-  if (isLoadingFromFirebase.current) return;
+  if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) { console.log('[SYNC] écriture ignorée (mode public)'); return; }
+  if (isLoadingFromFirebase.current) { console.log('[SYNC] écriture BLOQUÉE (chargement Firebase en cours)'); return; }
+
+  try {
+    const cs = data.seasons?.[data.currentSeasonIdx];
+    let poCount = 0;
+    ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].forEach(l => {
+      const pr = cs?.leagues?.[l]?.playoffResults || {};
+      poCount += Object.values(pr).filter(m => m && m.homeGoals !== null && m.homeGoals !== undefined).length;
+    });
+    console.log('[SYNC] sauvegarde demandée — matchs playoffs joués (ligues princ.):', poCount);
+  } catch {}
 
   const { photos, photoTimes, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -2458,16 +2471,28 @@ export default function App() {
       if (unsubData) { try { unsubData(); } catch(e){} }
       unsubData = onSnapshot(dataDocRef, (dataSnap) => {
         if (dataSnap.exists()) {
+          const _w = dataSnap.data().writer;
+          const _u0 = dataSnap.data().updatedAt || 0;
+          console.log('[SYNC] ← reçu updatedAt=', _u0, '| writer=', _w, '| moi=', CLIENT_ID, '| déjà appliqué=', lastAppliedUpdatedAt);
           // Ignorer l'écho de nos propres écritures (même appareil) : pas de re-application, pas de revert
-          if (dataSnap.data().writer === CLIENT_ID) { setLoaded(true); return; }
+          if (dataSnap.data().writer === CLIENT_ID) { console.log('[SYNC]   → ignoré (mon propre écho)'); setLoaded(true); return; }
           // Ignorer un instantané plus ancien que ce qu'on a déjà appliqué (ex. cache renvoyé
           // au redémarrage du listener) — évite un retour en arrière visuel passager
           const u = dataSnap.data().updatedAt || 0;
-          if (u > 0 && u <= lastAppliedUpdatedAt) { setLoaded(true); return; }
+          if (u > 0 && u <= lastAppliedUpdatedAt) { console.log('[SYNC]   → ignoré (déjà appliqué)'); setLoaded(true); return; }
           try {
 
             const parsed = JSON.parse(dataSnap.data().data);
             lastAppliedUpdatedAt = u;
+            try {
+              const cs = parsed.seasons?.[parsed.currentSeasonIdx];
+              let poCount = 0;
+              ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].forEach(l => {
+                const pr = cs?.leagues?.[l]?.playoffResults || {};
+                poCount += Object.values(pr).filter(m => m && m.homeGoals !== null && m.homeGoals !== undefined).length;
+              });
+              console.log('[SYNC]   → APPLIQUÉ ✓ matchs playoffs joués dans ces données:', poCount);
+            } catch {}
             parsed.photos = photosData;
             parsed.photoTimes = photoTimesData;
             if (!parsed.brands) parsed.brands = {};
