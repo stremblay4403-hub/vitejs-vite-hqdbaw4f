@@ -3260,38 +3260,42 @@ export default function App() {
     updateLeague(leagueName, l => ({ ...l, playoffResults: matches, playoffSeeds: seeded.map(q => ({ id: q.id, seed: q.seed, groupRank: q.groupRank, fromGroup: q.fromGroup })) }));
   }
 
-  function advancePlayoffBracket(leagueName) {
-    updateLeague(leagueName, l => {
-      const pm = { ...l.playoffResults };
-      const rounds = [
-        { from: 'r1', to: 'r2', fromStart: 1, toStart: 33 },
-        { from: 'r2', to: 'r3', fromStart: 33, toStart: 49 },
-        { from: 'r3', to: 'qf', fromStart: 49, toStart: 57 },
-        { from: 'qf', to: 'sf', fromStart: 57, toStart: 61 },
-        { from: 'sf', to: 'final', fromStart: 61, toStart: 63 },
-      ];
-      rounds.forEach(({ from, to, fromStart, toStart }) => {
-        const fromMatches = Object.values(pm).filter(m => m.round === from).sort((a, b) => a.bracketPos - b.bracketPos);
-        const toMatches = Object.values(pm).filter(m => m.round === to).sort((a, b) => a.bracketPos - b.bracketPos);
-        for (let i = 0; i < toMatches.length; i++) {
-          const m1 = fromMatches[i * 2];
-          const m2 = fromMatches[i * 2 + 1];
-          if (!m1 || !m2) continue;
-          const w1Id = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeId : m1.awayId) : null;
-          const w2Id = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeId : m2.awayId) : null;
-          const w1Seed = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeSeed : m1.awaySeed) : null;
-          const w2Seed = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeSeed : m2.awaySeed) : null;
-          const w1Group = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeGroup : m1.awayGroup) : null;
-          const w2Group = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeGroup : m2.awayGroup) : null;
-          const w1GRank = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeGroupRank : m1.awayGroupRank) : null;
-          const w2GRank = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeGroupRank : m2.awayGroupRank) : null;
-          if (w1Id !== toMatches[i].homeId || w2Id !== toMatches[i].awayId) {
-            pm[toMatches[i].id] = { ...toMatches[i], homeId: w1Id, awayId: w2Id, homeSeed: w1Seed, awaySeed: w2Seed, homeGroup: w1Group, awayGroup: w2Group, homeGroupRank: w1GRank, awayGroupRank: w2GRank, homeGoals: null, awayGoals: null };
-          }
+  // Logique pure d'avancement du bracket : prend une ligue, renvoie les nouveaux playoffResults.
+  // Permet de fusionner « résultat du match » + « avancement » dans un SEUL setDb.
+  function advanceBracketPM(l) {
+    const pm = { ...l.playoffResults };
+    const rounds = [
+      { from: 'r1', to: 'r2', fromStart: 1, toStart: 33 },
+      { from: 'r2', to: 'r3', fromStart: 33, toStart: 49 },
+      { from: 'r3', to: 'qf', fromStart: 49, toStart: 57 },
+      { from: 'qf', to: 'sf', fromStart: 57, toStart: 61 },
+      { from: 'sf', to: 'final', fromStart: 61, toStart: 63 },
+    ];
+    rounds.forEach(({ from, to }) => {
+      const fromMatches = Object.values(pm).filter(m => m.round === from).sort((a, b) => a.bracketPos - b.bracketPos);
+      const toMatches = Object.values(pm).filter(m => m.round === to).sort((a, b) => a.bracketPos - b.bracketPos);
+      for (let i = 0; i < toMatches.length; i++) {
+        const m1 = fromMatches[i * 2];
+        const m2 = fromMatches[i * 2 + 1];
+        if (!m1 || !m2) continue;
+        const w1Id = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeId : m1.awayId) : null;
+        const w2Id = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeId : m2.awayId) : null;
+        const w1Seed = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeSeed : m1.awaySeed) : null;
+        const w2Seed = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeSeed : m2.awaySeed) : null;
+        const w1Group = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeGroup : m1.awayGroup) : null;
+        const w2Group = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeGroup : m2.awayGroup) : null;
+        const w1GRank = m1.homeGoals !== null ? (m1.homeGoals > m1.awayGoals ? m1.homeGroupRank : m1.awayGroupRank) : null;
+        const w2GRank = m2.homeGoals !== null ? (m2.homeGoals > m2.awayGoals ? m2.homeGroupRank : m2.awayGroupRank) : null;
+        if (w1Id !== toMatches[i].homeId || w2Id !== toMatches[i].awayId) {
+          pm[toMatches[i].id] = { ...toMatches[i], homeId: w1Id, awayId: w2Id, homeSeed: w1Seed, awaySeed: w2Seed, homeGroup: w1Group, awayGroup: w2Group, homeGroupRank: w1GRank, awayGroupRank: w2GRank, homeGoals: null, awayGoals: null };
         }
-      });
-      return { ...l, playoffResults: pm };
+      }
     });
+    return pm;
+  }
+
+  function advancePlayoffBracket(leagueName) {
+    updateLeague(leagueName, l => ({ ...l, playoffResults: advanceBracketPM(l) }));
   }
 
   function initRelegation(leagueName) {
@@ -3313,12 +3317,14 @@ export default function App() {
   }
 
   function updatePlayoffMatch(leagueName, matchId, homeGoals, awayGoals) {
+    // Résultat + avancement du bracket dans UN SEUL setDb (plus de double-write à 50 ms,
+    // qui empêchait la synchro des playoffs de partir de façon fiable).
     updateLeague(leagueName, l => {
       const pm = { ...l.playoffResults };
       pm[matchId] = { ...pm[matchId], homeGoals: +homeGoals, awayGoals: +awayGoals };
-      return { ...l, playoffResults: pm };
+      const withResult = { ...l, playoffResults: pm };
+      return { ...withResult, playoffResults: advanceBracketPM(withResult) };
     });
-    setTimeout(() => advancePlayoffBracket(leagueName), 50);
   }
 
   function updateRelegationMatch(leagueName, matchId, homeGoals, awayGoals) {
@@ -5389,9 +5395,9 @@ export default function App() {
           do { const r = simScore(); h = r.h; a = r.a; } while (h === a);
           pm[m.id] = { ...pm[m.id], homeGoals: h, awayGoals: a };
         });
-        return { ...l, playoffResults: pm };
+        const withResults = { ...l, playoffResults: pm };
+        return { ...withResults, playoffResults: advanceBracketPM(withResults) };
       });
-      setTimeout(() => advancePlayoffBracket(leagueTab), 80);
     }
 
     function POMatchCard({ m, compact }) {
