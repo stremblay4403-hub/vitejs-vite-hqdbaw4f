@@ -1524,6 +1524,24 @@ const MIN_DATA_WRITE_INTERVAL = 1100;
 // Horodatage du dernier état distant appliqué — sert au filet de sécurité (polling)
 // pour ne pas réappliquer ce que le listener temps réel a déjà appliqué.
 let lastAppliedUpdatedAt = 0;
+
+// Écrit immédiatement le dernier état en attente vers Firestore. Module-level pour pouvoir
+// être appelée aussi quand la page passe en arrière-plan (sinon le setTimeout différé est
+// mis en pause par le navigateur mobile et l'écriture ne part jamais avant un retour/refresh).
+function flushDataWrite() {
+  if (!pendingDataWrite) return;
+  const { jsonToSave: j, photos: ph, photoTimes: pt } = pendingDataWrite;
+  pendingDataWrite = null;
+  lastDataWriteAt = Date.now();
+  if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
+  setDoc(dataDocRef, { data: j, updatedAt: Date.now(), writer: CLIENT_ID })
+    .catch(e => console.warn('Firebase data save error:', e));
+  const photoCount = Object.keys(ph || {}).length;
+  if (photoCount > 0) {
+    setDoc(photosDocRef, { data: JSON.stringify(ph), times: JSON.stringify(pt || {}), updatedAt: Date.now() })
+      .catch(e => console.warn('Firebase photos save error:', e));
+  }
+}
 // Identifiant unique de cet appareil/session : permet d'ignorer l'écho de nos propres écritures à la réception
 const CLIENT_ID = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
 
@@ -1596,31 +1614,16 @@ function storageSave(data) {
   // Mémoriser le dernier état à écrire (une rafale n'écrira que le plus récent)
   pendingDataWrite = { jsonToSave, photos, photoTimes };
 
-  const flush = () => {
-    if (!pendingDataWrite) return;
-    const { jsonToSave: j, photos: ph, photoTimes: pt } = pendingDataWrite;
-    pendingDataWrite = null;
-    lastDataWriteAt = Date.now();
-    if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
-    setDoc(dataDocRef, { data: j, updatedAt: Date.now(), writer: CLIENT_ID })
-      .catch(e => console.warn('Firebase data save error:', e));
-    const photoCount = Object.keys(ph || {}).length;
-    if (photoCount > 0) {
-      setDoc(photosDocRef, { data: JSON.stringify(ph), times: JSON.stringify(pt || {}), updatedAt: Date.now() })
-        .catch(e => console.warn('Firebase photos save error:', e));
-    }
-  };
-
   const elapsed = Date.now() - lastDataWriteAt;
   if (firebaseSaveTimeout) {
     // Une écriture est déjà planifiée : elle écrira le dernier état (pendingDataWrite est à jour).
     // NE PAS la repousser, sinon en jouant en continu elle ne partirait jamais (= le gel observé).
   } else if (elapsed >= MIN_DATA_WRITE_INTERVAL) {
     // Au repos depuis ≥ 1,1 s → écriture immédiate (instantané comme les photos)
-    flush();
+    flushDataWrite();
   } else {
     // En pleine rafale → planifier UNE écriture du dernier état (cadence ~1 écriture/1,1 s)
-    firebaseSaveTimeout = setTimeout(flush, MIN_DATA_WRITE_INTERVAL - elapsed);
+    firebaseSaveTimeout = setTimeout(flushDataWrite, MIN_DATA_WRITE_INTERVAL - elapsed);
   }
 }
 
@@ -2476,32 +2479,29 @@ export default function App() {
     }
     subscribeData();
 
-    // Filet de sécurité : lecture SERVEUR toutes les 2 s (getDocFromServer contourne le cache,
-    // car getDoc renverrait la version périmée d'un listener calé). Si on trouve un état plus
-    // récent que ce que le listener a appliqué → le temps réel a calé : on applique ET on
-    // REDÉMARRE le listener (reconnexion serveur fraîche) pour restaurer l'instantané.
-    const pollInterval = setInterval(async () => {
-      try {
-        const snap = await getDocFromServer(dataDocRef);
-        if (!snap.exists()) return;
-        const d = snap.data();
-        if (d.writer === CLIENT_ID) return;                      // notre propre écriture
-        if ((d.updatedAt || 0) <= lastAppliedUpdatedAt) return;  // déjà à jour (listener OK)
-        const parsed = JSON.parse(d.data);
-        parsed.photos = photosData;
-        parsed.photoTimes = photoTimesData;
-        if (!parsed.brands) parsed.brands = {};
-        if (!parsed.histOverrides) parsed.histOverrides = {};
-        if (!parsed.rip) parsed.rip = [];
-        isLoadingFromFirebase.current = true;
-        applyLoadedData(parsed, true);
-        lastAppliedUpdatedAt = d.updatedAt || 0; // marquer APRÈS application réussie
-        setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
-        subscribeData(); // le listener avait calé → le redémarrer pour retrouver le temps réel
-      } catch (e) { /* hors ligne ou erreur réseau : on réessaiera au prochain cycle */ }
-    }, 2000);
+    // Récupération fiable, sans dépendre d'aucune fonction particulière : on REDÉMARRE le
+    // listener toutes les 3 s. Recréer un onSnapshot force une lecture serveur fraîche
+    // (l'équivalent exact d'un rafraîchissement manuel, qui chez toi marche instantanément).
+    // Le garde "updatedAt déjà appliqué" dans subscribeData évite tout re-rendu inutile quand
+    // rien n'a changé. Entre deux redémarrages, le temps réel instantané fonctionne normalement.
+    const resubInterval = setInterval(() => { subscribeData(); }, 3000);
 
-    return () => { if (unsubData) unsubData(); unsubPhotos(); clearInterval(pollInterval); };
+    return () => { if (unsubData) unsubData(); unsubPhotos(); clearInterval(resubInterval); };
+  }, []);
+
+  // Vider toute écriture en attente quand la page passe en arrière-plan ou se ferme.
+  // Sur mobile, changer d'onglet/d'app met les timers en pause : sans ça, le dernier match
+  // joué juste avant de basculer vers l'écran visiteur ne partirait qu'au retour (ou au refresh).
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') flushDataWrite(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', flushDataWrite);
+    window.addEventListener('blur', flushDataWrite);
+    return () => {
+      document.removeEventListener('visibilitychange', onHide);
+      window.removeEventListener('pagehide', flushDataWrite);
+      window.removeEventListener('blur', flushDataWrite);
+    };
   }, []);
 
   function applyLoadedData(saved, isFromFirebase = false) {
@@ -10351,6 +10351,7 @@ export default function App() {
         ...e,
         rank: i + 1,
         name: e.id && e.league ? getCarName(e.id, e.league) : '?',
+        brand: e.id ? getCarBrand(e.id) : '',
         photo: e.id ? getCarPhoto(e.id) : null,
         league: e.league || '?'
       }));
@@ -10773,6 +10774,7 @@ export default function App() {
         : '<div style="width:' + w + 'px;height:' + ph + 'px;display:flex;align-items:center;justify-content:center;font-size:40px;background:#1a1a1a">🚗</div>';
       placesHTML += '<div class="place">'
         + '<div class="car-photo" style="width:' + w + 'px;height:' + ph + 'px;border-color:' + color + '">' + photoHTML + '</div>'
+        + (e.brand ? '<div class="car-brand">' + e.brand + '</div>' : '')
         + '<div class="car-name" style="color:' + color + ';max-width:' + w + 'px">' + e.name + '</div>'
         + '<div class="car-league">' + e.league + '</div>'
         + '<div class="block" style="width:' + w + 'px;height:' + h + 'px;background:' + color + '">'
@@ -10789,6 +10791,7 @@ export default function App() {
       + '.place { display:flex; flex-direction:column; align-items:center; gap:10px; }'
       + '.car-photo { border-radius:8px; overflow:hidden; border:3px solid; }'
       + '.car-name { font-size:18px; text-align:center; letter-spacing:2px; font-weight:700; }'
+      + '.car-brand { font-size:12px; color:#8a8070; text-align:center; letter-spacing:2px; text-transform:uppercase; margin-bottom:-4px; }'
       + '.car-league { font-size:12px; color:#8a8070; text-align:center; }'
       + '.block { display:flex; align-items:center; justify-content:center; border-radius:8px 8px 0 0; }'
       + '.block-label { font-size:36px; font-weight:900; }'
