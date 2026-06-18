@@ -2944,20 +2944,27 @@ export default function App() {
   // Trophées de fin de saison régulière : popup automatique dès qu'une ligue principale a terminé ses matchs de groupe
   useEffect(() => {
     if (!loaded || !firebaseReadyRef.current || !currentSeason) return;
-    // Init silencieuse au 1er passage : enregistre les ligues déjà terminées pour ne pas les afficher rétroactivement
+    // Init silencieuse au 1er passage : enregistre TOUTES les ligues déjà terminées (toutes
+    // saisons) pour ne jamais les afficher rétroactivement, y compris en revisitant une saison passée.
     if (shownTrophiesRef.current === null) {
       shownTrophiesRef.current = {};
-      LEAGUES.forEach(l => {
-        if (isGroupPlayDone(currentSeason, l)) shownTrophiesRef.current[`${currentSeason.season}-${l}`] = true;
+      (db.seasons || []).forEach(s => {
+        LEAGUES.forEach(l => {
+          if (isGroupPlayDone(s, l)) shownTrophiesRef.current[`${s.season}-${l}`] = true;
+        });
       });
       return;
     }
+    const latestSeasonNum = db.seasons.length ? db.seasons[db.seasons.length - 1].season : null;
     for (const l of LEAGUES) {
       const key = `${currentSeason.season}-${l}`;
       if (!shownTrophiesRef.current[key] && isGroupPlayDone(currentSeason, l)) {
         shownTrophiesRef.current[key] = true;
-        const trophies = computeSeasonTrophies(currentSeason, l);
-        if (trophies) { setSeasonTrophiesModal({ leagueName: l, seasonNum: currentSeason.season, trophies }); break; }
+        // N'afficher le modal que pour la saison active la plus récente — jamais en revisitant une saison passée.
+        if (currentSeason.season === latestSeasonNum) {
+          const trophies = computeSeasonTrophies(currentSeason, l);
+          if (trophies) { setSeasonTrophiesModal({ leagueName: l, seasonNum: currentSeason.season, trophies }); break; }
+        }
       }
     }
   }, [currentSeason, loaded]);
