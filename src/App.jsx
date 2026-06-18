@@ -2046,6 +2046,9 @@ export default function App() {
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
   const recordsScrollPos = React.useRef(0);
+  // État du dépliage des sections Records, au niveau de l'App pour qu'il SURVIVE aux
+  // re-montages de RecordsView (sinon ouvrir un profil referme le menu et remonte en haut).
+  const [recordsExpanded, setRecordsExpanded] = useState(null);
   const contentRef = React.useRef(null);
   const scrollPosRef = React.useRef(0);
   const poRoundScrollRef = React.useRef({}); // scrollTop interne de chaque ronde de playoff (survit aux remontages)
@@ -5050,6 +5053,18 @@ export default function App() {
             <div className="card-body" style={{ padding:0 }}>
               {(() => {
                 const quals = computeQualifications(leagueTab);
+                // Mouvement journée par journée : on compare le classement actuel à celui
+                // obtenu APRÈS la journée précédente (donc aucune flèche au jour 0).
+                const playedInGroup = matches.filter(m => m.homeGoals !== null);
+                const maxPlayedDay = playedInGroup.length ? Math.max(...playedInGroup.map(m => m.day || 0)) : 0;
+                const prevDayRankMap = {};
+                if (maxPlayedDay > 0) {
+                  const prevStandings = computeStandings(
+                    groupCars,
+                    matches.filter(m => m.homeGoals !== null && (m.day || 0) < maxPlayedDay)
+                  );
+                  prevStandings.forEach((c, idx) => { prevDayRankMap[c.id] = idx + 1; });
+                }
                 return (
                   <div>
                       {standings.map((s, i) => {
@@ -5063,23 +5078,7 @@ export default function App() {
                                     : getCarMovement(s.id, leagueTab) === 'promoted' ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
                                     : getCarMovement(s.id, leagueTab) === 'relegated' ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }
                                     : null;
-                        const prevRank = (() => {
-                          if (!prevSeason) return null;
-                          const prevLeague = prevSeason.leagues[leagueTab];
-                          if (!prevLeague) return null;
-                          const prevCars = prevLeague.cars || [];
-                          const prevMatches = prevLeague.groupResults?.[activeGroup] || [];
-                          const prevGroupCars = prevCars.filter(c => c.group === activeGroup);
-                          if (prevGroupCars.length === 0) return null;
-                          const prevStandings = prevGroupCars.map(car => {
-                            const cm = prevMatches.filter(m => m.homeId === car.id || m.awayId === car.id);
-                            let w = 0, d = 0, gf = 0, ga = 0;
-                            cm.forEach(m => { if (m.homeGoals === null) return; const isHome = m.homeId === car.id; const f = isHome ? m.homeGoals : m.awayGoals; const a = isHome ? m.awayGoals : m.homeGoals; gf += f; ga += a; if (f > a) w++; else if (f === a) d++; });
-                            return { id: car.id, pts: w * 3 + d, diff: gf - ga, gf };
-                          }).sort((a, b) => b.pts - a.pts || b.diff - a.diff || b.gf - a.gf);
-                          const idx = prevStandings.findIndex(c => c.id === s.id);
-                          return idx >= 0 ? idx + 1 : null;
-                        })();
+                        const prevRank = maxPlayedDay > 0 ? (prevDayRankMap[s.id] ?? null) : null;
                         const rankDiff = prevRank !== null ? prevRank - (i + 1) : null;
                         const streakBadge = getStreakBadge(s.id, leagueTab);
                         const recentForm = getRecentForm(s.id, leagueTab);
@@ -6142,7 +6141,7 @@ export default function App() {
             <table className="tbl">
               <thead><tr><th>S.</th><th>Grp</th><th>Rang</th><th>Pts</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Pts Ann.</th><th></th></tr></thead>
               <tbody>
-                {db.seasons.map(s => {
+                {db.seasons.slice().reverse().map(s => {
                   let foundLn = null, lid = null, carInSeason = null;
                   for (const ln of ALL_PROFILE_LEAGUES) {
                     const lg = s.leagues[ln];
@@ -10061,13 +10060,10 @@ export default function App() {
   }
 
   function RecordsView() {
-    const [expanded, setExpanded] = useState(null);
+    const expanded = recordsExpanded;
+    const setExpanded = setRecordsExpanded;
     const recordsRef = React.useRef(null);
     const allSeasons = db.seasons;
-
-    React.useEffect(() => {
-      window.scrollTo(0, recordsScrollPos.current);
-    }, [expanded]);
 
     function findCarByName(name) {
       for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
@@ -10091,6 +10087,21 @@ export default function App() {
       for (const s of [...allSeasons].reverse()) {
         for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
           if (s.leagues[l]?.cars.some(c => c.id === carId)) return l;
+        }
+      }
+      return null;
+    }
+
+    // Repli par nom : utilisé quand l'id ne correspond plus (classement agrégé par nom
+    // sur toutes les saisons → le carId stocké peut être périmé).
+    function findLeagueByName(name) {
+      if (!name) return null;
+      for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+        if (currentSeason.leagues[l]?.cars.some(c => namesMatch(c.name, name))) return l;
+      }
+      for (const s of [...allSeasons].reverse()) {
+        for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+          if (s.leagues[l]?.cars.some(c => namesMatch(c.name, name))) return l;
         }
       }
       return null;
@@ -10219,8 +10230,10 @@ export default function App() {
             {rows.length > 5 && (
               <div style={{ padding:'8px 12px',textAlign:'center' }}>
                 <button className="btn btn-dark btn-sm" onClick={() => {
-                  recordsScrollPos.current = window.scrollY;
+                  const sy = window.scrollY;
+                  recordsScrollPos.current = sy;
                   setExpanded(isExp ? null : id);
+                  requestAnimationFrame(() => window.scrollTo(0, sy));
                 }}>
                   {isExp ? '▲ Réduire' : `▼ Voir tous (${rows.length})`}
                 </button>
@@ -10256,7 +10269,7 @@ export default function App() {
           </tr>
         )} />
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" rows={topTotal} renderRow={(e, i) => {
-          const league = e.carId ? findLeagueByCarId(e.carId) : null;
+          const league = (e.carId && findLeagueByCarId(e.carId)) || findLeagueByName(e.name);
           return (
             <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
               <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
