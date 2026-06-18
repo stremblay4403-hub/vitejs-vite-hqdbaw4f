@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+limport React, { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot } from 'firebase/firestore';
 
@@ -3758,6 +3758,10 @@ export default function App() {
     if (shownTrophiesRef && shownTrophiesRef.current) {
       Object.keys(shownTrophiesRef.current).forEach(k => { delete shownTrophiesRef.current[k]; });
     }
+    // Réinitialiser la base des notifications pour éviter une avalanche de « qualifié / promu /
+    // relégué » : l'effet ré-enregistrera l'état (vide) en silence au prochain passage.
+    loadedForNotifs.current = false;
+    if (typeof auxLoadedRef !== 'undefined' && auxLoadedRef) auxLoadedRef.current = false;
   }
 
   function handleNextSeason() {
