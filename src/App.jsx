@@ -1857,20 +1857,25 @@ function buildSlimMainPayload(db) {
 }
 
 let archiveMigrationAttempted = false;
-// Migration ancien format → archivé. Opère sur un db DÉCOMPRESSÉ (état mémoire).
-// Admin uniquement, une seule fois par session. Sans perte : archive chaque saison passée,
-// puis allège main pour ne garder que la saison live.
+// Migration ancien format → archivé. Opère sur un db DÉCOMPRESSÉ (état mémoire). Admin seulement.
+// IMPORTANT : la migration n'écrit QUE les documents d'archive des saisons passées. Elle ne touche
+// JAMAIS directement à `main` — l'allègement de `main` (saison live seule, marqueur archived) est fait
+// par le chemin de sauvegarde habituel (storageSave/flushDataWrite), sérialisé et ordonné avec les
+// écritures de matchs en direct. Cela élimine toute course pouvant écraser des matchs récents.
 function runArchiveMigration(decompressedDb) {
   if (archiveMigrationAttempted) return;
   if (isPublicModeRef.current) return;        // jamais en mode visiteur
   archiveMigrationAttempted = true;
-  const seasons = decompressedDb.seasons || [];
-  const liveIdx = seasons.length - 1;
-  for (let i = 0; i < liveIdx; i++) enqueueArchiveWrite(seasons[i], { force: true });
-  const slimMain = buildSlimMainPayload(decompressedDb);
-  setDoc(dataDocRef, { data: JSON.stringify(slimMain), updatedAt: Date.now(), writer: CLIENT_ID })
-    .then(() => { archiveFormatActive = true; console.log('✅ Migration archivage : ' + liveIdx + ' saison(s) archivée(s), main allégé'); })
-    .catch(e => { archiveMigrationAttempted = false; console.warn('Migration main slim error', e); });
+  try {
+    const seasons = decompressedDb.seasons || [];
+    const liveIdx = seasons.length - 1;
+    for (let i = 0; i < liveIdx; i++) enqueueArchiveWrite(seasons[i], { force: true });
+    archiveFormatActive = true;
+    console.log('✅ Migration archivage : ' + liveIdx + ' saison(s) archivée(s). main sera allégé au prochain enregistrement.');
+  } catch (e) {
+    archiveMigrationAttempted = false;
+    console.warn('Migration archives error', e);
+  }
 }
 
 
@@ -2859,8 +2864,17 @@ export default function App() {
         });
       }
       firebaseReadyRef.current = true;
-      setDb(saved);
-      storageSave(saved);
+      // Garde anti-page-blanche : currentSeasonIdx doit toujours pointer une saison existante,
+      // sinon le rendu (db.seasons[currentSeasonIdx].leagues) planterait (écran blanc).
+      if (!Array.isArray(saved.seasons) || saved.seasons.length === 0) {
+        // rien à appliquer (cas dégénéré) — ne pas écraser l'état courant
+      } else {
+        if (typeof saved.currentSeasonIdx !== 'number' || saved.currentSeasonIdx < 0 || saved.currentSeasonIdx >= saved.seasons.length) {
+          saved.currentSeasonIdx = saved.seasons.length - 1;
+        }
+        setDb(saved);
+        storageSave(saved);
+      }
       // Re-rendu garanti, dans un cycle React séparé (≈150 ms plus tard), pour que la vue
       // (bracket playoffs notamment) reflète bien le db fraîchement appliqué, même si le
       // rendu déclenché par setDb n'avait pas « commit » visuellement.
