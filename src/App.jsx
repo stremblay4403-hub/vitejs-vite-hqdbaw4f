@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
 
 const PublicModeContext = React.createContext(false);
 
@@ -1520,29 +1520,87 @@ let firebaseSaveTimeout = null;
 // pour rester sous la limite Firestore (~1 écriture/s/document) → évite le gel en jouant vite.
 let lastDataWriteAt = 0;
 let pendingDataWrite = null;
+let dataWriteInFlight = false; // une seule écriture Firestore à la fois (évite la saturation de la file)
 const MIN_DATA_WRITE_INTERVAL = 1100;
 // Horodatage du dernier état distant appliqué — sert au filet de sécurité (polling)
 // pour ne pas réappliquer ce que le listener temps réel a déjà appliqué.
 let lastAppliedUpdatedAt = 0;
+
+// ── Chemin d'archive (saisons passées) ─────────────────────────────
+// File d'écriture des documents tournois/season_<N>, TOTALEMENT indépendante du chemin
+// live (main) : sa propre file sérialisée + son propre in-flight, pour ne JAMAIS interférer
+// avec la synchro temps réel du jeu en cours.
+const pendingArchiveWrites = new Map(); // seasonNum -> json (data compressée de la saison)
+let archiveWriteInFlight = false;
+// Cache du dernier JSON archivé par saison : évite de réécrire une archive inchangée
+// (ex. simple navigation vers une saison passée sans aucune modification).
+const lastArchivedJson = {};
+// Saisons passées éditées localement CETTE SESSION (forme à jour) : prioritaires dans la
+// reconstruction, pour qu'un snapshot distant (jeu live ailleurs) ne ressuscite pas une
+// archive périmée et n'annule pas une retouche locale tant qu'on n'a pas rechargé.
+const sessionArchiveOverrides = new Map(); // seasonNum -> objet saison (leagues compressées)
+// Saisons passées dont l'archive a été vérifiée/écrite au moins une fois cette session.
+// Sert au marqueur de migration et au filet anti-perte.
+let archiveFormatActive = false; // true dès qu'on sait que Firestore est en nouveau format
 
 // Écrit immédiatement le dernier état en attente vers Firestore. Module-level pour pouvoir
 // être appelée aussi quand la page passe en arrière-plan (sinon le setTimeout différé est
 // mis en pause par le navigateur mobile et l'écriture ne part jamais avant un retour/refresh).
 function flushDataWrite() {
   if (!pendingDataWrite) return;
+  if (dataWriteInFlight) return; // écriture déjà en cours → on attend sa fin (pendingDataWrite reste à jour)
   const { jsonToSave: j, photos: ph, photoTimes: pt } = pendingDataWrite;
   pendingDataWrite = null;
   lastDataWriteAt = Date.now();
   if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
   const _ua = Date.now();
+  dataWriteInFlight = true;
   setDoc(dataDocRef, { data: j, updatedAt: _ua, writer: CLIENT_ID })
-    .catch(e => console.warn('Firebase data save error:', e));
+    .catch(e => console.warn('Firebase data save error:', e))
+    .finally(() => {
+      dataWriteInFlight = false;
+      // Un nouvel état s'est accumulé pendant l'écriture → on l'écrit maintenant (en série).
+      if (pendingDataWrite) flushDataWrite();
+    });
   const photoCount = Object.keys(ph || {}).length;
   if (photoCount > 0) {
     setDoc(photosDocRef, { data: JSON.stringify(ph), times: JSON.stringify(pt || {}), updatedAt: Date.now() })
       .catch(e => console.warn('Firebase photos save error:', e));
   }
 }
+
+// Met en file l'archivage d'une saison passée (si son contenu compressé a changé).
+// N'écrit jamais en mode public. Sérialisé via flushArchiveWrites.
+function enqueueArchiveWrite(season, { force = false } = {}) {
+  if (!season || typeof season.season !== 'number') return;
+  if (isPublicModeRef.current) return;
+  const json = JSON.stringify(compressSeasonLeagues(season, false));
+  if (!force && lastArchivedJson[season.season] === json) return; // inchangé → rien à faire
+  lastArchivedJson[season.season] = json;
+  // On stocke la saison ENTIÈRE (méta + leagues compressées) pour pouvoir la reconstituer seule.
+  const compressedSeason = { ...season, leagues: JSON.parse(json) };
+  sessionArchiveOverrides.set(season.season, compressedSeason); // prioritaire à la reconstruction
+  const payload = JSON.stringify(compressedSeason);
+  pendingArchiveWrites.set(season.season, payload);
+  flushArchiveWrites();
+}
+
+// Écrit les archives en attente, une à la fois (file sérialisée indépendante du chemin live).
+function flushArchiveWrites() {
+  if (archiveWriteInFlight) return;
+  const next = pendingArchiveWrites.entries().next();
+  if (next.done) return;
+  const [num, payload] = next.value;
+  pendingArchiveWrites.delete(num);
+  archiveWriteInFlight = true;
+  setDoc(seasonDocRef(num), { data: payload, seasonNum: num, updatedAt: Date.now(), writer: CLIENT_ID })
+    .catch(e => console.warn('Firebase archive save error (season ' + num + '):', e))
+    .finally(() => {
+      archiveWriteInFlight = false;
+      if (pendingArchiveWrites.size > 0) flushArchiveWrites();
+    });
+}
+
 // Identifiant unique de cet appareil/session : permet d'ignorer l'écho de nos propres écritures à la réception
 const CLIENT_ID = Math.random().toString(36).slice(2) + '-' + Date.now().toString(36);
 
@@ -1565,6 +1623,65 @@ function unlockScroll() {
   window.scrollTo(0, sy);
 }
 
+// ── Compression d'une saison pour Firestore ────────────────────────
+// Reproduit À L'IDENTIQUE la compression historique, factorisée pour être réutilisée
+// par le document principal (saison live) et par les documents d'archive (saisons passées).
+//   isLive=true  : saison en cours — garde le calendrier (day), les matchs non joués,
+//                  et playoffs/relégation en cours (édition en direct).
+//   isLive=false : saison archivée — ne garde que les matchs joués (sans day),
+//                  playoffs/relégation allégés (non nécessaires à l'historique).
+function compressSeasonLeagues(season, isLive) {
+  const compLeagues = {};
+  Object.entries(season.leagues || {}).forEach(([l, league]) => {
+    const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
+    const carIdx = {};
+    (league.cars || []).forEach((c, ii) => { carIdx[c.id] = ii; });
+    if (isLive) {
+      if (isMain) {
+        // Compresser AUSSI les matchs de groupe (gros du poids). Format [idxHome, idxAway, hg, ag, day]
+        // — on GARDE tous les matchs (joués ou non, hg/ag peuvent être null) et la journée,
+        // pour préserver calendrier + flèches. playoffResults / relegationResults gardés tels quels.
+        const compGroups = {};
+        Object.entries(league.groupResults || {}).forEach(([g, matches]) => {
+          compGroups[g] = (matches || []).map(m => [
+            carIdx[m.homeId], carIdx[m.awayId],
+            m.homeGoals === undefined ? null : m.homeGoals,
+            m.awayGoals === undefined ? null : m.awayGoals,
+            m.day || 0,
+          ]);
+        });
+        compLeagues[l] = { ...league, groupResults: compGroups };
+      } else {
+        // Format ultra-compact : [idxHome, idxAway, hg, ag] — indices dans league.cars
+        const minMatches = (league.matches || [])
+          .filter(m => m.homeGoals !== null)
+          .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
+        compLeagues[l] = { ...league, matches: minMatches };
+      }
+    } else {
+      // Saison passée : COMPRESSER les matchs (au lieu de les supprimer) pour PRÉSERVER l'historique.
+      if (isMain) {
+        const compGroups = {};
+        Object.entries(league.groupResults || {}).forEach(([g, matches]) => {
+          compGroups[g] = (matches || [])
+            .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
+            .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
+        });
+        compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {} };
+      } else {
+        const minMatches = (league.matches || [])
+          .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
+          .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
+        compLeagues[l] = { ...league, matches: minMatches };
+      }
+    }
+  });
+  return compLeagues;
+}
+
+// Référence vers le document d'archive d'une saison (un doc par saison passée).
+function seasonDocRef(num) { return doc(firestoreDb, 'tournois', 'season_' + num); }
+
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
@@ -1578,55 +1695,36 @@ function storageSave(data) {
   );
   if (!hasData) return;
 
-  // Debounce — attendre 2s avant de sauvegarder pour éviter le spam
-  // Compression légère : retirer les matches des ligues AUX des saisons passées seulement
-  const currentIdx = dataWithoutPhotos.currentSeasonIdx;
+  // ── Découpage du stockage Firestore ───────────────────────────────
+  // Le document principal (tournois/main) ne contient QUE la saison live (la dernière du
+  // tableau = numéro le plus élevé), compressée comme saison courante (calendrier + flèches).
+  // Les saisons passées vivent chacune dans leur propre document tournois/season_<N>.
+  // En mémoire, db.seasons reste le tableau COMPLET : ce découpage ne concerne que Firestore.
+  const allSeasons = dataWithoutPhotos.seasons || [];
+  const liveIdx = allSeasons.length - 1;
+  const liveSeason = allSeasons[liveIdx];
+  const currentIdx = dataWithoutPhotos.currentSeasonIdx; // saison AFFICHÉE (synchronisée multi-appareils)
+
   const toSave = {
     ...dataWithoutPhotos,
-    seasons: dataWithoutPhotos.seasons.map((s, i) => {
-      const compLeagues = {};
-      Object.entries(s.leagues || {}).forEach(([l, league]) => {
-        const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(l);
-        if (i === currentIdx) {
-          if (isMain) {
-            compLeagues[l] = league;
-          } else {
-            // Format ultra-compact : [idxHome, idxAway, hg, ag] — indices dans league.cars
-            const carIdx = {};
-            (league.cars || []).forEach((c, ii) => { carIdx[c.id] = ii; });
-            const minMatches = (league.matches || [])
-              .filter(m => m.homeGoals !== null)
-              .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
-            compLeagues[l] = { ...league, matches: minMatches };
-          }
-        } else {
-          // Saison passée : COMPRESSER les matchs (au lieu de les supprimer) pour PRÉSERVER
-          // l'historique (S33+). Format compact [idxHome, idxAway, hg, ag] — indices dans league.cars.
-          const carIdx = {};
-          (league.cars || []).forEach((c, ii) => { carIdx[c.id] = ii; });
-          if (isMain) {
-            const compGroups = {};
-            Object.entries(league.groupResults || {}).forEach(([g, matches]) => {
-              compGroups[g] = (matches || [])
-                .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
-                .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
-            });
-            // playoffResults/relegationResults non nécessaires à l'historique → allégés
-            compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {} };
-          } else {
-            const minMatches = (league.matches || [])
-              .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
-              .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
-            compLeagues[l] = { ...league, matches: minMatches };
-          }
-        }
-      });
-      return { ...s, leagues: compLeagues };
-    })
+    // Seule la saison live est écrite dans main (compressée isLive=true).
+    seasons: liveSeason
+      ? [ { ...liveSeason, leagues: compressSeasonLeagues(liveSeason, true) } ]
+      : [],
+    liveSeasonNum: liveSeason ? liveSeason.season : null,
+    archived: true, // marqueur « nouveau format » : son absence déclenche la migration
+    // currentSeasonIdx (vue) est conservé tel quel : il indexe le tableau COMPLET reconstitué
+    // au chargement, pas le tableau à 1 élément stocké ici.
   };
 
+  // Filet anti-perte : si on regarde/édite une saison PASSÉE et que son contenu a changé,
+  // ré-archiver UNIQUEMENT cette saison (coût = 1 saison → aucun impact sur le jeu live).
+  if (typeof currentIdx === 'number' && currentIdx >= 0 && currentIdx < liveIdx) {
+    enqueueArchiveWrite(allSeasons[currentIdx]);
+  }
+
   const jsonToSave = JSON.stringify(toSave);
-  console.log(`[Firestore] Taille: ${(jsonToSave.length / 1024).toFixed(1)} KB`);
+  console.log(`[Firestore] main: ${(jsonToSave.length / 1024).toFixed(1)} KB (saison live S${toSave.liveSeasonNum} seule)`);
 
   // Mémoriser le dernier état à écrire (une rafale n'écrira que le plus récent)
   pendingDataWrite = { jsonToSave, photos, photoTimes };
@@ -1689,6 +1787,92 @@ function storageLoad() {
   } catch {}
   return null;
 }
+
+// ── Reconstruction des saisons (découpage Firestore) ───────────────
+// Lit tous les documents d'archive tournois/season_<N> et renvoie un tableau d'objets
+// saison (méta + leagues compressées). Pré-remplit aussi le cache anti-réécriture.
+async function fetchArchivedSeasons() {
+  const out = [];
+  try {
+    const snap = await getDocs(collection(firestoreDb, 'tournois'));
+    snap.forEach(d => {
+      if (!d.id.startsWith('season_')) return; // ignorer main / photos
+      try {
+        const raw = d.data();
+        const season = JSON.parse(raw.data);
+        if (season && typeof season.season === 'number') {
+          out.push(season);
+          // Cache : forme compressée stockée → évite une réécriture inutile au prochain save.
+          lastArchivedJson[season.season] = JSON.stringify(season.leagues || {});
+        }
+      } catch (e) { console.warn('Archive parse error', d.id, e); }
+    });
+  } catch (e) { console.warn('fetchArchivedSeasons error', e); }
+  return out;
+}
+
+// Supprime tous les documents d'archive tournois/season_<N> (utilisé par Reset).
+async function deleteAllArchivedSeasons() {
+  try {
+    const snap = await getDocs(collection(firestoreDb, 'tournois'));
+    const dels = [];
+    snap.forEach(d => { if (d.id.startsWith('season_')) dels.push(deleteDoc(doc(firestoreDb, 'tournois', d.id))); });
+    await Promise.all(dels);
+    Object.keys(lastArchivedJson).forEach(k => { delete lastArchivedJson[k]; });
+    sessionArchiveOverrides.clear();
+  } catch (e) { console.warn('deleteAllArchivedSeasons error', e); }
+}
+
+// Reconstitue le tableau db.seasons COMPLET, trié par numéro croissant (live = dernière).
+// Priorité : main (saison live) > archives Firestore (saisons passées) > mémoire locale
+// (filet si les archives ne sont pas encore lues / device neuf). Idempotent.
+function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons) {
+  const byNum = new Map();
+  (inMemorySeasons || []).forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
+  (archivedSeasons || []).forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
+  // Nos éditions locales de saisons passées cette session priment sur l'archive chargée.
+  sessionArchiveOverrides.forEach((s, num) => { byNum.set(num, s); });
+  const live = Array.isArray(mainParsed.seasons) ? mainParsed.seasons : [];
+  live.forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
+  return Array.from(byNum.values()).sort((a, b) => a.season - b.season);
+}
+
+// Détecte l'ancien format (toutes les saisons dans main, sans marqueur archived).
+function isOldMonolithicFormat(mainParsed) {
+  return !mainParsed.archived && Array.isArray(mainParsed.seasons) && mainParsed.seasons.length > 1;
+}
+
+// Construit le payload main allégé (saison live seule, compressée). Utilisé par la migration
+// et par le bouton « Sync Firebase ». `db` doit être DÉCOMPRESSÉ (état mémoire).
+function buildSlimMainPayload(db) {
+  const seasons = db.seasons || [];
+  const liveSeason = seasons[seasons.length - 1];
+  const { photos, photoTimes, __needsArchiveMigration, ...rest } = db;
+  return {
+    ...rest,
+    seasons: liveSeason ? [ { ...liveSeason, leagues: compressSeasonLeagues(liveSeason, true) } ] : [],
+    liveSeasonNum: liveSeason ? liveSeason.season : null,
+    archived: true,
+  };
+}
+
+let archiveMigrationAttempted = false;
+// Migration ancien format → archivé. Opère sur un db DÉCOMPRESSÉ (état mémoire).
+// Admin uniquement, une seule fois par session. Sans perte : archive chaque saison passée,
+// puis allège main pour ne garder que la saison live.
+function runArchiveMigration(decompressedDb) {
+  if (archiveMigrationAttempted) return;
+  if (isPublicModeRef.current) return;        // jamais en mode visiteur
+  archiveMigrationAttempted = true;
+  const seasons = decompressedDb.seasons || [];
+  const liveIdx = seasons.length - 1;
+  for (let i = 0; i < liveIdx; i++) enqueueArchiveWrite(seasons[i], { force: true });
+  const slimMain = buildSlimMainPayload(decompressedDb);
+  setDoc(dataDocRef, { data: JSON.stringify(slimMain), updatedAt: Date.now(), writer: CLIENT_ID })
+    .then(() => { archiveFormatActive = true; console.log('✅ Migration archivage : ' + liveIdx + ' saison(s) archivée(s), main allégé'); })
+    .catch(e => { archiveMigrationAttempted = false; console.warn('Migration main slim error', e); });
+}
+
 
 // Composant scroll stable — défini hors de App pour éviter le remount à chaque render
 function LetterSection({ letter, cars, letterRefs, leagueColors, editKey, editName, setEditName, setEditKey, confirmEdit, startEdit, getCarPhoto, openProfileCar, isPublicMode }) {
@@ -1998,6 +2182,10 @@ function launchConfetti() {
 
 export default function App() {
   const dbRef = React.useRef(null);
+  // Saisons archivées lues depuis Firestore (docs tournois/season_<N>), gardées pour
+  // reconstituer le tableau complet à chaque snapshot de main (qui ne porte que la live).
+  const archivedSeasonsRef = React.useRef([]);
+  const lastMainParsedRef = React.useRef(null); // dernier payload main reçu (pour re-reconstruire)
   const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, photoTimes: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
@@ -2462,6 +2650,26 @@ export default function App() {
       setTimeout(() => { isLoadingFromFirebase.current = false; }, 2000);
     });
 
+    // Charger une fois les saisons archivées (docs tournois/season_<N>), puis reconstituer
+    // le tableau complet si un snapshot de main est déjà arrivé (utile sur appareil neuf).
+    fetchArchivedSeasons().then(arch => {
+      archivedSeasonsRef.current = arch;
+      if (lastMainParsedRef.current) {
+        const merged = { ...lastMainParsedRef.current };
+        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, dbRef.current?.seasons);
+        merged.photos = photosData; merged.photoTimes = photoTimesData;
+        if (!merged.brands) merged.brands = {};
+        if (!merged.histOverrides) merged.histOverrides = {};
+        if (!merged.rip) merged.rip = [];
+        if (typeof merged.currentSeasonIdx !== 'number' || merged.currentSeasonIdx < 0 || merged.currentSeasonIdx >= merged.seasons.length) {
+          merged.currentSeasonIdx = Math.max(0, merged.seasons.length - 1);
+        }
+        isLoadingFromFirebase.current = true;
+        applyLoadedData(merged, true);
+        setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
+      }
+    });
+
     let unsubData = null;
     function subscribeData() {
       if (unsubData) { try { unsubData(); } catch(e){} }
@@ -2475,18 +2683,37 @@ export default function App() {
           if (u > 0 && u <= lastAppliedUpdatedAt) { setLoaded(true); return; }
           try {
 
-            const parsed = JSON.parse(dataSnap.data().data);
+            const rawMain = JSON.parse(dataSnap.data().data);
             lastAppliedUpdatedAt = u;
+            lastMainParsedRef.current = rawMain;
+            const oldFormat = isOldMonolithicFormat(rawMain);
+            // Si une saison live nettement plus avancée apparaît (device resté longtemps hors-ligne,
+            // saisons archivées ailleurs entre-temps), recharger les archives pour combler le trou.
+            const knownMax = (dbRef.current?.seasons || []).reduce((mx, s) => Math.max(mx, (s && s.season) || 0), 0);
+            if (typeof rawMain.liveSeasonNum === 'number' && rawMain.liveSeasonNum > knownMax + 1) {
+              fetchArchivedSeasons().then(arch => { archivedSeasonsRef.current = arch; });
+            }
+            // main ne porte que la saison live → reconstituer le tableau COMPLET en mémoire :
+            // archives Firestore + saisons déjà en mémoire (filet) + saison live de main.
+            const parsed = { ...rawMain };
+            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, dbRef.current?.seasons);
             parsed.photos = photosData;
             parsed.photoTimes = photoTimesData;
             if (!parsed.brands) parsed.brands = {};
             if (!parsed.histOverrides) parsed.histOverrides = {};
             if (!parsed.rip) parsed.rip = [];
+            // Garde : currentSeasonIdx (vue) doit rester dans les bornes du tableau reconstitué.
+            if (typeof parsed.currentSeasonIdx !== 'number' || parsed.currentSeasonIdx < 0 || parsed.currentSeasonIdx >= parsed.seasons.length) {
+              parsed.currentSeasonIdx = Math.max(0, parsed.seasons.length - 1);
+            }
             const savedScrollY = window.scrollY;
             const tabsEl = document.querySelector('.tabs');
             if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
             isLoadingFromFirebase.current = true;
             applyLoadedData(parsed, true);
+            // Migration ancien format → archivé (admin seulement). parsed.seasons est désormais
+            // DÉCOMPRESSÉ en place par applyLoadedData → compression d'archive correcte.
+            if (oldFormat) runArchiveMigration(parsed);
             setTimeout(() => {
               isLoadingFromFirebase.current = false;
               if (!document.body.dataset.scrollY) {
@@ -2585,8 +2812,9 @@ export default function App() {
               }));
             }
           }
-          // Décompresser groupResults compact (saisons passées, ligues principales) :
-          // chaque groupe peut être un tableau de tableaux [idxH, idxA, hg, ag] → objets matchs
+          // Décompresser groupResults compact (ligues principales) :
+          // chaque groupe peut être un tableau de tableaux [idxH, idxA, hg, ag, day?] → objets matchs.
+          // (saison courante : day présent + matchs non joués gardés ; saisons passées : 4 éléments)
           if (league.groupResults) {
             const cars = league.cars || [];
             Object.keys(league.groupResults).forEach(g => {
@@ -2597,7 +2825,9 @@ export default function App() {
                   .map((m, idx) => ({
                     id: `g${g}m${idx}`, group: +g,
                     homeId: cars[m[0]].id, awayId: cars[m[1]].id,
-                    homeGoals: m[2], awayGoals: m[3]
+                    homeGoals: m[2] === undefined ? null : m[2],
+                    awayGoals: m[3] === undefined ? null : m[3],
+                    day: m[4] !== undefined ? m[4] : (idx % 17) + 1,
                   }));
               }
             });
@@ -4177,6 +4407,14 @@ export default function App() {
         a.click();
         URL.revokeObjectURL(url);
       } catch(e) { console.warn('Auto-export failed', e); }
+      // Archiver la saison qui vient de se terminer dans son propre document Firestore.
+      // dbRef.current reflète déjà le nouvel état (nouvelle saison ajoutée) → l'avant-dernière
+      // saison est celle qui vient de finir. Le prochain storageSave allègera main automatiquement.
+      try {
+        const seasonsNow = dbRef.current?.seasons || [];
+        const justEnded = seasonsNow[seasonsNow.length - 2];
+        if (justEnded) enqueueArchiveWrite(justEnded, { force: true });
+      } catch(e) { console.warn('Archive saison terminée: erreur', e); }
     }, 500);
     loadedForNotifs.current = false;
     auxLoadedRef.current = false;
@@ -4619,6 +4857,21 @@ export default function App() {
       try {
         const parsed = JSON.parse(ev.target.result);
         setDb(parsed);
+        // Pousser le découpage complet vers Firestore : archiver chaque saison passée + main allégé.
+        if (!isPublicModeRef.current && Array.isArray(parsed.seasons)) {
+          const seasons = parsed.seasons;
+          const liveIdx = seasons.length - 1;
+          for (let i = 0; i < liveIdx; i++) {
+            const s = seasons[i];
+            if (s && typeof s.season === 'number') enqueueArchiveWrite(s, { force: true });
+          }
+          archiveMigrationAttempted = true;
+          archiveFormatActive = true;
+          archivedSeasonsRef.current = seasons.slice(0, Math.max(0, liveIdx));
+          try {
+            setDoc(dataDocRef, { data: JSON.stringify(buildSlimMainPayload(parsed)), updatedAt: Date.now(), writer: CLIENT_ID });
+          } catch(err) { console.warn('Import main slim error', err); }
+        }
       } catch { alert("Fichier JSON invalide"); }
     };
     reader.readAsText(file);
@@ -4645,6 +4898,11 @@ export default function App() {
       if (prevCars.length > 0) newSeason.leagues[l] = initAuxLeague(l, prevCars);
     });
     fresh.seasons = [newSeason];
+    // Supprimer les documents d'archive Firestore (sinon ils reviendraient au prochain
+    // chargement) et vider le cache local des archives.
+    archivedSeasonsRef.current = [];
+    archiveMigrationAttempted = true;
+    deleteAllArchivedSeasons();
     storageSave(fresh);
     setDb(fresh);
   }
@@ -11216,13 +11474,29 @@ export default function App() {
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
               const fullData = storageLoad() || db;
-              const { photos, ...dataWithoutPhotos } = fullData;
+              const { photos, photoTimes, ...rest } = fullData;
               const photoCount = Object.keys(photos || {}).length;
-              Promise.all([
-                setDoc(dataDocRef, { data: JSON.stringify(dataWithoutPhotos), updatedAt: Date.now() }),
-                photoCount > 0 ? setDoc(photosDocRef, { data: JSON.stringify(photos), updatedAt: Date.now() }) : Promise.resolve()
-              ])
-                .then(() => alert(`✅ Sauvegardé sur Firebase !\n${photoCount} photos synchronisées`))
+              const seasons = rest.seasons || [];
+              const liveIdx = seasons.length - 1;
+              // main = saison live seule (allégé) ; chaque saison passée dans son doc season_<N>.
+              const slimMain = buildSlimMainPayload(fullData);
+              const writes = [
+                setDoc(dataDocRef, { data: JSON.stringify(slimMain), updatedAt: Date.now(), writer: CLIENT_ID }),
+                photoCount > 0
+                  ? setDoc(photosDocRef, { data: JSON.stringify(photos), times: JSON.stringify(photoTimes || {}), updatedAt: Date.now() })
+                  : Promise.resolve(),
+              ];
+              for (let i = 0; i < liveIdx; i++) {
+                const s = seasons[i];
+                if (!s || typeof s.season !== 'number') continue;
+                const compLeagues = compressSeasonLeagues(s, false);
+                lastArchivedJson[s.season] = JSON.stringify(compLeagues);
+                writes.push(setDoc(seasonDocRef(s.season), { data: JSON.stringify({ ...s, leagues: compLeagues }), seasonNum: s.season, updatedAt: Date.now(), writer: CLIENT_ID }));
+              }
+              archiveMigrationAttempted = true; // découpage déjà effectué manuellement
+              archiveFormatActive = true;
+              Promise.all(writes)
+                .then(() => alert(`✅ Sauvegardé sur Firebase !\n${liveIdx} saison(s) archivée(s), ${photoCount} photos`))
                 .catch(e => alert('❌ Erreur: ' + e.message));
             }}>☁️ Sync Firebase</button>
             {!confirmReset
