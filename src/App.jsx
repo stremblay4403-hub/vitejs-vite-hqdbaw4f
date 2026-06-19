@@ -1684,10 +1684,17 @@ function seasonDocRef(num) { return doc(firestoreDb, 'tournois', 'season_' + num
 
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch {}
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
   if (isLoadingFromFirebase.current) return;
+
+  // À ce stade c'est une VRAIE modification locale (admin, pas en train d'appliquer du distant) :
+  // on horodate la sauvegarde locale. Sert d'arbitre au rechargement pour ne pas laisser un
+  // `main` périmé écraser des matchs récents pas encore synchronisés.
+  try { localStorage.setItem(STORAGE_KEY + ':at', String(Date.now())); } catch {}
 
   const { photos, photoTimes, ...dataWithoutPhotos } = data;
   const hasData = dataWithoutPhotos?.seasons?.some(s =>
@@ -1826,14 +1833,20 @@ async function deleteAllArchivedSeasons() {
 // Reconstitue le tableau db.seasons COMPLET, trié par numéro croissant (live = dernière).
 // Priorité : main (saison live) > archives Firestore (saisons passées) > mémoire locale
 // (filet si les archives ne sont pas encore lues / device neuf). Idempotent.
-function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons) {
+function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons, preferLocalLive) {
   const byNum = new Map();
   (inMemorySeasons || []).forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
   (archivedSeasons || []).forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
   // Nos éditions locales de saisons passées cette session priment sur l'archive chargée.
   sessionArchiveOverrides.forEach((s, num) => { byNum.set(num, s); });
   const live = Array.isArray(mainParsed.seasons) ? mainParsed.seasons : [];
-  live.forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
+  live.forEach(s => {
+    if (!s || typeof s.season !== 'number') return;
+    // Si le local est plus frais (matchs récents pas encore dans main), NE PAS écraser la
+    // saison live locale par celle de main : on garde la version locale fraîche.
+    if (preferLocalLive && byNum.has(s.season)) return;
+    byNum.set(s.season, s);
+  });
   return Array.from(byNum.values()).sort((a, b) => a.season - b.season);
 }
 
@@ -2191,6 +2204,7 @@ export default function App() {
   // reconstituer le tableau complet à chaque snapshot de main (qui ne porte que la live).
   const archivedSeasonsRef = React.useRef([]);
   const lastMainParsedRef = React.useRef(null); // dernier payload main reçu (pour re-reconstruire)
+  const lastMainUpdatedAtRef = React.useRef(0); // updatedAt du dernier main reçu (arbitrage local/main)
   const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, photoTimes: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
@@ -2660,8 +2674,11 @@ export default function App() {
     fetchArchivedSeasons().then(arch => {
       archivedSeasonsRef.current = arch;
       if (lastMainParsedRef.current) {
+        const localSavedAt2 = Number(localStorage.getItem(STORAGE_KEY + ':at')) || 0;
+        const u2 = lastMainUpdatedAtRef.current || 0;
+        const preferLocalLive2 = !isPublicModeRef.current && localSavedAt2 > u2;
         const merged = { ...lastMainParsedRef.current };
-        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, dbRef.current?.seasons);
+        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, dbRef.current?.seasons, preferLocalLive2);
         merged.photos = photosData; merged.photoTimes = photoTimesData;
         if (!merged.brands) merged.brands = {};
         if (!merged.histOverrides) merged.histOverrides = {};
@@ -2691,6 +2708,7 @@ export default function App() {
             const rawMain = JSON.parse(dataSnap.data().data);
             lastAppliedUpdatedAt = u;
             lastMainParsedRef.current = rawMain;
+            lastMainUpdatedAtRef.current = u; // pour l'arbitrage local/main du re-apply après fetch archives
             const oldFormat = isOldMonolithicFormat(rawMain);
             // Si une saison live nettement plus avancée apparaît (device resté longtemps hors-ligne,
             // saisons archivées ailleurs entre-temps), recharger les archives pour combler le trou.
@@ -2700,8 +2718,13 @@ export default function App() {
             }
             // main ne porte que la saison live → reconstituer le tableau COMPLET en mémoire :
             // archives Firestore + saisons déjà en mémoire (filet) + saison live de main.
+            // Arbitrage anti-perte : si la sauvegarde LOCALE est plus récente que main (matchs
+            // récents pas encore synchronisés) et qu'on est l'appareil admin (le seul à écrire),
+            // on garde la saison live LOCALE plutôt que celle, périmée, de main.
+            const localSavedAt = Number(localStorage.getItem(STORAGE_KEY + ':at')) || 0;
+            const preferLocalLive = !isPublicModeRef.current && localSavedAt > u;
             const parsed = { ...rawMain };
-            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, dbRef.current?.seasons);
+            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, dbRef.current?.seasons, preferLocalLive);
             parsed.photos = photosData;
             parsed.photoTimes = photoTimesData;
             if (!parsed.brands) parsed.brands = {};
