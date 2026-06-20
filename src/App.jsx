@@ -1516,7 +1516,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v11 — total par saison (validation)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v12 — déconnexion par session + navigation saisons visiteur', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -2269,6 +2269,8 @@ export default function App() {
   const lastMainParsedRef = React.useRef(null); // dernier payload main reçu (pour re-reconstruire)
   const lastMainUpdatedAtRef = React.useRef(0); // updatedAt du dernier main reçu (arbitrage local/main)
   const hasAppliedMainRef = React.useRef(false); // a-t-on déjà appliqué main une fois (1er chargement) ?
+  const manualSeasonPickRef = React.useRef(false); // le visiteur a-t-il choisi une saison à la main ?
+  const pickedSeasonNumRef = React.useRef(null);   // numéro de la saison choisie manuellement (visiteur)
   const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, photoTimes: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
@@ -2298,8 +2300,12 @@ export default function App() {
   const [isPrivate, setIsPrivate] = useState(false);
   const ADMIN_PASSWORD = 'Tungtungtung440';
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    // Persistant : localStorage survit aux actualisations (sessionStorage s'efface sur mobile iOS).
-    return localStorage.getItem('tdv_admin') === 'ok' || sessionStorage.getItem('tdv_admin') === 'ok';
+    // Admin valable pour la SESSION en cours : persiste à l'actualisation (sessionStorage survit
+    // au reload) mais se déconnecte à la FERMETURE de l'onglet. On nettoie l'ancien flag
+    // localStorage qui maintenait la connexion indéfiniment. La sécurité des données ne dépend
+    // plus du mode (protection « garder le plus de matchs joués »).
+    try { localStorage.removeItem('tdv_admin'); } catch {}
+    return sessionStorage.getItem('tdv_admin') === 'ok';
   });
   const isPublicMode = !isLoggedIn;
 
@@ -2754,7 +2760,7 @@ export default function App() {
       if (!merged.brands) merged.brands = {};
       if (!merged.histOverrides) merged.histOverrides = {};
       if (!merged.rip) merged.rip = [];
-      merged.currentSeasonIdx = resolveViewedIdx(merged.seasons, lastMainParsedRef.current || {});
+      merged.currentSeasonIdx = pickedSeasonIdx(merged.seasons, lastMainParsedRef.current || {});
       isLoadingFromFirebase.current = true;
       applyLoadedData(merged, true);
       setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
@@ -2802,7 +2808,7 @@ export default function App() {
             if (!parsed.histOverrides) parsed.histOverrides = {};
             if (!parsed.rip) parsed.rip = [];
             // Position de la saison affichée résolue PAR NUMÉRO (portable) → défaut = saison live.
-            parsed.currentSeasonIdx = resolveViewedIdx(parsed.seasons, rawMain);
+            parsed.currentSeasonIdx = pickedSeasonIdx(parsed.seasons, rawMain);
             const savedScrollY = window.scrollY;
             const tabsEl = document.querySelector('.tabs');
             if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
@@ -3541,7 +3547,21 @@ export default function App() {
     firebaseReadyRef.current = false;
   }
 
+  // Résout l'index de la saison affichée. Si un VISITEUR a choisi une saison à la main, on garde
+  // son choix (par numéro) au lieu de le re-synchroniser sur la saison de l'admin (viewedSeasonNum).
+  function pickedSeasonIdx(seasons, rawMain) {
+    if (isPublicModeRef.current && manualSeasonPickRef.current && pickedSeasonNumRef.current != null) {
+      const i = (seasons || []).findIndex(s => s && s.season === pickedSeasonNumRef.current);
+      if (i >= 0) return i;
+    }
+    return resolveViewedIdx(seasons, rawMain);
+  }
+
   function switchSeason(idx) {
+    // Mémoriser le choix (utile en mode visiteur pour ne pas être re-synchronisé sur la saison
+    // de l'admin au prochain snapshot Firebase).
+    manualSeasonPickRef.current = true;
+    pickedSeasonNumRef.current = (db.seasons[idx] && db.seasons[idx].season) ?? null;
     setDb(d => ({ ...d, currentSeasonIdx: idx }));
     setSectionTab("groupes");
     loadedForNotifs.current = false;
@@ -11615,8 +11635,7 @@ export default function App() {
                   onClick={() => {
                     const pwd = prompt('Mot de passe admin :');
                     if (pwd === ADMIN_PASSWORD) {
-                      localStorage.setItem('tdv_admin', 'ok'); // persiste à travers les actualisations
-                      sessionStorage.setItem('tdv_admin', 'ok');
+                      sessionStorage.setItem('tdv_admin', 'ok'); // session courante (efface à la fermeture)
                       setIsLoggedIn(true);
                     } else if (pwd !== null) {
                       alert('❌ Mot de passe incorrect');
@@ -11689,7 +11708,7 @@ export default function App() {
             <button key={idx}
               className={`btn btn-sm ${db.currentSeasonIdx === idx ? 'btn-gold' : 'btn-dark'}`}
               style={{ flexShrink:0 }}
-              onClick={() => !isPublicMode && switchSeason(idx)}>
+              onClick={() => switchSeason(idx)}>
               S{s.season}
             </button>
           ))}
