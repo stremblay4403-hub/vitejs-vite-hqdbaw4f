@@ -1130,6 +1130,25 @@ function computeStandings(cars, matches) {
   return Object.values(stats).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
 }
 
+// Bonus de playoff : +5 à chaque quart-finaliste (home & away des matchs 'qf' joués),
+// +5 de plus au vainqueur de la finale → 10 au total pour le vainqueur des playoffs.
+// Renvoie une table { carId: points }.
+function playoffBonusFromResults(pr) {
+  const m = {};
+  Object.values(pr || {}).forEach(match => {
+    if (match.homeGoals === null || match.awayGoals === null || match.homeGoals === undefined || match.awayGoals === undefined) return;
+    const winner = match.homeGoals > match.awayGoals ? match.homeId : match.awayId;
+    if (match.round === 'qf') {
+      if (match.homeId) m[match.homeId] = (m[match.homeId] || 0) + 5;
+      if (match.awayId) m[match.awayId] = (m[match.awayId] || 0) + 5;
+    }
+    if (match.round === 'final' && winner) {
+      m[winner] = (m[winner] || 0) + 5;
+    }
+  });
+  return m;
+}
+
 function computeBonusPoints(season, leagueName) {
   const league = season.leagues[leagueName];
   const bonusMap = {};
@@ -1148,17 +1167,15 @@ function computeBonusPoints(season, leagueName) {
     });
   }
 
+  // Points de playoff. Saison courante : calcul depuis playoffResults (intact).
+  // Saison archivée : playoffResults a été effacé pour gagner de la place, mais on a conservé
+  // une table compacte league.poBonus → on l'utilise alors comme repli (sinon les points de
+  // quarts/finale disparaîtraient de l'historique des points annexes).
   const pr = league.playoffResults || {};
-  Object.values(pr).forEach(match => {
-    if (match.homeGoals === null || match.awayGoals === null) return;
-    const winner = match.homeGoals > match.awayGoals ? match.homeId : match.awayId;
-    if (match.round === 'qf') {
-      bonusMap[match.homeId] = (bonusMap[match.homeId] || 0) + 5;
-      bonusMap[match.awayId] = (bonusMap[match.awayId] || 0) + 5;
-    }
-    if (match.round === 'final') {
-      bonusMap[winner] = (bonusMap[winner] || 0) + 5;
-    }
+  const fromResults = playoffBonusFromResults(pr);
+  const poBonus = Object.keys(fromResults).length > 0 ? fromResults : (league.poBonus || {});
+  Object.entries(poBonus).forEach(([id, pts]) => {
+    bonusMap[id] = (bonusMap[id] || 0) + pts;
   });
   return bonusMap;
 }
@@ -1502,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v8 — réparation calendrier robuste (par groupe)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v9 — bonus playoff préservé à l_archivage', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -1668,7 +1685,7 @@ function compressSeasonLeagues(season, isLive) {
             .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
             .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
         });
-        compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {} };
+        compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {}, poBonus: playoffBonusFromResults(league.playoffResults) };
       } else {
         const minMatches = (league.matches || [])
           .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
