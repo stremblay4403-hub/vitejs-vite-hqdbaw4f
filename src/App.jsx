@@ -1502,7 +1502,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v6 — admin relit Firebase + localStorage compressé', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v7 — réparation calendrier (journée 0)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -2901,18 +2901,28 @@ export default function App() {
           // (saison courante : day présent + matchs non joués gardés ; saisons passées : 4 éléments)
           if (league.groupResults) {
             const cars = league.cars || [];
+            const mpd = Math.max(1, Math.floor(cars.length / 2)); // matchs par journée (9 pour 18 voitures)
             Object.keys(league.groupResults).forEach(g => {
               const arr = league.groupResults[g];
               if (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0])) {
-                league.groupResults[g] = arr
+                const dm = arr
                   .filter(m => cars[m[0]] && cars[m[1]])
                   .map((m, idx) => ({
                     id: `g${g}m${idx}`, group: +g,
                     homeId: cars[m[0]].id, awayId: cars[m[1]].id,
                     homeGoals: m[2] === undefined ? null : m[2],
                     awayGoals: m[3] === undefined ? null : m[3],
-                    day: m[4] !== undefined ? m[4] : (idx % 17) + 1,
+                    day: m[4],
                   }));
+                // Réparation du calendrier : si les journées sont cassées (manquantes, =0, ou toutes
+                // identiques — ex. anciennes données où tout est tombé en « journée 0 »), on les
+                // recalcule d'après la POSITION (les matchs sont rangés par journée). Les données
+                // correctes (journées 1..17 distinctes) ne sont pas touchées. Se corrige ensuite
+                // tout seul à la prochaine sauvegarde.
+                const distinct = new Set(dm.map(m => m.day));
+                const broken = dm.some(m => m.day === undefined || m.day === null || m.day < 1) || distinct.size <= 1;
+                if (broken) dm.forEach((m, idx) => { m.day = Math.floor(idx / mpd) + 1; });
+                league.groupResults[g] = dm;
               }
             });
           }
