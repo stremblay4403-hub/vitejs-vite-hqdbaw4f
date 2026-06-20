@@ -1130,25 +1130,6 @@ function computeStandings(cars, matches) {
   return Object.values(stats).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
 }
 
-// Bonus de playoff : +5 à chaque quart-finaliste (home & away des matchs 'qf' joués),
-// +5 de plus au vainqueur de la finale → 10 au total pour le vainqueur des playoffs.
-// Renvoie une table { carId: points }.
-function playoffBonusFromResults(pr) {
-  const m = {};
-  Object.values(pr || {}).forEach(match => {
-    if (match.homeGoals === null || match.awayGoals === null || match.homeGoals === undefined || match.awayGoals === undefined) return;
-    const winner = match.homeGoals > match.awayGoals ? match.homeId : match.awayId;
-    if (match.round === 'qf') {
-      if (match.homeId) m[match.homeId] = (m[match.homeId] || 0) + 5;
-      if (match.awayId) m[match.awayId] = (m[match.awayId] || 0) + 5;
-    }
-    if (match.round === 'final' && winner) {
-      m[winner] = (m[winner] || 0) + 5;
-    }
-  });
-  return m;
-}
-
 function computeBonusPoints(season, leagueName) {
   const league = season.leagues[leagueName];
   const bonusMap = {};
@@ -1167,16 +1148,32 @@ function computeBonusPoints(season, leagueName) {
     });
   }
 
-  // Points de playoff. Saison courante : calcul depuis playoffResults (intact).
-  // Saison archivée : playoffResults a été effacé pour gagner de la place, mais on a conservé
-  // une table compacte league.poBonus → on l'utilise alors comme repli (sinon les points de
-  // quarts/finale disparaîtraient de l'historique des points annexes).
-  const pr = league.playoffResults || {};
-  const fromResults = playoffBonusFromResults(pr);
-  const poBonus = Object.keys(fromResults).length > 0 ? fromResults : (league.poBonus || {});
-  Object.entries(poBonus).forEach(([id, pts]) => {
-    bonusMap[id] = (bonusMap[id] || 0) + pts;
+  // Points liés au Tournoi des Champions. On se base sur des données de niveau SAISON
+  // (season.tournoiChampions.participants et season.champions), qui SURVIVENT à l'archivage —
+  // contrairement aux playoffResults par ligue qui sont allégés. Règle :
+  //   • +5 pour chaque véhicule présent dans le Tournoi des Champions (les qualifiés des quarts),
+  //   • +5 de plus pour le champion de la ligue (gagnant des playoffs V1/V2/V3/V4) → 10 au total.
+  const tc = season.tournoiChampions;
+  let participants = (tc && Array.isArray(tc.participants)) ? tc.participants : null;
+  if (!participants) {
+    // Repli si le Tournoi des Champions n'a pas été initialisé pour cette saison :
+    // on prend les qualifiés des quarts de finale de cette ligue depuis playoffResults.
+    participants = [];
+    const pr = league.playoffResults || {};
+    const seen = new Set();
+    Object.values(pr).forEach(m => {
+      if (m.round !== 'qf') return;
+      if (m.homeId && !seen.has(m.homeId)) { seen.add(m.homeId); participants.push({ carId: m.homeId, league: leagueName }); }
+      if (m.awayId && !seen.has(m.awayId)) { seen.add(m.awayId); participants.push({ carId: m.awayId, league: leagueName }); }
+    });
+  }
+  participants.forEach(p => {
+    if (p && p.carId && p.league === leagueName) {
+      bonusMap[p.carId] = (bonusMap[p.carId] || 0) + 5;
+    }
   });
+  const champId = season.champions ? season.champions[leagueName] : null;
+  if (champId) bonusMap[champId] = (bonusMap[champId] || 0) + 5;
   return bonusMap;
 }
 
@@ -1519,7 +1516,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v9 — bonus playoff préservé à l_archivage', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v10 — bonus Tournoi des Champions', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -1685,7 +1682,7 @@ function compressSeasonLeagues(season, isLive) {
             .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
             .map(m => [carIdx[m.homeId], carIdx[m.awayId], m.homeGoals, m.awayGoals]);
         });
-        compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {}, poBonus: playoffBonusFromResults(league.playoffResults) };
+        compLeagues[l] = { ...league, matches: [], groupResults: compGroups, playoffResults: {}, relegationResults: {} };
       } else {
         const minMatches = (league.matches || [])
           .filter(m => m.homeGoals !== null && m.homeGoals !== undefined)
