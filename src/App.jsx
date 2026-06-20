@@ -1502,7 +1502,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v7 — réparation calendrier (journée 0)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v8 — réparation calendrier robuste (par groupe)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -2901,7 +2901,6 @@ export default function App() {
           // (saison courante : day présent + matchs non joués gardés ; saisons passées : 4 éléments)
           if (league.groupResults) {
             const cars = league.cars || [];
-            const mpd = Math.max(1, Math.floor(cars.length / 2)); // matchs par journée (9 pour 18 voitures)
             Object.keys(league.groupResults).forEach(g => {
               const arr = league.groupResults[g];
               if (Array.isArray(arr) && arr.length > 0 && Array.isArray(arr[0])) {
@@ -2914,13 +2913,22 @@ export default function App() {
                     awayGoals: m[3] === undefined ? null : m[3],
                     day: m[4],
                   }));
-                // Réparation du calendrier : si les journées sont cassées (manquantes, =0, ou toutes
-                // identiques — ex. anciennes données où tout est tombé en « journée 0 »), on les
-                // recalcule d'après la POSITION (les matchs sont rangés par journée). Les données
-                // correctes (journées 1..17 distinctes) ne sont pas touchées. Se corrige ensuite
-                // tout seul à la prochaine sauvegarde.
-                const distinct = new Set(dm.map(m => m.day));
-                const broken = dm.some(m => m.day === undefined || m.day === null || m.day < 1) || distinct.size <= 1;
+                // Réparation du calendrier (ex. anciennes données : tout en « journée 0 », ou
+                // journées aplaties en quelques journées géantes). On détecte un calendrier cassé
+                // puis on recalcule la journée d'après la POSITION (les matchs sont rangés par
+                // journée). Les données correctes (17 journées de 9) ne sont pas touchées ; ça se
+                // corrige tout seul à la prochaine sauvegarde.
+                const groupCars = new Set();
+                dm.forEach(m => { groupCars.add(m.homeId); groupCars.add(m.awayId); });
+                const mpd = Math.max(1, Math.floor(groupCars.size / 2));      // 9 pour 18 voitures
+                const expectedDays = Math.max(1, groupCars.size - 1);          // 17 pour 18 voitures
+                const perDay = {};
+                dm.forEach(m => { perDay[m.day] = (perDay[m.day] || 0) + 1; });
+                const maxPerDay = Object.values(perDay).reduce((a, b) => Math.max(a, b), 0);
+                const distinctDays = Object.keys(perDay).length;
+                const broken = dm.some(m => m.day === undefined || m.day === null || m.day < 1)
+                  || maxPerDay > mpd          // une journée a trop de matchs → calendrier aplati
+                  || distinctDays < expectedDays; // pas assez de journées
                 if (broken) dm.forEach((m, idx) => { m.day = Math.floor(idx / mpd) + 1; });
                 league.groupResults[g] = dm;
               }
