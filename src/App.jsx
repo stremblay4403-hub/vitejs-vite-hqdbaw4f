@@ -1719,9 +1719,12 @@ function storageSave(data) {
       ? [ { ...liveSeason, leagues: compressSeasonLeagues(liveSeason, true) } ]
       : [],
     liveSeasonNum: liveSeason ? liveSeason.season : null,
+    // Navigation synchronisée PAR NUMÉRO de saison (portable entre appareils, contrairement à
+    // currentSeasonIdx qui est une position dépendant de la liste locale).
+    viewedSeasonNum: (typeof currentIdx === 'number' && allSeasons[currentIdx])
+      ? allSeasons[currentIdx].season
+      : (liveSeason ? liveSeason.season : null),
     archived: true, // marqueur « nouveau format » : son absence déclenche la migration
-    // currentSeasonIdx (vue) est conservé tel quel : il indexe le tableau COMPLET reconstitué
-    // au chargement, pas le tableau à 1 élément stocké ici.
   };
 
   // Filet anti-perte : si on regarde/édite une saison PASSÉE et que son contenu a changé,
@@ -1871,6 +1874,20 @@ function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons) {
 // Détecte l'ancien format (toutes les saisons dans main, sans marqueur archived).
 function isOldMonolithicFormat(mainParsed) {
   return !mainParsed.archived && Array.isArray(mainParsed.seasons) && mainParsed.seasons.length > 1;
+}
+
+// Convertit la « saison affichée » (synchronisée PAR NUMÉRO dans main.viewedSeasonNum) en
+// position dans la liste LOCALE reconstituée. Défaut : saison live (dernière). Portable entre
+// appareils même si leurs listes diffèrent → corrige le visiteur qui revenait sur S33.
+function resolveViewedIdx(seasons, mainParsed) {
+  if (!Array.isArray(seasons) || seasons.length === 0) return 0;
+  const liveIdx = seasons.length - 1;
+  const num = mainParsed && typeof mainParsed.viewedSeasonNum === 'number' ? mainParsed.viewedSeasonNum : null;
+  if (num !== null) {
+    const idx = seasons.findIndex(s => s && s.season === num);
+    if (idx >= 0) return idx;
+  }
+  return liveIdx;
 }
 
 // Construit le payload main allégé (saison live seule, compressée). Utilisé par la migration
@@ -2693,15 +2710,16 @@ export default function App() {
     fetchArchivedSeasons().then(arch => {
       archivedSeasonsRef.current = arch;
       if (lastMainParsedRef.current) {
+        const memSeasons2 = (dbRef.current && dbRef.current.seasons && dbRef.current.seasons.length)
+          ? dbRef.current.seasons
+          : ((storageLoad() || {}).seasons || []);
         const merged = { ...lastMainParsedRef.current };
-        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, dbRef.current?.seasons);
+        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, memSeasons2);
         merged.photos = photosData; merged.photoTimes = photoTimesData;
         if (!merged.brands) merged.brands = {};
         if (!merged.histOverrides) merged.histOverrides = {};
         if (!merged.rip) merged.rip = [];
-        if (typeof merged.currentSeasonIdx !== 'number' || merged.currentSeasonIdx < 0 || merged.currentSeasonIdx >= merged.seasons.length) {
-          merged.currentSeasonIdx = Math.max(0, merged.seasons.length - 1);
-        }
+        merged.currentSeasonIdx = resolveViewedIdx(merged.seasons, lastMainParsedRef.current);
         isLoadingFromFirebase.current = true;
         applyLoadedData(merged, true);
         setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
@@ -2733,19 +2751,20 @@ export default function App() {
               fetchArchivedSeasons().then(arch => { archivedSeasonsRef.current = arch; });
             }
             // main ne porte que la saison live → reconstituer le tableau COMPLET en mémoire.
-            // L'arbitrage anti-perte (matchs joués) est géré DANS rebuildFullSeasons, sans dépendre
-            // du mode admin/visiteur (peu fiable au rechargement sur mobile).
+            // Base mémoire robuste : dbRef si prêt, sinon localStorage (full) → aucune saison
+            // existante ne peut être perdue même si React n'a pas encore commité dbRef.
+            const memSeasons = (dbRef.current && dbRef.current.seasons && dbRef.current.seasons.length)
+              ? dbRef.current.seasons
+              : ((storageLoad() || {}).seasons || []);
             const parsed = { ...rawMain };
-            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, dbRef.current?.seasons);
+            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, memSeasons);
             parsed.photos = photosData;
             parsed.photoTimes = photoTimesData;
             if (!parsed.brands) parsed.brands = {};
             if (!parsed.histOverrides) parsed.histOverrides = {};
             if (!parsed.rip) parsed.rip = [];
-            // Garde : currentSeasonIdx (vue) doit rester dans les bornes du tableau reconstitué.
-            if (typeof parsed.currentSeasonIdx !== 'number' || parsed.currentSeasonIdx < 0 || parsed.currentSeasonIdx >= parsed.seasons.length) {
-              parsed.currentSeasonIdx = Math.max(0, parsed.seasons.length - 1);
-            }
+            // Position de la saison affichée résolue PAR NUMÉRO (portable) → défaut = saison live.
+            parsed.currentSeasonIdx = resolveViewedIdx(parsed.seasons, rawMain);
             const savedScrollY = window.scrollY;
             const tabsEl = document.querySelector('.tabs');
             if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
