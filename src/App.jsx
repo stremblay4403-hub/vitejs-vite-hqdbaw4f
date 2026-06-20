@@ -1830,10 +1830,27 @@ async function deleteAllArchivedSeasons() {
   } catch (e) { console.warn('deleteAllArchivedSeasons error', e); }
 }
 
+// Compte les matchs JOUÉS d'une saison, en gérant les deux formes (objets décompressés ou
+// tableaux compressés [h,a,hg,ag,(day)]). Sert d'arbitre anti-perte (jamais perdre de matchs).
+function countPlayedMatches(season) {
+  let n = 0;
+  const isPlayed = (m) => Array.isArray(m)
+    ? (m[2] !== null && m[2] !== undefined)
+    : (m && m.homeGoals !== null && m.homeGoals !== undefined);
+  Object.values(season?.leagues || {}).forEach(lg => {
+    if (!lg) return;
+    Object.values(lg.groupResults || {}).forEach(arr => (arr || []).forEach(m => { if (isPlayed(m)) n++; }));
+    (lg.matches || []).forEach(m => { if (isPlayed(m)) n++; });
+  });
+  return n;
+}
+
 // Reconstitue le tableau db.seasons COMPLET, trié par numéro croissant (live = dernière).
-// Priorité : main (saison live) > archives Firestore (saisons passées) > mémoire locale
-// (filet si les archives ne sont pas encore lues / device neuf). Idempotent.
-function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons, preferLocalLive) {
+// Priorité : main (saison live) > archives Firestore (saisons passées) > mémoire locale.
+// ANTI-PERTE (indépendant du mode/login/timing) : pour une saison présente des deux côtés,
+// on garde la version qui a le PLUS de matchs joués — un `main` périmé ne peut donc jamais
+// effacer des matchs récents encore en mémoire/local.
+function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons) {
   const byNum = new Map();
   (inMemorySeasons || []).forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
   (archivedSeasons || []).forEach(s => { if (s && typeof s.season === 'number') byNum.set(s.season, s); });
@@ -1842,9 +1859,10 @@ function rebuildFullSeasons(mainParsed, archivedSeasons, inMemorySeasons, prefer
   const live = Array.isArray(mainParsed.seasons) ? mainParsed.seasons : [];
   live.forEach(s => {
     if (!s || typeof s.season !== 'number') return;
-    // Si le local est plus frais (matchs récents pas encore dans main), NE PAS écraser la
-    // saison live locale par celle de main : on garde la version locale fraîche.
-    if (preferLocalLive && byNum.has(s.season)) return;
+    const existing = byNum.get(s.season);
+    if (existing && countPlayedMatches(existing) > countPlayedMatches(s)) {
+      return; // la version locale est PLUS complète → ne pas l'écraser par main (périmé)
+    }
     byNum.set(s.season, s);
   });
   return Array.from(byNum.values()).sort((a, b) => a.season - b.season);
@@ -2234,7 +2252,8 @@ export default function App() {
   const [isPrivate, setIsPrivate] = useState(false);
   const ADMIN_PASSWORD = 'Tungtungtung440';
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
-    return sessionStorage.getItem('tdv_admin') === 'ok';
+    // Persistant : localStorage survit aux actualisations (sessionStorage s'efface sur mobile iOS).
+    return localStorage.getItem('tdv_admin') === 'ok' || sessionStorage.getItem('tdv_admin') === 'ok';
   });
   const isPublicMode = !isLoggedIn;
 
@@ -2674,11 +2693,8 @@ export default function App() {
     fetchArchivedSeasons().then(arch => {
       archivedSeasonsRef.current = arch;
       if (lastMainParsedRef.current) {
-        const localSavedAt2 = Number(localStorage.getItem(STORAGE_KEY + ':at')) || 0;
-        const u2 = lastMainUpdatedAtRef.current || 0;
-        const preferLocalLive2 = !isPublicModeRef.current && localSavedAt2 > u2;
         const merged = { ...lastMainParsedRef.current };
-        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, dbRef.current?.seasons, preferLocalLive2);
+        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, dbRef.current?.seasons);
         merged.photos = photosData; merged.photoTimes = photoTimesData;
         if (!merged.brands) merged.brands = {};
         if (!merged.histOverrides) merged.histOverrides = {};
@@ -2716,15 +2732,11 @@ export default function App() {
             if (typeof rawMain.liveSeasonNum === 'number' && rawMain.liveSeasonNum > knownMax + 1) {
               fetchArchivedSeasons().then(arch => { archivedSeasonsRef.current = arch; });
             }
-            // main ne porte que la saison live → reconstituer le tableau COMPLET en mémoire :
-            // archives Firestore + saisons déjà en mémoire (filet) + saison live de main.
-            // Arbitrage anti-perte : si la sauvegarde LOCALE est plus récente que main (matchs
-            // récents pas encore synchronisés) et qu'on est l'appareil admin (le seul à écrire),
-            // on garde la saison live LOCALE plutôt que celle, périmée, de main.
-            const localSavedAt = Number(localStorage.getItem(STORAGE_KEY + ':at')) || 0;
-            const preferLocalLive = !isPublicModeRef.current && localSavedAt > u;
+            // main ne porte que la saison live → reconstituer le tableau COMPLET en mémoire.
+            // L'arbitrage anti-perte (matchs joués) est géré DANS rebuildFullSeasons, sans dépendre
+            // du mode admin/visiteur (peu fiable au rechargement sur mobile).
             const parsed = { ...rawMain };
-            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, dbRef.current?.seasons, preferLocalLive);
+            parsed.seasons = rebuildFullSeasons(rawMain, archivedSeasonsRef.current, dbRef.current?.seasons);
             parsed.photos = photosData;
             parsed.photoTimes = photoTimesData;
             if (!parsed.brands) parsed.brands = {};
@@ -3203,7 +3215,12 @@ export default function App() {
     LEAGUES.forEach(l => {
       const prev = qualsRef.current[l] || { X: new Set(), Y: new Set(), Z: new Set(), P: new Set(), ELIM: new Set() };
       const next = computeQualifications(l);
-      checkAndNotifyQualifications(l, prev, next);
+      // Ne notifier que pour un VRAI changement local (jeu en cours). Pendant une ré-application
+      // de données distantes (sync Firebase, rechargement), on met à jour la référence EN SILENCE :
+      // ça évite le spam de notifications « qualifié pour les playoffs » si l'état bouge via la synchro.
+      if (!isLoadingFromFirebase.current) {
+        checkAndNotifyQualifications(l, prev, next);
+      }
       qualsRef.current[l] = next;
     });
   }, [currentSeason, loaded]);
@@ -11485,6 +11502,7 @@ export default function App() {
                   onClick={() => {
                     const pwd = prompt('Mot de passe admin :');
                     if (pwd === ADMIN_PASSWORD) {
+                      localStorage.setItem('tdv_admin', 'ok'); // persiste à travers les actualisations
                       sessionStorage.setItem('tdv_admin', 'ok');
                       setIsLoggedIn(true);
                     } else if (pwd !== null) {
@@ -11501,7 +11519,7 @@ export default function App() {
               Sauvegarde auto
             </div>
             <button className="btn btn-sm btn-dark" style={{ whiteSpace:'nowrap',flexShrink:0,fontSize:11 }}
-              onClick={() => { sessionStorage.removeItem('tdv_admin'); setIsLoggedIn(false); }}>
+              onClick={() => { localStorage.removeItem('tdv_admin'); sessionStorage.removeItem('tdv_admin'); setIsLoggedIn(false); }}>
               🔓 Déconnexion
             </button>
             <label className="btn btn-outline btn-sm" style={{ cursor:'pointer',whiteSpace:'nowrap',flexShrink:0 }}>
