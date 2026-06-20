@@ -1502,6 +1502,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
+console.log('%c[Tournois de Voitures] build archivage v5 — fusion archives + nav par numéro', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -2728,6 +2729,9 @@ export default function App() {
       merged.currentSeasonIdx = resolveViewedIdx(merged.seasons, lastMainParsedRef.current || {});
       isLoadingFromFirebase.current = true;
       applyLoadedData(merged, true);
+      // Persistance EXPLICITE : après applyLoadedData, merged.seasons est décompressé en place.
+      // On garantit que localStorage contient bien l'historique (sinon le Sync lirait 0 saison).
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
       setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
     });
 
@@ -11552,7 +11556,17 @@ export default function App() {
             </label>
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
-              const fullData = storageLoad() || db;
+              // Source de vérité = l'état EN MÉMOIRE (ce qui est affiché, S33 incluse), pas
+              // localStorage qui peut être en retard. On fusionne quand même localStorage au cas où
+              // il contiendrait une saison absente de la mémoire (sécurité, jamais de perte).
+              const memData = db && db.seasons && db.seasons.length ? db : null;
+              const lsData = storageLoad();
+              let fullData = memData || lsData || db;
+              if (memData && lsData && Array.isArray(lsData.seasons)) {
+                const haveNums = new Set(memData.seasons.map(s => s && s.season));
+                const extra = lsData.seasons.filter(s => s && !haveNums.has(s.season));
+                if (extra.length) fullData = { ...memData, seasons: [...memData.seasons, ...extra].sort((a,b)=>a.season-b.season) };
+              }
               const { photos, photoTimes, ...rest } = fullData;
               const photoCount = Object.keys(photos || {}).length;
               const seasons = rest.seasons || [];
