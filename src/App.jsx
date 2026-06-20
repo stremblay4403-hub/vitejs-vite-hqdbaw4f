@@ -2705,25 +2705,30 @@ export default function App() {
       setTimeout(() => { isLoadingFromFirebase.current = false; }, 2000);
     });
 
-    // Charger une fois les saisons archivées (docs tournois/season_<N>), puis reconstituer
-    // le tableau complet si un snapshot de main est déjà arrivé (utile sur appareil neuf).
+    // Charger les saisons archivées (docs tournois/season_<N>) puis les FUSIONNER toujours dans
+    // l'état en mémoire — indépendamment d'avoir reçu un snapshot. C'est essentiel sur l'appareil
+    // ADMIN : ses propres écritures reviennent en écho et sont ignorées, donc on ne peut pas
+    // compter sur le listener pour réinjecter l'historique. Sans ça, S33 restait invisible.
     fetchArchivedSeasons().then(arch => {
-      archivedSeasonsRef.current = arch;
-      if (lastMainParsedRef.current) {
-        const memSeasons2 = (dbRef.current && dbRef.current.seasons && dbRef.current.seasons.length)
-          ? dbRef.current.seasons
-          : ((storageLoad() || {}).seasons || []);
-        const merged = { ...lastMainParsedRef.current };
-        merged.seasons = rebuildFullSeasons(lastMainParsedRef.current, arch, memSeasons2);
-        merged.photos = photosData; merged.photoTimes = photoTimesData;
-        if (!merged.brands) merged.brands = {};
-        if (!merged.histOverrides) merged.histOverrides = {};
-        if (!merged.rip) merged.rip = [];
-        merged.currentSeasonIdx = resolveViewedIdx(merged.seasons, lastMainParsedRef.current);
-        isLoadingFromFirebase.current = true;
-        applyLoadedData(merged, true);
-        setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
-      }
+      archivedSeasonsRef.current = arch || [];
+      if (!arch || arch.length === 0) return;
+      const base = (dbRef.current && dbRef.current.seasons && dbRef.current.seasons.length)
+        ? dbRef.current
+        : (storageLoad() || { seasons: [] });
+      const baseNums = new Set((base.seasons || []).map(s => s && s.season));
+      if (!arch.some(s => s && !baseNums.has(s.season))) return; // toutes déjà présentes
+      const merged = { ...base };
+      // union(saisons en mémoire, archives) — pas d'écrasement de la live (déjà dans `base`)
+      merged.seasons = rebuildFullSeasons({ seasons: [] }, arch, base.seasons);
+      if (!merged.photos || !Object.keys(merged.photos).length) merged.photos = photosData;
+      if (!merged.photoTimes) merged.photoTimes = photoTimesData;
+      if (!merged.brands) merged.brands = {};
+      if (!merged.histOverrides) merged.histOverrides = {};
+      if (!merged.rip) merged.rip = [];
+      merged.currentSeasonIdx = resolveViewedIdx(merged.seasons, lastMainParsedRef.current || {});
+      isLoadingFromFirebase.current = true;
+      applyLoadedData(merged, true);
+      setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
     });
 
     let unsubData = null;
