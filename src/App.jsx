@@ -1502,7 +1502,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v5 — fusion archives + nav par numéro', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v6 — admin relit Firebase + localStorage compressé', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -1685,9 +1685,22 @@ function seasonDocRef(num) { return doc(firestoreDb, 'tournois', 'season_' + num
 
 // ── Sauvegarde ─────────────────────────────────────────────────────
 function storageSave(data) {
+  // localStorage : stocker une version COMPRESSÉE (≈10× plus petite). Avec beaucoup de matchs,
+  // le JSON décompressé dépasse le quota localStorage (~5 Mo) → setItem échouait en silence et
+  // l'appareil rechargeait un état périmé. La compression réutilise compressSeasonLeagues ;
+  // applyLoadedData décompresse au chargement (il gère déjà les deux formats).
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-  } catch {}
+    const seasons = data.seasons || [];
+    const liveIdx = seasons.length - 1;
+    const compact = {
+      ...data,
+      seasons: seasons.map((s, i) => ({ ...s, leagues: compressSeasonLeagues(s, i === liveIdx) })),
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(compact));
+  } catch {
+    // Si même la version compressée ne passe pas, tenter le brut (au pire on garde l'ancien).
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); } catch {}
+  }
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
   if (isLoadingFromFirebase.current) return;
@@ -2241,6 +2254,7 @@ export default function App() {
   const archivedSeasonsRef = React.useRef([]);
   const lastMainParsedRef = React.useRef(null); // dernier payload main reçu (pour re-reconstruire)
   const lastMainUpdatedAtRef = React.useRef(0); // updatedAt du dernier main reçu (arbitrage local/main)
+  const hasAppliedMainRef = React.useRef(false); // a-t-on déjà appliqué main une fois (1er chargement) ?
   const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, photoTimes: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
@@ -2729,9 +2743,6 @@ export default function App() {
       merged.currentSeasonIdx = resolveViewedIdx(merged.seasons, lastMainParsedRef.current || {});
       isLoadingFromFirebase.current = true;
       applyLoadedData(merged, true);
-      // Persistance EXPLICITE : après applyLoadedData, merged.seasons est décompressé en place.
-      // On garantit que localStorage contient bien l'historique (sinon le Sync lirait 0 saison).
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(merged)); } catch {}
       setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
     });
 
@@ -2740,8 +2751,12 @@ export default function App() {
       if (unsubData) { try { unsubData(); } catch(e){} }
       unsubData = onSnapshot(dataDocRef, (dataSnap) => {
         if (dataSnap.exists()) {
-          // Ignorer l'écho de nos propres écritures (même appareil) : pas de re-application, pas de revert
-          if (dataSnap.data().writer === CLIENT_ID) { setLoaded(true); return; }
+          // Ignorer l'écho de nos propres écritures PENDANT le jeu (évite re-render et revert).
+          // MAIS au tout premier chargement, on traite main même si c'est notre écho : il faut
+          // charger la saison live à jour depuis Firebase, sinon l'admin se fie à un localStorage
+          // potentiellement périmé (quota dépassé) et « perd » ses matchs récents au rechargement.
+          // La protection anti-perte (garder le plus de matchs joués) empêche tout revert.
+          if (hasAppliedMainRef.current && dataSnap.data().writer === CLIENT_ID) { setLoaded(true); return; }
           // Ignorer un instantané plus ancien que ce qu'on a déjà appliqué (ex. cache renvoyé
           // au redémarrage du listener) — évite un retour en arrière visuel passager
           const u = dataSnap.data().updatedAt || 0;
@@ -2779,6 +2794,7 @@ export default function App() {
             if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
             isLoadingFromFirebase.current = true;
             applyLoadedData(parsed, true);
+            hasAppliedMainRef.current = true; // main a été appliqué au moins une fois
             // Migration ancien format → archivé (admin seulement). parsed.seasons est désormais
             // DÉCOMPRESSÉ en place par applyLoadedData → compression d'archive correcte.
             if (oldFormat) runArchiveMigration(parsed);
@@ -11556,17 +11572,9 @@ export default function App() {
             </label>
             <button className="btn btn-outline btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0 }} onClick={exportData}>📤 Exporter JSON</button>
             <button className="btn btn-sm" style={{ whiteSpace:'nowrap',flexShrink:0,background:'rgba(255,140,0,0.15)',borderColor:'orange',color:'orange' }} onClick={() => {
-              // Source de vérité = l'état EN MÉMOIRE (ce qui est affiché, S33 incluse), pas
-              // localStorage qui peut être en retard. On fusionne quand même localStorage au cas où
-              // il contiendrait une saison absente de la mémoire (sécurité, jamais de perte).
-              const memData = db && db.seasons && db.seasons.length ? db : null;
-              const lsData = storageLoad();
-              let fullData = memData || lsData || db;
-              if (memData && lsData && Array.isArray(lsData.seasons)) {
-                const haveNums = new Set(memData.seasons.map(s => s && s.season));
-                const extra = lsData.seasons.filter(s => s && !haveNums.has(s.season));
-                if (extra.length) fullData = { ...memData, seasons: [...memData.seasons, ...extra].sort((a,b)=>a.season-b.season) };
-              }
+              // Source = état EN MÉMOIRE (décompressé, ce qui est affiché). On ne lit plus
+              // localStorage ici car il est désormais stocké compressé.
+              const fullData = (db && db.seasons && db.seasons.length) ? db : (storageLoad() || db);
               const { photos, photoTimes, ...rest } = fullData;
               const photoCount = Object.keys(photos || {}).length;
               const seasons = rest.seasons || [];
