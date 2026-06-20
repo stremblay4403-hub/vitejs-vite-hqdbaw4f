@@ -1516,7 +1516,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v10 — bonus Tournoi des Champions', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v11 — total par saison (validation)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -6920,6 +6920,43 @@ export default function App() {
                   <tr><td colSpan={7 + histSeasonNums.length + appSeasonNums.length} className="text-dim text-center" style={{ padding:24 }}>Aucune voiture trouvée</td></tr>
                 )}
               </tbody>
+              <tfoot>
+                {(() => {
+                  // Ligne de validation : total COMPLET des points par saison (toutes voitures, non filtré).
+                  // Pour une ligue principale entièrement jouée : 8 groupes × 55 = 440, + Tournoi des
+                  // Champions (8 participants × 5 = 40) + champion (+5) = 485.
+                  const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(leagueTab);
+                  const seasonTotal = (key) => allBonus.reduce((sum, e) => sum + (e.bySeason[key] || 0), 0);
+                  const grandTotal = allBonus.reduce((sum, e) => sum + (e.total || 0), 0);
+                  return (
+                    <tr style={{ borderTop:'2px solid var(--gold-dim)' }}>
+                      <td style={{ width:32 }}></td>
+                      <td style={{ width:36 }}></td>
+                      <td style={{ width:130 }}></td>
+                      <td className="sticky-col" style={{ left:0,minWidth:180,padding:'10px 12px',background:'var(--dark3)',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1,color:'var(--gold)' }}>
+                        Total saison{isMain ? ' (complet = 485)' : ''}
+                      </td>
+                      <td className="sticky-col pts-val" style={{ left:180,borderRight:'1px solid var(--border)',fontSize:22,textAlign:'center',color:'var(--gold)',background:'var(--dark3)' }}>
+                        {grandTotal}
+                      </td>
+                      {histSeasonNums.map(n => {
+                        const tot = seasonTotal(`hist-S${n}`);
+                        return <td key={`ht${n}`} style={{ textAlign:'center',fontSize:13,fontFamily:"'Bebas Neue',sans-serif",color:'var(--text-dim)',background:'var(--dark3)' }}>{tot || '—'}</td>;
+                      })}
+                      {appSeasonNums.map(n => {
+                        const tot = seasonTotal(`app-S${n}`);
+                        const complete = isMain && tot === 485;
+                        return (
+                          <td key={`at${n}`} title={complete ? 'Saison complète ✓ (485)' : `${tot} pts distribués`}
+                            style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",fontWeight:700,color:complete ? 'var(--green)' : (tot ? 'var(--gold)' : 'var(--text-dim)'),background:'var(--dark3)' }}>
+                            {complete ? `✓${tot}` : (tot || '—')}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })()}
+              </tfoot>
             </table>
           </div>
         </div>
