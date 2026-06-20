@@ -1516,7 +1516,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v12 — déconnexion par session + navigation saisons visiteur', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v14 — progression relative à la saison affichée', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -5269,25 +5269,33 @@ export default function App() {
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 10 Pts Annexes — Total Cumulatif</div>
                     {(() => {
                       const allBonus = computeAllSeasonsBonus(l);
-                      const top10 = allBonus.slice(0, 10);
+                      // Progression relative à la SAISON AFFICHÉE :
+                      //  • cumul des points jusqu'à la saison affichée (incluse),
+                      //  • flèche = comparaison avec le cumul jusqu'à la saison PRÉCÉDENTE.
+                      // Ainsi, une nouvelle saison VIDE montre « — » (rien joué → cumul inchangé),
+                      // puis la progression vs la saison précédente se remplit au fil des matchs joués.
+                      // Ex. S33 → progression S32→S33 ; S34 (joué) → progression S33→S34.
+                      const viewedNum = currentSeason.season;
+                      const keyNum = (k) => Number(String(k).replace('hist-S', '').replace('app-S', ''));
+                      const cumul = (e, upTo) => Object.entries(e.bySeason || {})
+                        .reduce((s, [k, v]) => s + (keyNum(k) <= upTo ? (v || 0) : 0), 0);
+
+                      // Classement cumulatif jusqu'à la saison affichée
+                      const top10 = allBonus
+                        .map(e => ({ ...e, total: cumul(e, viewedNum) }))
+                        .filter(e => e.total > 0)
+                        .sort((a, b) => b.total - a.total)
+                        .slice(0, 10);
                       if (!top10 || top10.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
 
-                      // Rang précédent : même méthode que BonusView — exclure la dernière saison app
+                      // Classement de la saison PRÉCÉDENTE (cumul jusqu'à viewedNum - 1)
                       const prevRankMap = {};
-                      const appSeasonNums = db.seasons.map(s => s.season);
-                      const histSeasonNums = [...new Set((HISTORICAL_DATA.historicalBonus[l] || []).flatMap(c => Object.keys(c.bySeason).map(Number)))].sort((a,b)=>a-b);
-                      const allSeasonKeys = [
-                        ...histSeasonNums.map(n => `hist-S${n}`),
-                        ...appSeasonNums.map(n => `app-S${n}`)
-                      ];
-                      const prevKeys = allSeasonKeys.slice(0, -1);
-                      if (prevKeys.length > 0) {
-                        const prevTotals = allBonus.map(e => ({
-                          name: e.name,
-                          total: prevKeys.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0)
-                        })).sort((a, b) => b.total - a.total);
-                        prevTotals.forEach((e, idx) => { prevRankMap[e.name] = idx + 1; });
-                      }
+                      allBonus
+                        .map(e => ({ name: e.name, total: cumul(e, viewedNum - 1) }))
+                        .filter(e => e.total > 0)
+                        .sort((a, b) => b.total - a.total)
+                        .forEach((e, idx) => { prevRankMap[e.name] = idx + 1; });
+                      const hasPrev = Object.keys(prevRankMap).length > 0;
 
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
@@ -5316,7 +5324,7 @@ export default function App() {
                                   </span>
                                 )}
                                 {diff === 0 && <span style={{ fontSize:12,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
-                                {diff === null && db.currentSeasonIdx > 0 && (
+                                {diff === null && hasPrev && (
                                   <span style={{ fontSize:10,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
                                 )}
                                 {/* Points */}
