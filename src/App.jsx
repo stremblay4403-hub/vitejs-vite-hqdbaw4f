@@ -1516,7 +1516,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v14 — progression relative à la saison affichée', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v15 — notifs qualif visibles chez le visiteur', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -3297,12 +3297,11 @@ export default function App() {
     LEAGUES.forEach(l => {
       const prev = qualsRef.current[l] || { X: new Set(), Y: new Set(), Z: new Set(), P: new Set(), ELIM: new Set() };
       const next = computeQualifications(l);
-      // Ne notifier que pour un VRAI changement local (jeu en cours). Pendant une ré-application
-      // de données distantes (sync Firebase, rechargement), on met à jour la référence EN SILENCE :
-      // ça évite le spam de notifications « qualifié pour les playoffs » si l'état bouge via la synchro.
-      if (!isLoadingFromFirebase.current) {
-        checkAndNotifyQualifications(l, prev, next);
-      }
+      // On notifie les NOUVELLES qualifications, qu'elles viennent du jeu local (admin) ou de la
+      // synchro Firebase (visiteur) — comme les notifications auxiliaires. L'init silencieuse
+      // (loadedForNotifs) et la comparaison « ajouts seulement » suffisent à éviter le spam ;
+      // pas de garde-fou isLoadingFromFirebase, sinon le visiteur ne reçoit jamais ces notifs.
+      checkAndNotifyQualifications(l, prev, next);
       qualsRef.current[l] = next;
     });
   }, [currentSeason, loaded]);
