@@ -1307,6 +1307,9 @@ const css = `
   .tbl .sticky-col { position: sticky; z-index: 2; background: var(--dark2); }
   .tbl tr:hover .sticky-col { background: #1e1c17; }
   .tbl th.sticky-col { background: var(--dark3); z-index: 3; }
+  .tbl .sticky-right { position: sticky; right: 0; z-index: 2; background: var(--dark2); border-left: 1px solid var(--border); }
+  .tbl tr:hover .sticky-right { background: #1e1c17; }
+  .tbl th.sticky-right { background: var(--dark3); z-index: 3; }
   
   /* Badges */
   .badge {
@@ -1516,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v19 — colonne Ligue dans le profil', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v20 — Pts Ann. épinglée à droite (profil)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -6564,8 +6567,9 @@ export default function App() {
             <div className="font-bebas" style={{ fontSize:14,color:'var(--gold-dim)',marginBottom:8,letterSpacing:2 }}>
               Historique Matchs — S33+
             </div>
+            <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
             <table className="tbl">
-              <thead><tr><th>S.</th><th>Ligue</th><th>Rang</th><th>Pts</th><th>%</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Pts Ann.</th><th></th></tr></thead>
+              <thead><tr><th>S.</th><th>Ligue</th><th>Rang</th><th>Pts</th><th>%</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th className="sticky-right">Pts Ann.</th></tr></thead>
               <tbody>
                 {db.seasons.slice().reverse().map(s => {
                   let foundLn = null, lid = null, carInSeason = null;
@@ -6615,16 +6619,16 @@ export default function App() {
                       <td className="pts-val">{seasonPts}</td>
                       <td style={{ color: seasonPct === null ? 'var(--text-dim)' : (seasonPct >= 60 ? 'var(--green)' : (seasonPct >= 40 ? 'var(--gold)' : 'var(--red)')), fontFamily:"'Bebas Neue',sans-serif" }}>{seasonPct === null ? '—' : `${seasonPct}%`}</td>
                       <td>{w}</td><td>{d}</td><td>{lo}</td><td>{gf}</td><td>{ga}</td>
-                      <td className="pts-val">{bp}</td>
-                      <td>{isChamp && '🏆'}{isRel && '⬇'}</td>
+                      <td className="pts-val sticky-right">{bp}{isChamp && ' 🏆'}{isRel && ' ⬇'}</td>
                     </tr>
                   );
                 })}
                 {db.seasons.length === 0 && (
-                  <tr><td colSpan={12} className="text-dim text-center" style={{ padding:12 }}>Aucune saison jouée</td></tr>
+                  <tr><td colSpan={11} className="text-dim text-center" style={{ padding:12 }}>Aucune saison jouée</td></tr>
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       </div>
