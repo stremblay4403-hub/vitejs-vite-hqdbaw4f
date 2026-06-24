@@ -1516,7 +1516,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v18 — % <40 en rouge', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v19 — colonne Ligue dans le profil', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -6565,7 +6565,7 @@ export default function App() {
               Historique Matchs — S33+
             </div>
             <table className="tbl">
-              <thead><tr><th>S.</th><th>Rang</th><th>Pts</th><th>%</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Pts Ann.</th><th></th></tr></thead>
+              <thead><tr><th>S.</th><th>Ligue</th><th>Rang</th><th>Pts</th><th>%</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th>Pts Ann.</th><th></th></tr></thead>
               <tbody>
                 {db.seasons.slice().reverse().map(s => {
                   let foundLn = null, lid = null, carInSeason = null;
@@ -6610,6 +6610,7 @@ export default function App() {
                   return (
                     <tr key={s.season}>
                       <td className="rank">{s.season}</td>
+                      <td><span className="badge badge-blue" style={{ fontSize:9, whiteSpace:'nowrap' }}>{foundLn.replace('Voitures ', 'V')}</span></td>
                       <td>{rank ? `#${rank}` : '—'}</td>
                       <td className="pts-val">{seasonPts}</td>
                       <td style={{ color: seasonPct === null ? 'var(--text-dim)' : (seasonPct >= 60 ? 'var(--green)' : (seasonPct >= 40 ? 'var(--gold)' : 'var(--red)')), fontFamily:"'Bebas Neue',sans-serif" }}>{seasonPct === null ? '—' : `${seasonPct}%`}</td>
@@ -6620,7 +6621,7 @@ export default function App() {
                   );
                 })}
                 {db.seasons.length === 0 && (
-                  <tr><td colSpan={11} className="text-dim text-center" style={{ padding:12 }}>Aucune saison jouée</td></tr>
+                  <tr><td colSpan={12} className="text-dim text-center" style={{ padding:12 }}>Aucune saison jouée</td></tr>
                 )}
               </tbody>
             </table>
