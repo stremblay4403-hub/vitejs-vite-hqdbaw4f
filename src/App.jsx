@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v20 — Pts Ann. épinglée à droite (profil)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v22 — toujours 2 cartes distinctes (Champion + Meilleur))', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -11469,7 +11469,7 @@ export default function App() {
                               </div>
                             </div>
                           )}
-                          {zCar && zCar.id !== champId && (
+                          {zCar && (
                             <div style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--gold-dim)', cursor:'pointer', background:'var(--dark2)' }}
                               onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
                               <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
