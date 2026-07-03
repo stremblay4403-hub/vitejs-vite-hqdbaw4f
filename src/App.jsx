@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v28 — compteur qualifications playoffs dans notif)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v29 — compteur qualifications corrigé (+1 saison courante))', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -3280,12 +3280,16 @@ export default function App() {
     // Règle : S1-S29 → bonus > 0 (toute voiture ayant marqué des pts = qualifiée),
     //         S30+   → bonus ≥ 3 (le barème minimal d'un top-10 d'un groupe = 1 pt, 
     //                              mais 3 pts = au moins 10e dans 3 groupes, signe de qualification).
+    const currentSeasonNum = currentSeason.season;
     const getPlayoffCount = (carId) => {
       const allBonus = computeAllSeasonsBonus(leagueName);
       const entry = allBonus.find(e => e.id === carId);
       if (!entry) return 0;
+      // On exclut la saison en cours (ses pts annexes sont 0 ou partiels tant que tous les
+      // groupes ne sont pas joués). On ajoute +1 séparément car la notif confirme la qualif.
       return Object.entries(entry.bySeason || {}).reduce((count, [key, pts]) => {
         const num = Number(String(key).replace('hist-S','').replace('app-S',''));
+        if (num === currentSeasonNum) return count; // exclure la saison en cours
         if (num <= 29 && pts > 0) return count + 1;
         if (num >= 30 && pts >= 3) return count + 1;
         return count;
@@ -3295,8 +3299,8 @@ export default function App() {
 
     newQuals.X.forEach(id => {
       if (!prevQuals.X.has(id)) {
-        const count = getPlayoffCount(id);
-        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id), getPts(id), count > 0 ? ordinal(count) : null);
+        const count = getPlayoffCount(id) + 1; // +1 = cette qualification
+        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id), getPts(id), ordinal(count));
       }
     });
     newQuals.Y.forEach(id => {
