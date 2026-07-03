@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v26 — notif : nom grand + pts actuels)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v27 — points très gros dans notif)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -11644,9 +11644,10 @@ export default function App() {
                   <div style={{ gridColumn:'2', gridRow:'1', padding:'10px 12px 8px', display:'flex', flexDirection:'column', justifyContent:'flex-start', gap:4 }}>
                     <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:accent, lineHeight:1 }}>{n.carName}</span>
                     {n.carPts != null && (
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:1, color:textColor, opacity:0.85 }}>
-                        {n.carPts} <span style={{ fontSize:11, opacity:0.7 }}>PTS</span>
-                      </span>
+                      <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:52, letterSpacing:2, color:accent, lineHeight:1, fontWeight:900 }}>{n.carPts}</span>
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:textColor, opacity:0.8, letterSpacing:2 }}>PTS</span>
+                      </div>
                     )}
                   </div>
                   {/* Texte notif en bas — pleine largeur (les 2 colonnes) */}
