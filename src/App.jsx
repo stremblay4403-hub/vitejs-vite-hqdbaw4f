@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v22 — toujours 2 cartes distinctes (Champion + Meilleur))', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v23 — photo dans les notifications de qualification)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -3172,9 +3172,9 @@ export default function App() {
     }
   }
 
-  function pushNotif(msg, type = 'info') {
+  function pushNotif(msg, type = 'info', photoUrl = null) {
     const id = genId();
-    setNotifications(n => [...n, { id, msg, type }]);
+    setNotifications(n => [...n, { id, msg, type, photoUrl }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
   }
 
@@ -3264,22 +3264,23 @@ export default function App() {
     const league = currentSeason.leagues[leagueName];
     if (!league) return;
     const getName = id => league.cars.find(c => c.id === id)?.name || id;
+    const getPhoto = id => getCarPhoto(id) || null;
 
     newQuals.X.forEach(id => {
       if (!prevQuals.X.has(id))
-        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success');
+        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id));
     });
     newQuals.Y.forEach(id => {
       if (!prevQuals.Y.has(id))
-        pushNotif(`🥇 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT PREMIER DE GROUPE`, 'gold');
+        pushNotif(`🥇 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT PREMIER DE GROUPE`, 'gold', getPhoto(id));
     });
     newQuals.Z.forEach(id => {
       if (!prevQuals.Z.has(id))
-        pushNotif(`⭐ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT LE MEILLEUR DE LA LIGUE`, 'gold');
+        pushNotif(`⭐ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT LE MEILLEUR DE LA LIGUE`, 'gold', getPhoto(id));
     });
     newQuals.ELIM.forEach(id => {
       if (!prevQuals.ELIM.has(id))
-        pushNotif(`❌ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT EN DANGER D'ÉLIMINATION`, 'danger');
+        pushNotif(`❌ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT EN DANGER D'ÉLIMINATION`, 'danger', getPhoto(id));
     });
   }
 
@@ -11612,8 +11613,18 @@ export default function App() {
           <div style={{ position:'fixed',top:0,left:0,right:0,zIndex:9999,display:'flex',flexDirection:'column',gap:4,padding:'8px 16px',pointerEvents:'none' }}>
             {notifications.map(n => (
               <div key={n.id} style={{
-                padding:'10px 16px',borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,pointerEvents:'auto',animation:'slideIn 0.3s ease',background:n.type === 'success' ? 'rgba(39,174,96,0.95)' :n.type === 'gold' ? 'rgba(201,168,76,0.95)' :n.type === 'danger' ? 'rgba(192,57,43,0.95)' :n.type === 'info' ? 'rgba(22,160,133,0.95)' :'rgba(30,30,30,0.95)',color:n.type === 'gold' ? '#000' :'#fff',boxShadow:'0 4px 20px rgba(0,0,0,0.5)',borderLeft:`4px solid ${n.type === 'success' ? '#2ecc71' :n.type === 'gold' ? '#f1c40f' :n.type === 'danger' ? '#e74c3c' :n.type === 'info' ? '#1abc9c' :'#888'}`,cursor:'pointer',}} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}>
-                {n.msg}
+                display:'flex',alignItems:'center',gap:10,
+                padding:'8px 12px',borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,pointerEvents:'auto',animation:'slideIn 0.3s ease',
+                background:n.type === 'success' ? 'rgba(39,174,96,0.95)' :n.type === 'gold' ? 'rgba(201,168,76,0.95)' :n.type === 'danger' ? 'rgba(192,57,43,0.95)' :n.type === 'info' ? 'rgba(22,160,133,0.95)' :'rgba(30,30,30,0.95)',
+                color:n.type === 'gold' ? '#000' :'#fff',
+                boxShadow:'0 4px 20px rgba(0,0,0,0.5)',
+                borderLeft:`4px solid ${n.type === 'success' ? '#2ecc71' :n.type === 'gold' ? '#f1c40f' :n.type === 'danger' ? '#e74c3c' :n.type === 'info' ? '#1abc9c' :'#888'}`,
+                cursor:'pointer',
+              }} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}>
+                {n.photoUrl && (
+                  <img src={n.photoUrl} alt="" style={{ width:48, height:36, objectFit:'cover', borderRadius:3, flexShrink:0, opacity:0.95 }} />
+                )}
+                <span style={{ flex:1 }}>{n.msg}</span>
               </div>
             ))}
           </div>
