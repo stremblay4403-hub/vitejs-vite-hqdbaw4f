@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v23 — photo dans les notifications de qualification)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v25 — notif grille CSS fidèle au sketch)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -3172,9 +3172,9 @@ export default function App() {
     }
   }
 
-  function pushNotif(msg, type = 'info', photoUrl = null) {
+  function pushNotif(msg, type = 'info', photoUrl = null, carName = null) {
     const id = genId();
-    setNotifications(n => [...n, { id, msg, type, photoUrl }]);
+    setNotifications(n => [...n, { id, msg, type, photoUrl, carName }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
   }
 
@@ -3268,19 +3268,19 @@ export default function App() {
 
     newQuals.X.forEach(id => {
       if (!prevQuals.X.has(id))
-        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id));
+        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id));
     });
     newQuals.Y.forEach(id => {
       if (!prevQuals.Y.has(id))
-        pushNotif(`🥇 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT PREMIER DE GROUPE`, 'gold', getPhoto(id));
+        pushNotif(`🥇 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT PREMIER DE GROUPE`, 'gold', getPhoto(id), getName(id));
     });
     newQuals.Z.forEach(id => {
       if (!prevQuals.Z.has(id))
-        pushNotif(`⭐ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT LE MEILLEUR DE LA LIGUE`, 'gold', getPhoto(id));
+        pushNotif(`⭐ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT LE MEILLEUR DE LA LIGUE`, 'gold', getPhoto(id), getName(id));
     });
     newQuals.ELIM.forEach(id => {
       if (!prevQuals.ELIM.has(id))
-        pushNotif(`❌ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT EN DANGER D'ÉLIMINATION`, 'danger', getPhoto(id));
+        pushNotif(`❌ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT EN DANGER D'ÉLIMINATION`, 'danger', getPhoto(id), getName(id));
     });
   }
 
@@ -11610,23 +11610,43 @@ export default function App() {
         )}
         {/* Notification banners */}
         {notifications.length > 0 && (
-          <div style={{ position:'fixed',top:0,left:0,right:0,zIndex:9999,display:'flex',flexDirection:'column',gap:4,padding:'8px 16px',pointerEvents:'none' }}>
-            {notifications.map(n => (
-              <div key={n.id} style={{
-                display:'flex',alignItems:'center',gap:10,
-                padding:'8px 12px',borderRadius:4,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,fontSize:14,pointerEvents:'auto',animation:'slideIn 0.3s ease',
-                background:n.type === 'success' ? 'rgba(39,174,96,0.95)' :n.type === 'gold' ? 'rgba(201,168,76,0.95)' :n.type === 'danger' ? 'rgba(192,57,43,0.95)' :n.type === 'info' ? 'rgba(22,160,133,0.95)' :'rgba(30,30,30,0.95)',
-                color:n.type === 'gold' ? '#000' :'#fff',
-                boxShadow:'0 4px 20px rgba(0,0,0,0.5)',
-                borderLeft:`4px solid ${n.type === 'success' ? '#2ecc71' :n.type === 'gold' ? '#f1c40f' :n.type === 'danger' ? '#e74c3c' :n.type === 'info' ? '#1abc9c' :'#888'}`,
-                cursor:'pointer',
-              }} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}>
-                {n.photoUrl && (
-                  <img src={n.photoUrl} alt="" style={{ width:48, height:36, objectFit:'cover', borderRadius:3, flexShrink:0, opacity:0.95 }} />
-                )}
-                <span style={{ flex:1 }}>{n.msg}</span>
-              </div>
-            ))}
+          <div style={{ position:'fixed',top:0,left:0,right:0,zIndex:9999,display:'flex',flexDirection:'column',gap:6,padding:'8px 12px',pointerEvents:'none' }}>
+            {notifications.map(n => {
+              const accent = n.type === 'success' ? '#2ecc71' : n.type === 'gold' ? '#f1c40f' : n.type === 'danger' ? '#e74c3c' : n.type === 'info' ? '#1abc9c' : '#888';
+              const bg = n.type === 'success' ? 'rgba(20,60,30,0.97)' : n.type === 'gold' ? 'rgba(60,48,10,0.97)' : n.type === 'danger' ? 'rgba(60,15,10,0.97)' : 'rgba(20,30,40,0.97)';
+              const textColor = n.type === 'gold' ? '#f1c40f' : '#fff';
+
+              // Grand format avec photo (ligues principales) — fidèle au sketch :
+              // image grande à gauche (~45%), nom en haut à droite, notif en bas pleine largeur
+              if (n.photoUrl && n.carName) return (
+                <div key={n.id} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+                  style={{ pointerEvents:'auto', cursor:'pointer', borderRadius:8, overflow:'hidden',
+                    background:bg, boxShadow:`0 6px 28px rgba(0,0,0,0.8)`, border:`2px solid ${accent}`,
+                    animation:'slideIn 0.3s ease',
+                    display:'grid', gridTemplateColumns:'45% 55%', gridTemplateRows:'auto auto' }}>
+                  {/* Image — couvre toute la hauteur de la ligne du haut */}
+                  <div style={{ gridColumn:'1', gridRow:'1', overflow:'hidden', minHeight:90 }}>
+                    <img src={n.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                  </div>
+                  {/* Nom en haut à droite */}
+                  <div style={{ gridColumn:'2', gridRow:'1', padding:'12px 12px 8px', display:'flex', alignItems:'center' }}>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:2, color:accent, lineHeight:1 }}>{n.carName}</span>
+                  </div>
+                  {/* Texte notif en bas — pleine largeur (les 2 colonnes) */}
+                  <div style={{ gridColumn:'1 / 3', gridRow:'2', padding:'6px 12px 10px', borderTop:`1px solid rgba(255,255,255,0.1)` }}>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, letterSpacing:1.5, color:textColor }}>{n.msg}</span>
+                  </div>
+                </div>
+              );
+
+              // Style sobre pour les autres notifications (ligues auxiliaires, infos, etc.)
+              return (
+                <div key={n.id} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+                  style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:4, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, fontSize:13, pointerEvents:'auto', animation:'slideIn 0.3s ease', background: n.type === 'success' ? 'rgba(39,174,96,0.95)' : n.type === 'gold' ? 'rgba(201,168,76,0.95)' : n.type === 'danger' ? 'rgba(192,57,43,0.95)' : n.type === 'info' ? 'rgba(22,160,133,0.95)' : 'rgba(30,30,30,0.95)', color: n.type === 'gold' ? '#000' : '#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.5)', borderLeft:`4px solid ${accent}`, cursor:'pointer' }}>
+                  <span>{n.msg}</span>
+                </div>
+              );
+            })}
           </div>
         )}
 
