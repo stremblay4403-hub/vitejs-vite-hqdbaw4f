@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v27 — points très gros dans notif)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v28 — compteur qualifications playoffs dans notif)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -3172,9 +3172,9 @@ export default function App() {
     }
   }
 
-  function pushNotif(msg, type = 'info', photoUrl = null, carName = null, carPts = null) {
+  function pushNotif(msg, type = 'info', photoUrl = null, carName = null, carPts = null, playoffCount = null) {
     const id = genId();
-    setNotifications(n => [...n, { id, msg, type, photoUrl, carName, carPts }]);
+    setNotifications(n => [...n, { id, msg, type, photoUrl, carName, carPts, playoffCount }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
   }
 
@@ -3265,7 +3265,6 @@ export default function App() {
     if (!league) return;
     const getName = id => league.cars.find(c => c.id === id)?.name || id;
     const getPhoto = id => getCarPhoto(id) || null;
-    // Points actuels : somme sur tous les groupes du classement
     const getPts = id => {
       let pts = 0;
       for (let g = 0; g < GROUPS; g++) {
@@ -3277,10 +3276,28 @@ export default function App() {
       }
       return pts;
     };
+    // Nombre de qualifications en playoffs dans l'historique complet.
+    // Règle : S1-S29 → bonus > 0 (toute voiture ayant marqué des pts = qualifiée),
+    //         S30+   → bonus ≥ 3 (le barème minimal d'un top-10 d'un groupe = 1 pt, 
+    //                              mais 3 pts = au moins 10e dans 3 groupes, signe de qualification).
+    const getPlayoffCount = (carId) => {
+      const allBonus = computeAllSeasonsBonus(leagueName);
+      const entry = allBonus.find(e => e.id === carId);
+      if (!entry) return 0;
+      return Object.entries(entry.bySeason || {}).reduce((count, [key, pts]) => {
+        const num = Number(String(key).replace('hist-S','').replace('app-S',''));
+        if (num <= 29 && pts > 0) return count + 1;
+        if (num >= 30 && pts >= 3) return count + 1;
+        return count;
+      }, 0);
+    };
+    const ordinal = n => n === 1 ? '1ère' : `${n}ème`;
 
     newQuals.X.forEach(id => {
-      if (!prevQuals.X.has(id))
-        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id), getPts(id));
+      if (!prevQuals.X.has(id)) {
+        const count = getPlayoffCount(id);
+        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id), getPts(id), count > 0 ? ordinal(count) : null);
+      }
     });
     newQuals.Y.forEach(id => {
       if (!prevQuals.Y.has(id))
@@ -11648,6 +11665,11 @@ export default function App() {
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:52, letterSpacing:2, color:accent, lineHeight:1, fontWeight:900 }}>{n.carPts}</span>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:textColor, opacity:0.8, letterSpacing:2 }}>PTS</span>
                       </div>
+                    )}
+                    {n.playoffCount && (
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, letterSpacing:1.5, color:textColor, opacity:0.75 }}>
+                        {n.playoffCount} QUALIFICATION AUX PLAYOFFS
+                      </span>
                     )}
                   </div>
                   {/* Texte notif en bas — pleine largeur (les 2 colonnes) */}
