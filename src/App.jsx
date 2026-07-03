@@ -1519,7 +1519,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v25 — notif grille CSS fidèle au sketch)', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v26 — notif : nom grand + pts actuels)', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -3172,9 +3172,9 @@ export default function App() {
     }
   }
 
-  function pushNotif(msg, type = 'info', photoUrl = null, carName = null) {
+  function pushNotif(msg, type = 'info', photoUrl = null, carName = null, carPts = null) {
     const id = genId();
-    setNotifications(n => [...n, { id, msg, type, photoUrl, carName }]);
+    setNotifications(n => [...n, { id, msg, type, photoUrl, carName, carPts }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
   }
 
@@ -3265,22 +3265,34 @@ export default function App() {
     if (!league) return;
     const getName = id => league.cars.find(c => c.id === id)?.name || id;
     const getPhoto = id => getCarPhoto(id) || null;
+    // Points actuels : somme sur tous les groupes du classement
+    const getPts = id => {
+      let pts = 0;
+      for (let g = 0; g < GROUPS; g++) {
+        const groupCars = (league.cars || []).filter(c => c.group === g);
+        const matches = (league.groupResults || {})[g] || [];
+        const st = computeStandings(groupCars, matches);
+        const found = st.find(s => s.id === id);
+        if (found) { pts = found.pts; break; }
+      }
+      return pts;
+    };
 
     newQuals.X.forEach(id => {
       if (!prevQuals.X.has(id))
-        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id));
+        pushNotif(`🏆 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT QUALIFIÉ POUR LES PLAYOFFS`, 'success', getPhoto(id), getName(id), getPts(id));
     });
     newQuals.Y.forEach(id => {
       if (!prevQuals.Y.has(id))
-        pushNotif(`🥇 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT PREMIER DE GROUPE`, 'gold', getPhoto(id), getName(id));
+        pushNotif(`🥇 ${getName(id)} (${leagueName}) EST OFFICIELLEMENT PREMIER DE GROUPE`, 'gold', getPhoto(id), getName(id), getPts(id));
     });
     newQuals.Z.forEach(id => {
       if (!prevQuals.Z.has(id))
-        pushNotif(`⭐ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT LE MEILLEUR DE LA LIGUE`, 'gold', getPhoto(id), getName(id));
+        pushNotif(`⭐ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT LE MEILLEUR DE LA LIGUE`, 'gold', getPhoto(id), getName(id), getPts(id));
     });
     newQuals.ELIM.forEach(id => {
       if (!prevQuals.ELIM.has(id))
-        pushNotif(`❌ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT EN DANGER D'ÉLIMINATION`, 'danger', getPhoto(id), getName(id));
+        pushNotif(`❌ ${getName(id)} (${leagueName}) EST OFFICIELLEMENT EN DANGER D'ÉLIMINATION`, 'danger', getPhoto(id), getName(id), getPts(id));
     });
   }
 
@@ -11628,9 +11640,14 @@ export default function App() {
                   <div style={{ gridColumn:'1', gridRow:'1', overflow:'hidden', minHeight:90 }}>
                     <img src={n.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                   </div>
-                  {/* Nom en haut à droite */}
-                  <div style={{ gridColumn:'2', gridRow:'1', padding:'12px 12px 8px', display:'flex', alignItems:'center' }}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:24, letterSpacing:2, color:accent, lineHeight:1 }}>{n.carName}</span>
+                  {/* Nom en haut à droite + points en dessous */}
+                  <div style={{ gridColumn:'2', gridRow:'1', padding:'10px 12px 8px', display:'flex', flexDirection:'column', justifyContent:'flex-start', gap:4 }}>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:accent, lineHeight:1 }}>{n.carName}</span>
+                    {n.carPts != null && (
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:1, color:textColor, opacity:0.85 }}>
+                        {n.carPts} <span style={{ fontSize:11, opacity:0.7 }}>PTS</span>
+                      </span>
+                    )}
                   </div>
                   {/* Texte notif en bas — pleine largeur (les 2 colonnes) */}
                   <div style={{ gridColumn:'1 / 3', gridRow:'2', padding:'6px 12px 10px', borderTop:`1px solid rgba(255,255,255,0.1)` }}>
