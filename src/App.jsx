@@ -1184,6 +1184,25 @@ const css = `
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+
+  .notif-container { max-width: 100%; }
+  .notif-big { width: 100%; }
+  .notif-big-img { min-height: 90px; }
+  .notif-big-name { font-size: 30px; }
+  .notif-big-pts { font-size: 52px; }
+  .notif-big-ptslabel { font-size: 18px; }
+  .notif-big-count { font-size: 13px; }
+  .notif-big-msg { font-size: 12px; }
+
+  @media (min-width: 768px) {
+    .notif-container { max-width: 420px; }
+    .notif-big-img { min-height: 70px; }
+    .notif-big-name { font-size: 20px; }
+    .notif-big-pts { font-size: 34px; }
+    .notif-big-ptslabel { font-size: 13px; }
+    .notif-big-count { font-size: 11px; }
+    .notif-big-msg { font-size: 10px; }
+  }
   
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   
@@ -1519,7 +1538,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v29 — compteur qualifications corrigé (+1 saison courante))', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v30 — notifs responsive (desktop max-width 420px))', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
@@ -11643,47 +11662,42 @@ export default function App() {
         )}
         {/* Notification banners */}
         {notifications.length > 0 && (
-          <div style={{ position:'fixed',top:0,left:0,right:0,zIndex:9999,display:'flex',flexDirection:'column',gap:6,padding:'8px 12px',pointerEvents:'none' }}>
+          <div className="notif-container" style={{ position:'fixed',top:0,left:0,zIndex:9999,display:'flex',flexDirection:'column',gap:6,padding:'8px 12px',pointerEvents:'none' }}>
             {notifications.map(n => {
               const accent = n.type === 'success' ? '#2ecc71' : n.type === 'gold' ? '#f1c40f' : n.type === 'danger' ? '#e74c3c' : n.type === 'info' ? '#1abc9c' : '#888';
               const bg = n.type === 'success' ? 'rgba(20,60,30,0.97)' : n.type === 'gold' ? 'rgba(60,48,10,0.97)' : n.type === 'danger' ? 'rgba(60,15,10,0.97)' : 'rgba(20,30,40,0.97)';
               const textColor = n.type === 'gold' ? '#f1c40f' : '#fff';
 
-              // Grand format avec photo (ligues principales) — fidèle au sketch :
-              // image grande à gauche (~45%), nom en haut à droite, notif en bas pleine largeur
               if (n.photoUrl && n.carName) return (
                 <div key={n.id} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
+                  className="notif-big"
                   style={{ pointerEvents:'auto', cursor:'pointer', borderRadius:8, overflow:'hidden',
                     background:bg, boxShadow:`0 6px 28px rgba(0,0,0,0.8)`, border:`2px solid ${accent}`,
                     animation:'slideIn 0.3s ease',
                     display:'grid', gridTemplateColumns:'45% 55%', gridTemplateRows:'auto auto' }}>
-                  {/* Image — couvre toute la hauteur de la ligne du haut */}
-                  <div style={{ gridColumn:'1', gridRow:'1', overflow:'hidden', minHeight:90 }}>
+                  <div className="notif-big-img" style={{ gridColumn:'1', gridRow:'1', overflow:'hidden' }}>
                     <img src={n.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                   </div>
-                  {/* Nom en haut à droite + points en dessous */}
                   <div style={{ gridColumn:'2', gridRow:'1', padding:'10px 12px 8px', display:'flex', flexDirection:'column', justifyContent:'flex-start', gap:4 }}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:30, letterSpacing:2, color:accent, lineHeight:1 }}>{n.carName}</span>
+                    <span className="notif-big-name" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, color:accent, lineHeight:1 }}>{n.carName}</span>
                     {n.carPts != null && (
-                      <div style={{ display:'flex', alignItems:'baseline', gap:6 }}>
-                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:52, letterSpacing:2, color:accent, lineHeight:1, fontWeight:900 }}>{n.carPts}</span>
-                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:textColor, opacity:0.8, letterSpacing:2 }}>PTS</span>
+                      <div style={{ display:'flex', alignItems:'baseline', gap:4 }}>
+                        <span className="notif-big-pts" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, color:accent, lineHeight:1, fontWeight:900 }}>{n.carPts}</span>
+                        <span className="notif-big-ptslabel" style={{ fontFamily:"'Bebas Neue',sans-serif", color:textColor, opacity:0.8, letterSpacing:2 }}>PTS</span>
                       </div>
                     )}
                     {n.playoffCount && (
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, letterSpacing:1.5, color:textColor, opacity:0.75 }}>
+                      <span className="notif-big-count" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1.5, color:textColor, opacity:0.75 }}>
                         {n.playoffCount} QUALIFICATION AUX PLAYOFFS
                       </span>
                     )}
                   </div>
-                  {/* Texte notif en bas — pleine largeur (les 2 colonnes) */}
                   <div style={{ gridColumn:'1 / 3', gridRow:'2', padding:'6px 12px 10px', borderTop:`1px solid rgba(255,255,255,0.1)` }}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, letterSpacing:1.5, color:textColor }}>{n.msg}</span>
+                    <span className="notif-big-msg" style={{ fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1.5, color:textColor }}>{n.msg}</span>
                   </div>
                 </div>
               );
 
-              // Style sobre pour les autres notifications (ligues auxiliaires, infos, etc.)
               return (
                 <div key={n.id} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
                   style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:4, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2, fontSize:13, pointerEvents:'auto', animation:'slideIn 0.3s ease', background: n.type === 'success' ? 'rgba(39,174,96,0.95)' : n.type === 'gold' ? 'rgba(201,168,76,0.95)' : n.type === 'danger' ? 'rgba(192,57,43,0.95)' : n.type === 'info' ? 'rgba(22,160,133,0.95)' : 'rgba(30,30,30,0.95)', color: n.type === 'gold' ? '#000' : '#fff', boxShadow:'0 4px 20px rgba(0,0,0,0.5)', borderLeft:`4px solid ${accent}`, cursor:'pointer' }}>
