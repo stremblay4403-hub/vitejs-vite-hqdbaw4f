@@ -1195,13 +1195,13 @@ const css = `
   .notif-big-msg { font-size: 12px; }
 
   @media (min-width: 768px) {
-    .notif-container { max-width: 420px; }
-    .notif-big-img { min-height: 70px; }
-    .notif-big-name { font-size: 20px; }
-    .notif-big-pts { font-size: 34px; }
-    .notif-big-ptslabel { font-size: 13px; }
-    .notif-big-count { font-size: 11px; }
-    .notif-big-msg { font-size: 10px; }
+    .notif-container { max-width: 560px; }
+    .notif-big-img { min-height: 80px; }
+    .notif-big-name { font-size: 26px; }
+    .notif-big-pts { font-size: 44px; }
+    .notif-big-ptslabel { font-size: 16px; }
+    .notif-big-count { font-size: 12px; }
+    .notif-big-msg { font-size: 11px; }
   }
   
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1538,7 +1538,7 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-console.log('%c[Tournois de Voitures] build archivage v30 — notifs responsive (desktop max-width 420px))', 'color:#c9a84c;font-weight:bold');
+console.log('%c[Tournois de Voitures] build archivage v30 — notifs responsive (desktop max-width 560px))', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
 
