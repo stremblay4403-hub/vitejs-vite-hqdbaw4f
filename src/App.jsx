@@ -1193,16 +1193,17 @@ const css = `
   .notif-big-ptslabel { font-size: 18px; }
   .notif-big-count { font-size: 13px; }
   .notif-big-msg { font-size: 12px; }
+  .notif-big-grid { display:grid; grid-template-columns:45% 55%; grid-template-rows:auto auto; }
 
   @media (min-width: 768px) {
     .notif-container { max-width: 100%; }
-    .notif-big { max-height: 100px; overflow: hidden; }
-    .notif-big-img { height: 75px; min-height: unset; max-height: unset; }
-    .notif-big-name { font-size: 20px; }
-    .notif-big-pts { font-size: 32px; }
-    .notif-big-ptslabel { font-size: 13px; }
-    .notif-big-count { font-size: 10px; }
-    .notif-big-msg { font-size: 10px; padding: 3px 10px 6px; }
+    .notif-big-grid { grid-template-rows: 90px auto; }
+    .notif-big-img { height: 90px; min-height: unset; }
+    .notif-big-name { font-size: 22px; }
+    .notif-big-pts { font-size: 36px; }
+    .notif-big-ptslabel { font-size: 14px; }
+    .notif-big-count { font-size: 11px; }
+    .notif-big-msg { font-size: 11px; }
   }
   
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -11671,11 +11672,10 @@ export default function App() {
 
               if (n.photoUrl && n.carName) return (
                 <div key={n.id} onClick={() => setNotifications(prev => prev.filter(x => x.id !== n.id))}
-                  className="notif-big"
+                  className="notif-big notif-big-grid"
                   style={{ pointerEvents:'auto', cursor:'pointer', borderRadius:8, overflow:'hidden',
                     background:bg, boxShadow:`0 6px 28px rgba(0,0,0,0.8)`, border:`2px solid ${accent}`,
-                    animation:'slideIn 0.3s ease',
-                    display:'grid', gridTemplateColumns:'45% 55%', gridTemplateRows:'auto auto' }}>
+                    animation:'slideIn 0.3s ease' }}>
                   <div className="notif-big-img" style={{ gridColumn:'1', gridRow:'1', overflow:'hidden' }}>
                     <img src={n.photoUrl} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
                   </div>
