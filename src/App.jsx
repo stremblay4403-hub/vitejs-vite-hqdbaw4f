@@ -1197,13 +1197,14 @@ const css = `
 
   @media (min-width: 768px) {
     .notif-container { max-width: 100%; }
-    .notif-big-grid { grid-template-rows: 90px auto; }
-    .notif-big-img { height: 90px; min-height: unset; }
-    .notif-big-name { font-size: 22px; }
-    .notif-big-pts { font-size: 36px; }
-    .notif-big-ptslabel { font-size: 14px; }
-    .notif-big-count { font-size: 11px; }
-    .notif-big-msg { font-size: 11px; }
+    /* Image fixe 200px, section verte remplit le reste — image ne s'étire plus jamais */
+    .notif-big-grid { grid-template-columns: 200px 1fr; grid-template-rows: 110px auto; }
+    .notif-big-img { height: 110px; min-height: unset; }
+    .notif-big-name { font-size: 32px; }
+    .notif-big-pts { font-size: 56px; }
+    .notif-big-ptslabel { font-size: 20px; }
+    .notif-big-count { font-size: 14px; }
+    .notif-big-msg { font-size: 13px; }
   }
   
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
