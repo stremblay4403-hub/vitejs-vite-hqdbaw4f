@@ -1195,7 +1195,7 @@ const css = `
   .notif-big-msg { font-size: 12px; }
 
   @media (min-width: 768px) {
-    .notif-container { max-width: 560px; }
+    .notif-container { max-width: 100%; }
     .notif-big-img { min-height: 80px; }
     .notif-big-name { font-size: 26px; }
     .notif-big-pts { font-size: 44px; }
@@ -11662,7 +11662,7 @@ export default function App() {
         )}
         {/* Notification banners */}
         {notifications.length > 0 && (
-          <div className="notif-container" style={{ position:'fixed',top:0,left:0,zIndex:9999,display:'flex',flexDirection:'column',gap:6,padding:'8px 12px',pointerEvents:'none' }}>
+          <div className="notif-container" style={{ position:'fixed',top:0,left:0,right:0,zIndex:9999,display:'flex',flexDirection:'column',gap:6,padding:'8px 12px',pointerEvents:'none' }}>
             {notifications.map(n => {
               const accent = n.type === 'success' ? '#2ecc71' : n.type === 'gold' ? '#f1c40f' : n.type === 'danger' ? '#e74c3c' : n.type === 'info' ? '#1abc9c' : '#888';
               const bg = n.type === 'success' ? 'rgba(20,60,30,0.97)' : n.type === 'gold' ? 'rgba(60,48,10,0.97)' : n.type === 'danger' ? 'rgba(60,15,10,0.97)' : 'rgba(20,30,40,0.97)';
