@@ -1196,11 +1196,12 @@ const css = `
 
   @media (min-width: 768px) {
     .notif-container { max-width: 100%; }
-    .notif-big-img { min-height: 80px; }
-    .notif-big-name { font-size: 26px; }
-    .notif-big-pts { font-size: 44px; }
-    .notif-big-ptslabel { font-size: 16px; }
-    .notif-big-count { font-size: 12px; }
+    .notif-big { max-height: 120px; }
+    .notif-big-img { min-height: 60px; max-height: 120px; }
+    .notif-big-name { font-size: 22px; }
+    .notif-big-pts { font-size: 38px; }
+    .notif-big-ptslabel { font-size: 14px; }
+    .notif-big-count { font-size: 11px; }
     .notif-big-msg { font-size: 11px; }
   }
   
