@@ -1196,13 +1196,13 @@ const css = `
 
   @media (min-width: 768px) {
     .notif-container { max-width: 100%; }
-    .notif-big { max-height: 120px; }
-    .notif-big-img { min-height: 60px; max-height: 120px; }
-    .notif-big-name { font-size: 22px; }
-    .notif-big-pts { font-size: 38px; }
-    .notif-big-ptslabel { font-size: 14px; }
-    .notif-big-count { font-size: 11px; }
-    .notif-big-msg { font-size: 11px; }
+    .notif-big { max-height: 100px; overflow: hidden; }
+    .notif-big-img { height: 75px; min-height: unset; max-height: unset; }
+    .notif-big-name { font-size: 20px; }
+    .notif-big-pts { font-size: 32px; }
+    .notif-big-ptslabel { font-size: 13px; }
+    .notif-big-count { font-size: 10px; }
+    .notif-big-msg { font-size: 10px; padding: 3px 10px 6px; }
   }
   
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
