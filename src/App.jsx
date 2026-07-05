@@ -2444,6 +2444,10 @@ export default function App() {
   const [seasonTrophiesModal, setSeasonTrophiesModal] = useState(null);
   const [brandModal, setBrandModal] = useState(null);
   const [histSubTab, setHistSubTab] = useState('historique');
+  // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
+  const [voituresSection, setVoituresSection] = useState('actifs');
+  const [voituresSearch, setVoituresSearch] = useState('');
+  const [voituresOpenLeagues, setVoituresOpenLeagues] = useState({});
 
   // Fonctions scroll par onglet — définies après tous les états
   // ── Modal de célébration ───────────────────────────────────────
@@ -10404,8 +10408,10 @@ export default function App() {
   }
 
   function VoituresView() {
-    const [search, setSearch] = useState('');
-    const [section, setSection] = useState('actifs');
+    const search = voituresSearch;
+    const setSearch = setVoituresSearch;
+    const section = voituresSection;
+    const setSection = setVoituresSection;
     const [editId, setEditId] = useState(null);
     const [editName, setEditName] = useState('');
 
@@ -10483,8 +10489,8 @@ export default function App() {
       );
     }
 
-    const [openLeagues, setOpenLeagues] = useState({});
-    const toggleLeague = (l) => setOpenLeagues(prev => ({ ...prev, [l]: !prev[l] }));
+    const openLeagues = voituresOpenLeagues;
+    const toggleLeague = (l) => setVoituresOpenLeagues(prev => ({ ...prev, [l]: !prev[l] }));
 
     function LeagueBlock({ leagueName, cars, emptyMsg }) {
       if (cars.length === 0) return null;
