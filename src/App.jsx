@@ -2413,13 +2413,17 @@ export default function App() {
   const [activeGroup, setActiveGroup] = useState(0);
   const [profileCar, setProfileCar] = useState(null);
   function openProfileCar(config) {
-    const sy = window.scrollY;
+    const sy = window.scrollY || parseInt(document.body.dataset.scrollY || '0');
     const tabsEls = document.querySelectorAll('.tabs');
     const tabsScrolls = Array.from(tabsEls).map(el => ({ el, sl: el.scrollLeft }));
     setProfileCar(config);
+    // Double rAF : le premier attend que React ait rendu le modal,
+    // le second attend que le navigateur ait appliqué le layout, puis on restaure.
     requestAnimationFrame(() => {
-      window.scrollTo(0, sy);
-      tabsScrolls.forEach(({ el, sl }) => { el.scrollLeft = sl; });
+      requestAnimationFrame(() => {
+        window.scrollTo(0, sy);
+        tabsScrolls.forEach(({ el, sl }) => { el.scrollLeft = sl; });
+      });
     });
   }
   const [notifications, setNotifications] = useState([]);
