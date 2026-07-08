@@ -1280,6 +1280,7 @@ const css = `
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px;
     color: var(--gold); font-size: 16px;
   }
+  @media (min-width: 768px) { .card-title { font-size: 24px; } }
   .card-body { padding: 16px; }
   
   /* Grid */
