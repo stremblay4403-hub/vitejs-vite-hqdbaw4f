@@ -1281,6 +1281,8 @@ const css = `
     color: var(--gold); font-size: 16px;
   }
   @media (min-width: 768px) { .card-title { font-size: 24px; } }
+  .car-grid-name { font-size: 15px; }
+  @media (min-width: 768px) { .car-grid-name { font-size: 26px; } }
   .card-body { padding: 16px; }
   
   /* Grid */
@@ -10386,7 +10388,7 @@ export default function App() {
                         </div>
                       ) : (
                         <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                          <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
+                          <span className="car-grid-name" style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
                             onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                             {c.name}
                           </span>
