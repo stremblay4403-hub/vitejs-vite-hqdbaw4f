@@ -5338,26 +5338,21 @@ export default function App() {
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 10 Pts Annexes — Total Cumulatif</div>
                     {(() => {
                       const allBonus = computeAllSeasonsBonus(l);
-                      // Progression relative à la SAISON AFFICHÉE :
-                      //  • cumul des points jusqu'à la saison affichée (incluse),
-                      //  • flèche = comparaison avec le cumul jusqu'à la saison PRÉCÉDENTE.
-                      // Ainsi, une nouvelle saison VIDE montre « — » (rien joué → cumul inchangé),
-                      // puis la progression vs la saison précédente se remplit au fil des matchs joués.
-                      // Ex. S33 → progression S32→S33 ; S34 (joué) → progression S33→S34.
                       const viewedNum = currentSeason.season;
                       const keyNum = (k) => Number(String(k).replace('hist-S', '').replace('app-S', ''));
                       const cumul = (e, upTo) => Object.entries(e.bySeason || {})
                         .reduce((s, [k, v]) => s + (keyNum(k) <= upTo ? (v || 0) : 0), 0);
 
-                      // Classement cumulatif jusqu'à la saison affichée
-                      const top10 = allBonus
+                      // Desktop : top 20, mobile : top 10
+                      const isDesktop = window.innerWidth >= 768;
+                      const limit = isDesktop ? 20 : 10;
+                      const top = allBonus
                         .map(e => ({ ...e, total: cumul(e, viewedNum) }))
                         .filter(e => e.total > 0)
                         .sort((a, b) => b.total - a.total)
-                        .slice(0, 10);
-                      if (!top10 || top10.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
+                        .slice(0, limit);
+                      if (!top || top.length === 0) return <span className="text-dim" style={{ fontSize:12 }}>Aucune donnée</span>;
 
-                      // Classement de la saison PRÉCÉDENTE (cumul jusqu'à viewedNum - 1)
                       const prevRankMap = {};
                       allBonus
                         .map(e => ({ name: e.name, total: cumul(e, viewedNum - 1) }))
@@ -5366,41 +5361,53 @@ export default function App() {
                         .forEach((e, idx) => { prevRankMap[e.name] = idx + 1; });
                       const hasPrev = Object.keys(prevRankMap).length > 0;
 
+                      const renderRow = (e, i) => {
+                        const prevRank = prevRankMap[e.name];
+                        const diff = prevRank != null ? prevRank - (i + 1) : null;
+                        const photo = getCarPhoto(e.id) || getCarPhotoByName(e.name);
+                        return (
+                          <div key={e.id || e.name}
+                            style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
+                            onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
+                            <div style={{ width:90,height:60,flexShrink:0,background:'var(--dark3)',overflow:'hidden' }}>
+                              {photo
+                                ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                                : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
+                            </div>
+                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
+                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1,letterSpacing:1,color:'var(--text)' }}>{e.name}</span>
+                            {diff !== null && diff !== 0 && (
+                              <span style={{ fontSize:12,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',flexShrink:0 }}>
+                                {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
+                              </span>
+                            )}
+                            {diff === 0 && <span style={{ fontSize:12,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
+                            {diff === null && hasPrev && (
+                              <span style={{ fontSize:10,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
+                            )}
+                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',paddingRight:12,flexShrink:0 }}>{e.total}</span>
+                          </div>
+                        );
+                      };
+
+                      if (isDesktop) {
+                        const col1 = top.slice(0, 10);
+                        const col2 = top.slice(10, 20);
+                        return (
+                          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                            <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+                              {col1.map((e, i) => renderRow(e, i))}
+                            </div>
+                            <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
+                              {col2.map((e, i) => renderRow(e, i + 10))}
+                            </div>
+                          </div>
+                        );
+                      }
+
                       return (
                         <div style={{ display:'flex',flexDirection:'column',gap:8 }}>
-                          {top10.map((e, i) => {
-                            const prevRank = prevRankMap[e.name];
-                            const diff = prevRank != null ? prevRank - (i + 1) : null;
-                            const photo = getCarPhoto(e.id) || getCarPhotoByName(e.name);
-                            return (
-                              <div key={e.id || e.name}
-                                style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
-                                onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
-                                {/* Photo */}
-                                <div style={{ width:90,height:60,flexShrink:0,background:'var(--dark3)',overflow:'hidden' }}>
-                                  {photo
-                                    ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
-                                    : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
-                                </div>
-                                {/* Rang */}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
-                                {/* Nom */}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1,letterSpacing:1,color:'var(--text)' }}>{e.name}</span>
-                                {/* Flèche */}
-                                {diff !== null && diff !== 0 && (
-                                  <span style={{ fontSize:12,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',flexShrink:0 }}>
-                                    {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
-                                  </span>
-                                )}
-                                {diff === 0 && <span style={{ fontSize:12,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
-                                {diff === null && hasPrev && (
-                                  <span style={{ fontSize:10,color:'var(--gold-dim)',flexShrink:0 }}>NEW</span>
-                                )}
-                                {/* Points */}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',paddingRight:12,flexShrink:0 }}>{e.total}</span>
-                              </div>
-                            );
-                          })}
+                          {top.map((e, i) => renderRow(e, i))}
                         </div>
                       );
                     })()}
