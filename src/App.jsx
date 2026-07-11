@@ -1184,6 +1184,11 @@ const css = `
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .tab-content { animation: fadeIn 0.18s ease; }
 
   .notif-container { max-width: 100%; }
   .notif-big { width: 100%; }
@@ -1245,6 +1250,11 @@ const css = `
     color: var(--gold);
     text-shadow: 0 0 20px rgba(201,168,76,0.4);
     white-space: nowrap;
+  }
+  @media (min-width: 768px) {
+    .header-logo { font-size: 42px; letter-spacing: 6px; text-shadow: 0 0 30px rgba(201,168,76,0.5); }
+    .header-logo span { font-size: 16px; letter-spacing: 4px; }
+    .header { padding: 4px 24px; }
   }
   .header-logo span { color: var(--text-dim); font-size: 14px; letter-spacing: 2px; display: block; }
   .header-divider { flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold-dim), transparent); }
@@ -2122,12 +2132,31 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
   const PHOTO_W = ROW_H * 1.6;
+
+  // Fond spécial top 3
+  const podiumBg = rank === 1 ? 'linear-gradient(90deg, rgba(201,168,76,0.18) 0%, rgba(201,168,76,0.04) 100%)'
+                 : rank === 2 ? 'linear-gradient(90deg, rgba(180,180,195,0.15) 0%, rgba(180,180,195,0.03) 100%)'
+                 : rank === 3 ? 'linear-gradient(90deg, rgba(160,100,60,0.15) 0%, rgba(160,100,60,0.03) 100%)'
+                 : 'none';
+  const podiumBorder = rank === 1 ? '2px solid rgba(201,168,76,0.5)'
+                     : rank === 2 ? '2px solid rgba(180,180,195,0.35)'
+                     : rank === 3 ? '2px solid rgba(160,100,60,0.35)'
+                     : `1px solid #1a1a1a`;
+
   return (
-    <div style={{ display:'flex', alignItems:'stretch', height:ROW_H, borderLeft:`4px solid ${borderColor || 'transparent'}`, borderBottom:'1px solid #1a1a1a' }}>
+    <div style={{ display:'flex', alignItems:'stretch', height:ROW_H,
+      borderLeft:`4px solid ${borderColor || 'transparent'}`,
+      borderBottom: podiumBorder,
+      background: podiumBg,
+      boxShadow: rank <= 3 ? `inset 0 0 40px rgba(${rank===1?'201,168,76':rank===2?'180,180,195':'160,100,60'},0.05)` : 'none',
+    }}>
 
       {/* Rang */}
-      <div style={{ width:28, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'var(--dark2)' }}>
-        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color: borderColor && borderColor !== 'transparent' ? borderColor : 'var(--gold-dim)', lineHeight:1 }}>{rank}</div>
+      <div style={{ width:28, flexShrink:0, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', background:'transparent' }}>
+        <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, lineHeight:1,
+          color: rank === 1 ? '#f1c40f' : rank === 2 ? '#bdc3c7' : rank === 3 ? '#cd7f32' : borderColor && borderColor !== 'transparent' ? borderColor : 'var(--gold-dim)',
+          textShadow: rank <= 3 ? `0 0 8px ${rank===1?'rgba(241,196,15,0.6)':rank===2?'rgba(189,195,199,0.4)':'rgba(205,127,50,0.4)'}` : 'none',
+        }}>{rank}</div>
         {rankDiff !== null && rankDiff !== undefined && rankDiff !== 0 && (
           <div style={{ fontSize:9, fontWeight:700, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, background: rankDiff > 0 ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', borderRadius:2, padding:'0 2px' }}>
             {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
@@ -12003,7 +12032,7 @@ export default function App() {
         )}
 
         {/* Content */}
-        <div className="content" style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
+        <div className="content tab-content" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
