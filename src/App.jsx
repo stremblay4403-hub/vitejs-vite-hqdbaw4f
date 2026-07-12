@@ -10717,7 +10717,7 @@ export default function App() {
       );
     };
 
-    const CarPicker = ({label, value, search, setSearch, setCar, exclude}) => (
+    const renderPicker = (label, value, search, setSearch, setCar, exclude) => (
       <div style={{flex:1}}>
         {value ? (
           <div style={{textAlign:'center'}}>
@@ -10731,7 +10731,7 @@ export default function App() {
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold-dim)',letterSpacing:1,marginBottom:6}}>{label}</div>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
               style={{width:'100%',padding:'8px',borderRadius:4,background:'var(--dark3)',border:'1px solid var(--border)',color:'var(--text)',fontSize:13}} />
-            {(search.length>=1?allCars.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())&&c.id!==exclude?.id).slice(0,5):[]).map(c=>(
+            {search.length>=1 && allCars.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())&&c.id!==exclude?.id).slice(0,5).map(c=>(
               <div key={c.id} onClick={()=>{setCar(c);setSearch('');}}
                 style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',cursor:'pointer',borderBottom:'1px solid #111',background:'var(--dark2)',marginTop:2,borderRadius:3}}>
                 {getCarPhoto(c.id)&&<img src={getCarPhoto(c.id)} alt="" style={{width:36,height:24,objectFit:'cover',borderRadius:2}}/>}
@@ -10749,9 +10749,9 @@ export default function App() {
 
         {/* Sélecteurs */}
         <div style={{display:'flex',gap:16,alignItems:'flex-start',marginBottom:20}}>
-          <CarPicker label="VOITURE A" value={carA} search={searchA} setSearch={setSearchA} setCar={setCarA} exclude={carB} />
+          {renderPicker("VOITURE A", carA, searchA, setSearchA, setCarA, carB)}
           <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold-dim)',paddingTop:40,flexShrink:0}}>VS</div>
-          <CarPicker label="VOITURE B" value={carB} search={searchB} setSearch={setSearchB} setCar={setCarB} exclude={carA} />
+          {renderPicker("VOITURE B", carB, searchB, setSearchB, setCarB, carA)}
         </div>
 
         {/* Stats */}
