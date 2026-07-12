@@ -6574,7 +6574,6 @@ export default function App() {
               </div>
             </div>
             <div style={{ display:'flex', gap:6 }}>
-              <button className="btn btn-dark btn-sm" onClick={() => { setCompareMode(true); setCompareSearch(''); setCompareCarId(null); }}>⚡ COMPARER</button>
               <button className="btn btn-dark btn-sm" onClick={() => { setProfileCar(null); setCompareMode(false); setCompareCarId(null); }}>✕</button>
             </div>
           </div>
@@ -6603,119 +6602,6 @@ export default function App() {
               </div>
             ))}
           </div>
-
-          {/* ── Vue Comparaison tête-à-tête ── */}
-          {compareMode && (() => {
-            // Recherche de la voiture à comparer
-            const allCars = [];
-            db.seasons.forEach(s => {
-              [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
-                (s.leagues[l]?.cars || []).forEach(c => {
-                  if (!allCars.find(x => x.id === c.id)) allCars.push({ id: c.id, name: c.name, league: l });
-                });
-              });
-            });
-            const filtered = compareSearch.length >= 1
-              ? allCars.filter(c => c.name.toLowerCase().includes(compareSearch.toLowerCase()) && c.id !== carId).slice(0, 8)
-              : [];
-
-            // Stats d'une voiture sur toutes ses saisons S33+
-            const getStats = (cid) => {
-              let gp=0,w=0,d=0,l=0,gf=0,ga=0,bp=0;
-              db.seasons.forEach(s => {
-                [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(ln => {
-                  const lg = s.leagues[ln]; if (!lg) return;
-                  const matches = lg.matches || Object.values(lg.groupResults||{}).flat();
-                  matches.forEach(m => {
-                    if (m.homeGoals==null) return;
-                    if (m.homeId===cid){gp++;gf+=m.homeGoals;ga+=m.awayGoals;if(m.homeGoals>m.awayGoals)w++;else if(m.homeGoals<m.awayGoals)l++;else d++;}
-                    else if(m.awayId===cid){gp++;gf+=m.awayGoals;ga+=m.homeGoals;if(m.awayGoals>m.homeGoals)w++;else if(m.awayGoals<m.homeGoals)l++;else d++;}
-                  });
-                });
-              });
-              const allBonus = computeAllSeasonsBonus(LEAGUES.find(ln => db.seasons.some(s=>s.leagues[ln]?.cars.find(c=>c.id===cid))) || LEAGUES[0]);
-              const bonusEntry = allBonus.find(e => e.id === cid);
-              bp = bonusEntry ? bonusEntry.total : 0;
-              return { gp, w, d, l, gf, ga, diff: gf-ga, pct: gp ? (w*3+d)/(gp*3) : 0, bp };
-            };
-
-            const s1 = getStats(carId);
-            const s2 = compareCarId ? getStats(compareCarId) : null;
-            const carB = compareCarId ? allCars.find(c=>c.id===compareCarId) : null;
-            const photoB = compareCarId ? (getCarPhoto(compareCarId)||null) : null;
-
-            const StatRow = ({label, v1, v2, higherBetter=true}) => {
-              const a = parseFloat(v1), b = parseFloat(v2);
-              const win1 = higherBetter ? a > b : a < b;
-              const win2 = higherBetter ? b > a : b < a;
-              return (
-                <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap:6, padding:'5px 0', borderBottom:'1px solid #111' }}>
-                  <span style={{ textAlign:'right', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color: win1 ? 'var(--green)' : win2 ? '#e74c3c' : 'var(--gold)' }}>{v1}</span>
-                  <span style={{ textAlign:'center', fontSize:10, color:'var(--text-dim)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif", minWidth:80 }}>{label}</span>
-                  <span style={{ textAlign:'left', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color: win2 ? 'var(--green)' : win1 ? '#e74c3c' : 'var(--gold)' }}>{v2 ?? '—'}</span>
-                </div>
-              );
-            };
-
-            return (
-              <div style={{ padding:'12px 16px', borderTop:'2px solid var(--gold)', background:'rgba(201,168,76,0.04)' }}>
-                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'var(--gold)', letterSpacing:2, marginBottom:10 }}>⚡ COMPARAISON TÊTE-À-TÊTE</div>
-
-                {/* Recherche */}
-                {!compareCarId && (
-                  <div style={{ marginBottom:10 }}>
-                    <input value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
-                      placeholder="Rechercher une voiture..." autoFocus
-                      style={{ width:'100%', padding:'8px 10px', borderRadius:4, background:'var(--dark3)', border:'1px solid var(--border)', color:'var(--text)', fontSize:14 }} />
-                    {filtered.map(c => (
-                      <div key={c.id} onClick={() => { setCompareCarId(c.id); setCompareSearch(''); }}
-                        style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', cursor:'pointer', borderBottom:'1px solid #111', background:'var(--dark3)', marginTop:2, borderRadius:3 }}>
-                        {getCarPhoto(c.id) && <img src={getCarPhoto(c.id)} alt="" style={{ width:40, height:28, objectFit:'cover', borderRadius:2 }} />}
-                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14 }}>{c.name}</span>
-                        <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:'auto' }}>{c.league}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Stats côte à côte */}
-                {compareCarId && s2 && carB && (
-                  <div>
-                    {/* En-têtes */}
-                    <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap:6, marginBottom:10 }}>
-                      <div style={{ textAlign:'right' }}>
-                        {photo && <img src={photo} alt="" style={{ width:60, height:40, objectFit:'cover', borderRadius:3, display:'block', marginLeft:'auto', marginBottom:4 }} />}
-                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'var(--gold)' }}>{effectiveName}</span>
-                      </div>
-                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'var(--text-dim)', textAlign:'center' }}>VS</span>
-                      <div style={{ textAlign:'left' }}>
-                        {photoB && <img src={photoB} alt="" style={{ width:60, height:40, objectFit:'cover', borderRadius:3, display:'block', marginBottom:4 }} />}
-                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'var(--gold)' }}>{carB.name}</span>
-                      </div>
-                    </div>
-                    <StatRow label="MATCHS JOUÉS" v1={s1.gp} v2={s2.gp} />
-                    <StatRow label="VICTOIRES" v1={s1.w} v2={s2.w} />
-                    <StatRow label="NULS" v1={s1.d} v2={s2.d} />
-                    <StatRow label="DÉFAITES" v1={s1.l} v2={s2.l} higherBetter={false} />
-                    <StatRow label="% POINTS" v1={(s1.pct*100).toFixed(1)+'%'} v2={(s2.pct*100).toFixed(1)+'%'} />
-                    <StatRow label="BUTS POUR" v1={s1.gf} v2={s2.gf} />
-                    <StatRow label="BUTS CONTRE" v1={s1.ga} v2={s2.ga} higherBetter={false} />
-                    <StatRow label="DIFFÉRENCE" v1={s1.diff>=0?'+'+s1.diff:s1.diff} v2={s2.diff>=0?'+'+s2.diff:s2.diff} />
-                    <StatRow label="PTS ANNEXES" v1={s1.bp} v2={s2.bp} />
-                    <button className="btn btn-dark btn-sm" style={{ marginTop:10, width:'100%' }}
-                      onClick={() => { setCompareCarId(null); setCompareSearch(''); }}>
-                      ↩ Changer de voiture
-                    </button>
-                  </div>
-                )}
-
-                <button className="btn btn-dark btn-sm" style={{ marginTop:8, width:'100%' }}
-                  onClick={() => { setCompareMode(false); setCompareCarId(null); setCompareSearch(''); }}>
-                  Fermer la comparaison
-                </button>
-              </div>
-            );
-          })()}
 
           {/* Points Annexes par ligue */}
           {(() => {
@@ -10763,6 +10649,137 @@ export default function App() {
     );
   }
 
+  function ComparaisonView() {
+    const [searchA, setSearchA] = React.useState('');
+    const [searchB, setSearchB] = React.useState('');
+    const [carA, setCarA] = React.useState(null);
+    const [carB, setCarB] = React.useState(null);
+
+    // Construire la liste de toutes les voitures connues
+    const allCars = React.useMemo(() => {
+      const map = {};
+      db.seasons.forEach(s => {
+        [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
+          (s.leagues[l]?.cars || []).forEach(c => {
+            if (!map[c.id]) map[c.id] = { id: c.id, name: c.name, league: l };
+          });
+        });
+      });
+      return Object.values(map);
+    }, [db.seasons]);
+
+    // Stats globales d'une voiture sur toutes les saisons
+    const getStats = React.useCallback((cid) => {
+      let gp=0,w=0,d=0,l=0,gf=0,ga=0;
+      let titles=0, playoffCount=0;
+      db.seasons.forEach(s => {
+        [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(ln => {
+          const lg = s.leagues[ln]; if (!lg) return;
+          const matches = [...(lg.matches||[]), ...Object.values(lg.groupResults||{}).flat()];
+          matches.forEach(m => {
+            if (m.homeGoals==null) return;
+            if (m.homeId===cid){gp++;gf+=m.homeGoals;ga+=m.awayGoals;if(m.homeGoals>m.awayGoals)w++;else if(m.homeGoals<m.awayGoals)l++;else d++;}
+            else if(m.awayId===cid){gp++;gf+=m.awayGoals;ga+=m.homeGoals;if(m.awayGoals>m.homeGoals)w++;else if(m.awayGoals<m.homeGoals)l++;else d++;}
+          });
+        });
+        // Titres
+        if (s.champions) Object.values(s.champions).forEach(id => { if (id===cid) titles++; });
+        // Participations playoffs (bonus >= 3 pour S30+, > 0 pour avant)
+        const sNum = s.season;
+        [...LEAGUES].forEach(ln => {
+          const bp = computeBonusPoints(s, ln)[cid] || 0;
+          if (sNum <= 29 && bp > 0) playoffCount++;
+          else if (sNum >= 30 && bp >= 3) playoffCount++;
+        });
+      });
+      const allBonus = computeAllSeasonsBonus(LEAGUES[0]);
+      const bonusEntry = allBonus.find(e => e.id === cid);
+      const bp = bonusEntry ? bonusEntry.total : 0;
+      return { gp, w, d, l, gf, ga, diff:gf-ga, pct:gp?(w*3+d)/(gp*3):0, bp, titles, playoffCount };
+    }, [db.seasons]);
+
+    const filteredA = searchA.length >= 1 ? allCars.filter(c=>c.name.toLowerCase().includes(searchA.toLowerCase()) && c.id!==carB?.id).slice(0,6) : [];
+    const filteredB = searchB.length >= 1 ? allCars.filter(c=>c.name.toLowerCase().includes(searchB.toLowerCase()) && c.id!==carA?.id).slice(0,6) : [];
+
+    const sA = carA ? getStats(carA.id) : null;
+    const sB = carB ? getStats(carB.id) : null;
+
+    const StatRow = ({label, v1, v2, higherBetter=true}) => {
+      const a = parseFloat(v1), b = parseFloat(v2);
+      const win1 = !isNaN(a)&&!isNaN(b)&&(higherBetter ? a>b : a<b);
+      const win2 = !isNaN(a)&&!isNaN(b)&&(higherBetter ? b>a : b<a);
+      return (
+        <div style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #111'}}>
+          <span style={{textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:win1?'var(--green)':win2?'#e74c3c':'var(--gold)'}}>{v1??'—'}</span>
+          <span style={{textAlign:'center',fontSize:10,color:'var(--text-dim)',letterSpacing:1,fontFamily:"'Bebas Neue',sans-serif"}}>{label}</span>
+          <span style={{textAlign:'left',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:win2?'var(--green)':win1?'#e74c3c':'var(--gold)'}}>{v2??'—'}</span>
+        </div>
+      );
+    };
+
+    const CarPicker = ({label, value, search, setSearch, setCar, exclude}) => (
+      <div style={{flex:1}}>
+        {value ? (
+          <div style={{textAlign:'center'}}>
+            {getCarPhoto(value.id) && <img src={getCarPhoto(value.id)} alt="" style={{width:'100%',maxHeight:120,objectFit:'cover',borderRadius:6,marginBottom:6}} />}
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)'}}>{value.name}</div>
+            <div style={{fontSize:11,color:'var(--text-dim)',marginBottom:6}}>{value.league}</div>
+            <button className="btn btn-dark btn-sm" style={{width:'100%'}} onClick={()=>setCar(null)}>Changer</button>
+          </div>
+        ) : (
+          <div>
+            <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold-dim)',letterSpacing:1,marginBottom:6}}>{label}</div>
+            <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
+              style={{width:'100%',padding:'8px',borderRadius:4,background:'var(--dark3)',border:'1px solid var(--border)',color:'var(--text)',fontSize:13}} />
+            {(search.length>=1?allCars.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())&&c.id!==exclude?.id).slice(0,5):[]).map(c=>(
+              <div key={c.id} onClick={()=>{setCar(c);setSearch('');}}
+                style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',cursor:'pointer',borderBottom:'1px solid #111',background:'var(--dark2)',marginTop:2,borderRadius:3}}>
+                {getCarPhoto(c.id)&&<img src={getCarPhoto(c.id)} alt="" style={{width:36,height:24,objectFit:'cover',borderRadius:2}}/>}
+                <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13}}>{c.name}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <div style={{padding:16}}>
+        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',letterSpacing:3,marginBottom:16}}>⚡ COMPARAISON TÊTE-À-TÊTE</div>
+
+        {/* Sélecteurs */}
+        <div style={{display:'flex',gap:16,alignItems:'flex-start',marginBottom:20}}>
+          <CarPicker label="VOITURE A" value={carA} search={searchA} setSearch={setSearchA} setCar={setCarA} exclude={carB} />
+          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold-dim)',paddingTop:40,flexShrink:0}}>VS</div>
+          <CarPicker label="VOITURE B" value={carB} search={searchB} setSearch={setSearchB} setCar={setCarB} exclude={carA} />
+        </div>
+
+        {/* Stats */}
+        {carA && carB && sA && sB && (
+          <div style={{background:'var(--dark2)',borderRadius:8,padding:'0 12px',border:'1px solid var(--border)'}}>
+            <StatRow label="MATCHS JOUÉS" v1={sA.gp} v2={sB.gp} />
+            <StatRow label="VICTOIRES" v1={sA.w} v2={sB.w} />
+            <StatRow label="NULS" v1={sA.d} v2={sB.d} />
+            <StatRow label="DÉFAITES" v1={sA.l} v2={sB.l} higherBetter={false} />
+            <StatRow label="% POINTS" v1={(sA.pct*100).toFixed(1)+'%'} v2={(sB.pct*100).toFixed(1)+'%'} />
+            <StatRow label="BUTS POUR" v1={sA.gf} v2={sB.gf} />
+            <StatRow label="BUTS CONTRE" v1={sA.ga} v2={sB.ga} higherBetter={false} />
+            <StatRow label="DIFFÉRENCE" v1={sA.diff>=0?'+'+sA.diff:sA.diff} v2={sB.diff>=0?'+'+sB.diff:sB.diff} />
+            <StatRow label="PTS ANNEXES" v1={sA.bp} v2={sB.bp} />
+            <StatRow label="TITRES" v1={sA.titles} v2={sB.titles} />
+            <StatRow label="QUALIF. PLAYOFFS" v1={sA.playoffCount} v2={sB.playoffCount} />
+          </div>
+        )}
+
+        {(!carA || !carB) && (
+          <div style={{textAlign:'center',color:'var(--text-dim)',padding:40,fontSize:13}}>
+            Sélectionne deux voitures pour comparer leurs statistiques.
+          </div>
+        )}
+      </div>
+    );
+  }
+
   function RecordsView() {
     const expanded = recordsExpanded;
     const setExpanded = setRecordsExpanded;
@@ -12153,6 +12170,7 @@ export default function App() {
               { key: 'historique', label: 'Historique' },
               { key: 'mouvements', label: 'Mouvements 1-2-3-4' },
               { key: 'records', label: '🏅 Records' },
+              { key: 'comparaison', label: '⚡ Comparaison' },
             ].map(t => (
               <button key={t.key} className={`tab ${histSubTab === t.key ? 'active' : ''}`} onClick={() => setHistSubTab(t.key)}>
                 {t.label}
@@ -12192,6 +12210,7 @@ export default function App() {
           {mainTab === 'historique' && histSubTab === 'historique' && <HistoriqueView />}
           {mainTab === 'historique' && histSubTab === 'mouvements' && <VoituresView />}
           {mainTab === 'historique' && histSubTab === 'records' && <RecordsView />}
+          {mainTab === 'historique' && histSubTab === 'comparaison' && <ComparaisonView />}
         </div>
       </div>
     </>
