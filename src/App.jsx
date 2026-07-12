@@ -1184,6 +1184,16 @@ const css = `
     from { transform: translateY(-20px); opacity: 0; }
     to { transform: translateY(0); opacity: 1; }
   }
+  @keyframes flameAnim {
+    0%,100% { box-shadow: 0 0 6px rgba(231,76,60,0.4), 0 0 12px rgba(230,126,22,0.3); transform: scale(1); }
+    50%      { box-shadow: 0 0 10px rgba(231,76,60,0.7), 0 0 20px rgba(230,126,22,0.5); transform: scale(1.04); }
+  }
+  @keyframes iceAnim {
+    0%,100% { box-shadow: 0 0 6px rgba(93,173,226,0.3), 0 0 12px rgba(93,173,226,0.2); opacity: 1; }
+    50%      { box-shadow: 0 0 10px rgba(93,173,226,0.6), 0 0 20px rgba(93,173,226,0.4); opacity: 0.85; }
+  }
+  .badge-fire { animation: flameAnim 1.2s ease-in-out infinite; }
+  .badge-ice  { animation: iceAnim  1.8s ease-in-out infinite; }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -2180,7 +2190,8 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
             <span style={{ display:'inline-block', marginTop:2, padding:'2px 6px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
           )}
           {streakBadge && (
-            <span style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
+            <span className={streakBadge.color === '#5dade2' ? 'badge-ice' : 'badge-fire'}
+              style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
           )}
           {recentForm && recentForm.length > 0 && (
             <div style={{ display:'flex', gap:2, marginTop:3 }}>
@@ -2444,6 +2455,9 @@ export default function App() {
   const [actuellesLeague, setActuellesLeague] = useState('Actuelles 1');
   const [activeGroup, setActiveGroup] = useState(0);
   const [profileCar, setProfileCar] = useState(null);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareSearch, setCompareSearch] = useState('');
+  const [compareCarId, setCompareCarId] = useState(null);
   function openProfileCar(config) {
     const sy = window.scrollY || parseInt(document.body.dataset.scrollY || '0');
     const tabsEls = document.querySelectorAll('.tabs');
@@ -6559,7 +6573,10 @@ export default function App() {
                 })()}
               </div>
             </div>
-            <button className="btn btn-dark btn-sm" onClick={() => setProfileCar(null)}>✕</button>
+            <div style={{ display:'flex', gap:6 }}>
+              <button className="btn btn-dark btn-sm" onClick={() => { setCompareMode(true); setCompareSearch(''); setCompareCarId(null); }}>⚡ COMPARER</button>
+              <button className="btn btn-dark btn-sm" onClick={() => { setProfileCar(null); setCompareMode(false); setCompareCarId(null); }}>✕</button>
+            </div>
           </div>
 
           {/* App stats note */}
@@ -6586,6 +6603,119 @@ export default function App() {
               </div>
             ))}
           </div>
+
+          {/* ── Vue Comparaison tête-à-tête ── */}
+          {compareMode && (() => {
+            // Recherche de la voiture à comparer
+            const allCars = [];
+            db.seasons.forEach(s => {
+              [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
+                (s.leagues[l]?.cars || []).forEach(c => {
+                  if (!allCars.find(x => x.id === c.id)) allCars.push({ id: c.id, name: c.name, league: l });
+                });
+              });
+            });
+            const filtered = compareSearch.length >= 1
+              ? allCars.filter(c => c.name.toLowerCase().includes(compareSearch.toLowerCase()) && c.id !== carId).slice(0, 8)
+              : [];
+
+            // Stats d'une voiture sur toutes ses saisons S33+
+            const getStats = (cid) => {
+              let gp=0,w=0,d=0,l=0,gf=0,ga=0,bp=0;
+              db.seasons.forEach(s => {
+                [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(ln => {
+                  const lg = s.leagues[ln]; if (!lg) return;
+                  const matches = lg.matches || Object.values(lg.groupResults||{}).flat();
+                  matches.forEach(m => {
+                    if (m.homeGoals==null) return;
+                    if (m.homeId===cid){gp++;gf+=m.homeGoals;ga+=m.awayGoals;if(m.homeGoals>m.awayGoals)w++;else if(m.homeGoals<m.awayGoals)l++;else d++;}
+                    else if(m.awayId===cid){gp++;gf+=m.awayGoals;ga+=m.homeGoals;if(m.awayGoals>m.homeGoals)w++;else if(m.awayGoals<m.homeGoals)l++;else d++;}
+                  });
+                });
+              });
+              const allBonus = computeAllSeasonsBonus(LEAGUES.find(ln => db.seasons.some(s=>s.leagues[ln]?.cars.find(c=>c.id===cid))) || LEAGUES[0]);
+              const bonusEntry = allBonus.find(e => e.id === cid);
+              bp = bonusEntry ? bonusEntry.total : 0;
+              return { gp, w, d, l, gf, ga, diff: gf-ga, pct: gp ? (w*3+d)/(gp*3) : 0, bp };
+            };
+
+            const s1 = getStats(carId);
+            const s2 = compareCarId ? getStats(compareCarId) : null;
+            const carB = compareCarId ? allCars.find(c=>c.id===compareCarId) : null;
+            const photoB = compareCarId ? (getCarPhoto(compareCarId)||null) : null;
+
+            const StatRow = ({label, v1, v2, higherBetter=true}) => {
+              const a = parseFloat(v1), b = parseFloat(v2);
+              const win1 = higherBetter ? a > b : a < b;
+              const win2 = higherBetter ? b > a : b < a;
+              return (
+                <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap:6, padding:'5px 0', borderBottom:'1px solid #111' }}>
+                  <span style={{ textAlign:'right', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color: win1 ? 'var(--green)' : win2 ? '#e74c3c' : 'var(--gold)' }}>{v1}</span>
+                  <span style={{ textAlign:'center', fontSize:10, color:'var(--text-dim)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif", minWidth:80 }}>{label}</span>
+                  <span style={{ textAlign:'left', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color: win2 ? 'var(--green)' : win1 ? '#e74c3c' : 'var(--gold)' }}>{v2 ?? '—'}</span>
+                </div>
+              );
+            };
+
+            return (
+              <div style={{ padding:'12px 16px', borderTop:'2px solid var(--gold)', background:'rgba(201,168,76,0.04)' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14, color:'var(--gold)', letterSpacing:2, marginBottom:10 }}>⚡ COMPARAISON TÊTE-À-TÊTE</div>
+
+                {/* Recherche */}
+                {!compareCarId && (
+                  <div style={{ marginBottom:10 }}>
+                    <input value={compareSearch} onChange={e=>setCompareSearch(e.target.value)}
+                      placeholder="Rechercher une voiture..." autoFocus
+                      style={{ width:'100%', padding:'8px 10px', borderRadius:4, background:'var(--dark3)', border:'1px solid var(--border)', color:'var(--text)', fontSize:14 }} />
+                    {filtered.map(c => (
+                      <div key={c.id} onClick={() => { setCompareCarId(c.id); setCompareSearch(''); }}
+                        style={{ display:'flex', alignItems:'center', gap:8, padding:'6px 8px', cursor:'pointer', borderBottom:'1px solid #111', background:'var(--dark3)', marginTop:2, borderRadius:3 }}>
+                        {getCarPhoto(c.id) && <img src={getCarPhoto(c.id)} alt="" style={{ width:40, height:28, objectFit:'cover', borderRadius:2 }} />}
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:14 }}>{c.name}</span>
+                        <span style={{ fontSize:10, color:'var(--text-dim)', marginLeft:'auto' }}>{c.league}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Stats côte à côte */}
+                {compareCarId && s2 && carB && (
+                  <div>
+                    {/* En-têtes */}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap:6, marginBottom:10 }}>
+                      <div style={{ textAlign:'right' }}>
+                        {photo && <img src={photo} alt="" style={{ width:60, height:40, objectFit:'cover', borderRadius:3, display:'block', marginLeft:'auto', marginBottom:4 }} />}
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'var(--gold)' }}>{effectiveName}</span>
+                      </div>
+                      <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:12, color:'var(--text-dim)', textAlign:'center' }}>VS</span>
+                      <div style={{ textAlign:'left' }}>
+                        {photoB && <img src={photoB} alt="" style={{ width:60, height:40, objectFit:'cover', borderRadius:3, display:'block', marginBottom:4 }} />}
+                        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'var(--gold)' }}>{carB.name}</span>
+                      </div>
+                    </div>
+                    <StatRow label="MATCHS JOUÉS" v1={s1.gp} v2={s2.gp} />
+                    <StatRow label="VICTOIRES" v1={s1.w} v2={s2.w} />
+                    <StatRow label="NULS" v1={s1.d} v2={s2.d} />
+                    <StatRow label="DÉFAITES" v1={s1.l} v2={s2.l} higherBetter={false} />
+                    <StatRow label="% POINTS" v1={(s1.pct*100).toFixed(1)+'%'} v2={(s2.pct*100).toFixed(1)+'%'} />
+                    <StatRow label="BUTS POUR" v1={s1.gf} v2={s2.gf} />
+                    <StatRow label="BUTS CONTRE" v1={s1.ga} v2={s2.ga} higherBetter={false} />
+                    <StatRow label="DIFFÉRENCE" v1={s1.diff>=0?'+'+s1.diff:s1.diff} v2={s2.diff>=0?'+'+s2.diff:s2.diff} />
+                    <StatRow label="PTS ANNEXES" v1={s1.bp} v2={s2.bp} />
+                    <button className="btn btn-dark btn-sm" style={{ marginTop:10, width:'100%' }}
+                      onClick={() => { setCompareCarId(null); setCompareSearch(''); }}>
+                      ↩ Changer de voiture
+                    </button>
+                  </div>
+                )}
+
+                <button className="btn btn-dark btn-sm" style={{ marginTop:8, width:'100%' }}
+                  onClick={() => { setCompareMode(false); setCompareCarId(null); setCompareSearch(''); }}>
+                  Fermer la comparaison
+                </button>
+              </div>
+            );
+          })()}
 
           {/* Points Annexes par ligue */}
           {(() => {
