@@ -1199,6 +1199,16 @@ const css = `
     to   { opacity: 1; transform: translateY(0); }
   }
   .tab-content { animation: fadeIn 0.18s ease; }
+  @keyframes podiumRise {
+    from { transform: scaleY(0); opacity: 0; }
+    to   { transform: scaleY(1); opacity: 1; }
+  }
+  @keyframes podiumFadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .podium-bar { transform-origin: bottom; animation: podiumRise 0.6s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .podium-card { animation: podiumFadeIn 0.5s ease both; }
 
   .notif-container { max-width: 100%; }
   .notif-big { width: 100%; }
@@ -5592,7 +5602,44 @@ export default function App() {
         </div>
 
         <div className="grid-2">
-          {/* Classement */}
+          {/* Podium animé — s'affiche quand le top 3 est mathématiquement assuré */}
+          {(() => {
+            if (standings.length < 3 || playedMatches < 30) return null;
+            const top3Secured = [0,1,2].every(i => isMathematicallySecured(standings, i, 3, matches, true));
+            if (!top3Secured) return null;
+            const order = [standings[1], standings[0], standings[2]]; // 2e, 1er, 3e
+            const heights = [80, 110, 60]; // hauteurs des colonnes
+            const colors = ['#bdc3c7','#f1c40f','#cd7f32'];
+            const labels = ['2e','1er','3e'];
+            return (
+              <div style={{gridColumn:'1/-1',background:'var(--dark2)',borderRadius:8,border:'1px solid var(--border)',padding:'16px 12px 8px',marginBottom:8}}>
+                <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold-dim)',letterSpacing:2,textAlign:'center',marginBottom:12}}>🏆 PODIUM DU GROUPE {activeGroup+1}</div>
+                <div style={{display:'flex',justifyContent:'center',alignItems:'flex-end',gap:8,height:220}}>
+                  {order.map((car, idx) => {
+                    const photo = getCarPhoto(car.id);
+                    const delay = `${idx*0.15}s`;
+                    return (
+                      <div key={car.id} className="podium-card" style={{display:'flex',flexDirection:'column',alignItems:'center',width:90,animationDelay:delay}}>
+                        {/* Photo */}
+                        <div style={{width:80,height:56,borderRadius:6,overflow:'hidden',border:`2px solid ${colors[idx]}`,marginBottom:4,boxShadow:`0 0 12px ${colors[idx]}44`}}>
+                          {photo ? <img src={photo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20}}>🚗</div>}
+                        </div>
+                        {/* Nom */}
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:12,color:colors[idx],textAlign:'center',letterSpacing:1,marginBottom:4,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:90}}>{car.name}</div>
+                        {/* Points */}
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--text)',marginBottom:4}}>{car.pts} pts</div>
+                        {/* Barre podium */}
+                        <div className="podium-bar" style={{width:'100%',height:heights[idx],background:`linear-gradient(180deg, ${colors[idx]}44, ${colors[idx]}22)`,border:`1px solid ${colors[idx]}66`,borderRadius:'4px 4px 0 0',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:6,animationDelay:delay}}>
+                          <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:colors[idx]}}>{labels[idx]}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Classement */}
           <div className="card">
             <div className="card-header"><div className="card-title">Classement — Groupe {activeGroup + 1}</div></div>
@@ -6528,6 +6575,54 @@ export default function App() {
       if (bp >= 3) playoffsCount++;
     });
 
+    // ── Séries consécutives ──────────────────────────────────────────
+    // On parcourt les saisons de la plus récente à la plus ancienne.
+    // Playoffs : bonus >= 3 en S30+, > 0 en S1-S29.
+    // Promotion : la voiture est dans une ligue "meilleure" la saison suivante (V1 > V2 > V3 > V4).
+    // Relégation : la voiture correspond à season.relegated[ligue] cette saison-là.
+    const LEAGUE_RANK = { 'Voitures 1':1, 'Voitures 2':2, 'Voitures 3':3, 'Voitures 4':4 };
+    const sortedSeasons = [...db.seasons].sort((a,b) => b.season - a.season); // plus récente en premier
+    let consecPlayoffs = 0, consecPromo = 0, consecRel = 0;
+    let playoffsStreak = true, promoStreak = true, relStreak = true;
+
+    sortedSeasons.forEach((s, idx) => {
+      const sNum = s.season;
+      // Trouver la ligue de la voiture cette saison
+      let foundLnS = null;
+      for (const ln of ALL_PROFILE_LEAGUES) {
+        const lg = s.leagues[ln];
+        if (lg && lg.cars.find(c => c.id === carId)) { foundLnS = ln; break; }
+      }
+      if (!foundLnS) { playoffsStreak = false; promoStreak = false; relStreak = false; return; }
+
+      // Playoffs
+      if (playoffsStreak) {
+        const threshold = sNum >= 30 ? 3 : 1;
+        const bp = computeBonusPoints(s, foundLnS)[carId] || 0;
+        if (bp >= threshold) consecPlayoffs++;
+        else playoffsStreak = false;
+      }
+
+      // Relégation : cette voiture était-elle le relégué de sa ligue cette saison ?
+      if (relStreak) {
+        if (s.relegated?.[foundLnS] === carId) consecRel++;
+        else relStreak = false;
+      }
+
+      // Promotion : comparer la ligue de cette saison avec la suivante (idx-1 = saison plus récente)
+      if (promoStreak && idx > 0) {
+        const prevS = sortedSeasons[idx - 1]; // saison plus récente
+        let prevLn = null;
+        for (const ln of ALL_PROFILE_LEAGUES) {
+          if (prevS.leagues[ln]?.cars.find(c => c.id === carId)) { prevLn = ln; break; }
+        }
+        const rankNow = LEAGUE_RANK[foundLnS];
+        const rankPrev = LEAGUE_RANK[prevLn];
+        if (rankNow && rankPrev && rankPrev < rankNow) consecPromo++; // était dans une meilleure ligue la saison suivante = promu
+        else promoStreak = false;
+      }
+    });
+
     function handlePhoto(e) {
       const file = e.target.files[0];
       if (!file) return;
@@ -6602,6 +6697,30 @@ export default function App() {
               </div>
             ))}
           </div>
+
+          {/* Séries consécutives */}
+          {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2) && (
+            <div style={{ padding:'10px 16px', display:'flex', gap:8, flexWrap:'wrap' }}>
+              {consecPlayoffs >= 2 && (
+                <div style={{ background:'rgba(39,174,96,0.12)', border:'1px solid rgba(39,174,96,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'var(--green)', lineHeight:1 }}>{consecPlayoffs}</div>
+                  <div style={{ fontSize:9, color:'var(--green)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>SAISONS CONSÉCUTIVES EN PLAYOFFS</div>
+                </div>
+              )}
+              {consecPromo >= 2 && (
+                <div style={{ background:'rgba(201,168,76,0.12)', border:'1px solid rgba(201,168,76,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'var(--gold)', lineHeight:1 }}>▲{consecPromo}</div>
+                  <div style={{ fontSize:9, color:'var(--gold)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>PROMOTIONS CONSÉCUTIVES</div>
+                </div>
+              )}
+              {consecRel >= 2 && (
+                <div style={{ background:'rgba(192,57,43,0.12)', border:'1px solid rgba(192,57,43,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'#e74c3c', lineHeight:1 }}>▼{consecRel}</div>
+                  <div style={{ fontSize:9, color:'#e74c3c', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>RELÉGATIONS CONSÉCUTIVES</div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Points Annexes par ligue */}
           {(() => {
@@ -10756,18 +10875,73 @@ export default function App() {
 
         {/* Stats */}
         {carA && carB && sA && sB && (
-          <div style={{background:'var(--dark2)',borderRadius:8,padding:'0 12px',border:'1px solid var(--border)'}}>
-            <StatRow label="MATCHS JOUÉS" v1={sA.gp} v2={sB.gp} />
-            <StatRow label="VICTOIRES" v1={sA.w} v2={sB.w} />
-            <StatRow label="NULS" v1={sA.d} v2={sB.d} />
-            <StatRow label="DÉFAITES" v1={sA.l} v2={sB.l} higherBetter={false} />
-            <StatRow label="% POINTS" v1={(sA.pct*100).toFixed(1)+'%'} v2={(sB.pct*100).toFixed(1)+'%'} />
-            <StatRow label="BUTS POUR" v1={sA.gf} v2={sB.gf} />
-            <StatRow label="BUTS CONTRE" v1={sA.ga} v2={sB.ga} higherBetter={false} />
-            <StatRow label="DIFFÉRENCE" v1={sA.diff>=0?'+'+sA.diff:sA.diff} v2={sB.diff>=0?'+'+sB.diff:sB.diff} />
-            <StatRow label="PTS ANNEXES" v1={sA.bp} v2={sB.bp} />
-            <StatRow label="TITRES" v1={sA.titles} v2={sB.titles} />
-            <StatRow label="QUALIF. PLAYOFFS" v1={sA.playoffCount} v2={sB.playoffCount} />
+          <div>
+            <div style={{background:'var(--dark2)',borderRadius:8,padding:'0 12px',border:'1px solid var(--border)',marginBottom:16}}>
+              <StatRow label="MATCHS JOUÉS" v1={sA.gp} v2={sB.gp} />
+              <StatRow label="VICTOIRES" v1={sA.w} v2={sB.w} />
+              <StatRow label="NULS" v1={sA.d} v2={sB.d} />
+              <StatRow label="DÉFAITES" v1={sA.l} v2={sB.l} higherBetter={false} />
+              <StatRow label="% POINTS" v1={(sA.pct*100).toFixed(1)+'%'} v2={(sB.pct*100).toFixed(1)+'%'} />
+              <StatRow label="BUTS POUR" v1={sA.gf} v2={sB.gf} />
+              <StatRow label="BUTS CONTRE" v1={sA.ga} v2={sB.ga} higherBetter={false} />
+              <StatRow label="DIFFÉRENCE" v1={sA.diff>=0?'+'+sA.diff:sA.diff} v2={sB.diff>=0?'+'+sB.diff:sB.diff} />
+              <StatRow label="PTS ANNEXES" v1={sA.bp} v2={sB.bp} />
+              <StatRow label="TITRES" v1={sA.titles} v2={sB.titles} />
+              <StatRow label="QUALIF. PLAYOFFS" v1={sA.playoffCount} v2={sB.playoffCount} />
+            </div>
+
+            {/* Confrontations directes */}
+            {(() => {
+              const h2h = [];
+              db.seasons.forEach(s => {
+                [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(ln => {
+                  const lg = s.leagues[ln]; if (!lg) return;
+                  const matches = [...(lg.matches||[]), ...Object.values(lg.groupResults||{}).flat()];
+                  matches.forEach(m => {
+                    if (m.homeGoals==null) return;
+                    if ((m.homeId===carA.id&&m.awayId===carB.id)||(m.homeId===carB.id&&m.awayId===carA.id)) {
+                      const aIsHome = m.homeId===carA.id;
+                      const gA = aIsHome?m.homeGoals:m.awayGoals;
+                      const gB = aIsHome?m.awayGoals:m.homeGoals;
+                      h2h.push({ season:s.season, gA, gB, result: gA>gB?'A':gB>gA?'B':'N' });
+                    }
+                  });
+                });
+              });
+              if (h2h.length === 0) return null;
+              const wA=h2h.filter(m=>m.result==='A').length;
+              const wB=h2h.filter(m=>m.result==='B').length;
+              const draws=h2h.filter(m=>m.result==='N').length;
+              const last5 = [...h2h].sort((a,b)=>b.season-a.season).slice(0,5);
+              return (
+                <div style={{background:'var(--dark2)',borderRadius:8,padding:'12px',border:'1px solid var(--border)'}}>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--gold-dim)',letterSpacing:2,marginBottom:10}}>🥊 CONFRONTATIONS DIRECTES ({h2h.length} matchs)</div>
+                  {/* Bilan global */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:12}}>
+                    <div style={{textAlign:'right'}}>
+                      <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:wA>wB?'var(--green)':wA<wB?'#e74c3c':'var(--gold)'}}>{wA}</span>
+                      <div style={{fontSize:10,color:'var(--text-dim)'}}>VICTOIRES</div>
+                    </div>
+                    <div style={{textAlign:'center',padding:'0 12px'}}>
+                      <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--text-dim)'}}>{draws} NULS</div>
+                    </div>
+                    <div style={{textAlign:'left'}}>
+                      <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:wB>wA?'var(--green)':wB<wA?'#e74c3c':'var(--gold)'}}>{wB}</span>
+                      <div style={{fontSize:10,color:'var(--text-dim)'}}>VICTOIRES</div>
+                    </div>
+                  </div>
+                  {/* 5 dernières rencontres */}
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:'var(--text-dim)',letterSpacing:1,marginBottom:6}}>5 DERNIÈRES RENCONTRES</div>
+                  {last5.map((m,i)=>(
+                    <div key={i} style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',padding:'4px 0',borderBottom:'1px solid #111'}}>
+                      <span style={{textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:m.result==='A'?'var(--green)':m.result==='B'?'#e74c3c':'var(--gold)'}}>{carA.name}</span>
+                      <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:16,padding:'0 10px',color:'var(--text)'}}>{m.gA} : {m.gB}</span>
+                      <span style={{textAlign:'left',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:m.result==='B'?'var(--green)':m.result==='A'?'#e74c3c':'var(--gold)'}}>{carB.name}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
 
