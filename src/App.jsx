@@ -5605,8 +5605,15 @@ export default function App() {
           {/* Podium animé — s'affiche quand le top 3 est mathématiquement assuré */}
           {(() => {
             if (standings.length < 3 || playedMatches < 30) return null;
-            const top3Secured = [0,1,2].every(i => isMathematicallySecured(standings, i, 3, matches, true));
-            if (!top3Secured) return null;
+            // Vérifier que les 3 premières places sont mathématiquement assurées :
+            // aucune voiture hors top 3 ne peut atteindre les points du 3e.
+            const car3pts = standings[2].pts;
+            const outsiders = standings.slice(3);
+            const podiumSecured = outsiders.every(car => {
+              const rem = matches.filter(m => m.homeGoals === null && (m.homeId === car.id || m.awayId === car.id)).length;
+              return car.pts + rem * 3 <= car3pts; // <= car l'égalité maintient le 3e devant (tri stable)
+            });
+            if (!podiumSecured) return null;
             const order = [standings[1], standings[0], standings[2]]; // 2e, 1er, 3e
             const heights = [80, 110, 60]; // hauteurs des colonnes
             const colors = ['#bdc3c7','#f1c40f','#cd7f32'];
@@ -6581,9 +6588,13 @@ export default function App() {
     // Promotion : la voiture est dans une ligue "meilleure" la saison suivante (V1 > V2 > V3 > V4).
     // Relégation : la voiture correspond à season.relegated[ligue] cette saison-là.
     const LEAGUE_RANK = { 'Voitures 1':1, 'Voitures 2':2, 'Voitures 3':3, 'Voitures 4':4 };
-    const sortedSeasons = [...db.seasons].sort((a,b) => b.season - a.season); // plus récente en premier
-    let consecPlayoffs = 0, consecPromo = 0, consecRel = 0;
-    let playoffsStreak = true, promoStreak = true, relStreak = true;
+    // Exclure la saison en cours (matchs non terminés → bonus à 0 → brise faussement les streaks)
+    const liveSeason = db.seasons[db.seasons.length - 1];
+    const sortedSeasons = [...db.seasons]
+      .filter(s => s !== liveSeason)
+      .sort((a,b) => b.season - a.season);
+    let consecPlayoffs = 0, consecPromo = 0, consecRel = 0, consecNoPlayoffs = 0;
+    let playoffsStreak = true, promoStreak = true, relStreak = true, noPlayoffsStreak = true;
 
     sortedSeasons.forEach((s, idx) => {
       const sNum = s.season;
@@ -6593,7 +6604,7 @@ export default function App() {
         const lg = s.leagues[ln];
         if (lg && lg.cars.find(c => c.id === carId)) { foundLnS = ln; break; }
       }
-      if (!foundLnS) { playoffsStreak = false; promoStreak = false; relStreak = false; return; }
+      if (!foundLnS) { playoffsStreak = false; promoStreak = false; relStreak = false; noPlayoffsStreak = false; return; }
 
       // Playoffs
       if (playoffsStreak) {
@@ -6601,6 +6612,14 @@ export default function App() {
         const bp = computeBonusPoints(s, foundLnS)[carId] || 0;
         if (bp >= threshold) consecPlayoffs++;
         else playoffsStreak = false;
+      }
+
+      // Sans playoffs (inverse)
+      if (noPlayoffsStreak) {
+        const threshold = sNum >= 30 ? 3 : 1;
+        const bp = computeBonusPoints(s, foundLnS)[carId] || 0;
+        if (bp < threshold) consecNoPlayoffs++;
+        else noPlayoffsStreak = false;
       }
 
       // Relégation : cette voiture était-elle le relégué de sa ligue cette saison ?
@@ -6699,12 +6718,18 @@ export default function App() {
           </div>
 
           {/* Séries consécutives */}
-          {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2) && (
+          {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2 || consecNoPlayoffs >= 2) && (
             <div style={{ padding:'10px 16px', display:'flex', gap:8, flexWrap:'wrap' }}>
               {consecPlayoffs >= 2 && (
                 <div style={{ background:'rgba(39,174,96,0.12)', border:'1px solid rgba(39,174,96,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'var(--green)', lineHeight:1 }}>{consecPlayoffs}</div>
                   <div style={{ fontSize:9, color:'var(--green)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>SAISONS CONSÉCUTIVES EN PLAYOFFS</div>
+                </div>
+              )}
+              {consecNoPlayoffs >= 2 && (
+                <div style={{ background:'rgba(127,140,141,0.12)', border:'1px solid rgba(127,140,141,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'var(--text-dim)', lineHeight:1 }}>{consecNoPlayoffs}</div>
+                  <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>SAISONS SANS PLAYOFFS</div>
                 </div>
               )}
               {consecPromo >= 2 && (
