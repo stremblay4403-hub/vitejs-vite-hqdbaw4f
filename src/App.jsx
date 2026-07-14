@@ -5616,14 +5616,14 @@ export default function App() {
             if (!podiumSecured) return null;
             const order = [standings[1], standings[0], standings[2]];
             const isDesktop = window.innerWidth >= 768;
-            const photoW  = isDesktop ? 180 : 110;
-            const photoH  = isDesktop ? 120 : 76;
-            const cardW   = isDesktop ? 200 : 120;
-            const barH    = isDesktop ? [140, 190, 100] : [80, 110, 60];
-            const nameFs  = isDesktop ? 18 : 12;
-            const ptsFs   = isDesktop ? 18 : 13;
-            const rankFs  = isDesktop ? 32 : 22;
-            const totalH  = isDesktop ? 360 : 220;
+            const photoW  = isDesktop ? 240 : 110;
+            const photoH  = isDesktop ? 160 : 76;
+            const cardW   = isDesktop ? 260 : 120;
+            const barH    = isDesktop ? [180, 240, 130] : [80, 110, 60];
+            const nameFs  = isDesktop ? 22 : 12;
+            const ptsFs   = isDesktop ? 20 : 13;
+            const rankFs  = isDesktop ? 42 : 22;
+            const totalH  = isDesktop ? 460 : 220;
             const colors  = ['#bdc3c7','#f1c40f','#cd7f32'];
             const labels  = ['2e','1er','3e'];
             return (
@@ -6603,8 +6603,8 @@ export default function App() {
     const completedSeasons = allSeasonsSorted.filter(s => s !== liveSeason);
 
     // Playoffs (saisons terminées, ligues principales seulement)
-    let consecPlayoffs = 0, consecNoPlayoffs = 0;
-    let playoffsStreak = true, noPlayoffsStreak = true;
+    let consecPlayoffs = 0, consecNoPlayoffs = 0, consecPtsAnnexes = 0;
+    let playoffsStreak = true, noPlayoffsStreak = true, ptsAnnexesStreak = true;
     for (const s of completedSeasons) {
       const foundLnS = getCarLeague(s);
       if (!foundLnS) { playoffsStreak = false; noPlayoffsStreak = false; break; }
@@ -6622,7 +6622,11 @@ export default function App() {
         else if (bp < threshold) consecNoPlayoffs++;
         else noPlayoffsStreak = false;
       }
-      if (!playoffsStreak && !noPlayoffsStreak) break;
+      if (ptsAnnexesStreak) {
+        if (isMain && bp >= 1) consecPtsAnnexes++;
+        else ptsAnnexesStreak = false;
+      }
+      if (!playoffsStreak && !noPlayoffsStreak && !ptsAnnexesStreak) break;
     }
 
     // Promotion / relégation — inclure S36 car c'est elle qui révèle la fin de S35
@@ -6718,12 +6722,18 @@ export default function App() {
           </div>
 
           {/* Séries consécutives */}
-          {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2 || consecNoPlayoffs >= 2) && (
+          {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2 || consecNoPlayoffs >= 2 || consecPtsAnnexes >= 2) && (
             <div style={{ padding:'10px 16px', display:'flex', gap:8, flexWrap:'wrap' }}>
               {consecPlayoffs >= 2 && (
                 <div style={{ background:'rgba(39,174,96,0.12)', border:'1px solid rgba(39,174,96,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'var(--green)', lineHeight:1 }}>{consecPlayoffs}</div>
                   <div style={{ fontSize:9, color:'var(--green)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>SAISONS CONSÉCUTIVES EN PLAYOFFS</div>
+                </div>
+              )}
+              {consecPtsAnnexes >= 2 && (
+                <div style={{ background:'rgba(52,152,219,0.12)', border:'1px solid rgba(52,152,219,0.3)', borderRadius:6, padding:'6px 12px', textAlign:'center' }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:28, color:'#3498db', lineHeight:1 }}>{consecPtsAnnexes}</div>
+                  <div style={{ fontSize:9, color:'#3498db', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>SAISONS CONSÉCUTIVES AVEC PTS ANNEXES</div>
                 </div>
               )}
               {consecNoPlayoffs >= 2 && (
