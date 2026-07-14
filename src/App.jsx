@@ -6583,64 +6583,60 @@ export default function App() {
     });
 
     // ── Séries consécutives ──────────────────────────────────────────
-    // On parcourt les saisons de la plus récente à la plus ancienne.
-    // Playoffs : bonus >= 3 en S30+, > 0 en S1-S29.
-    // Promotion : la voiture est dans une ligue "meilleure" la saison suivante (V1 > V2 > V3 > V4).
-    // Relégation : la voiture correspond à season.relegated[ligue] cette saison-là.
-    const LEAGUE_RANK = { 'Voitures 1':1, 'Voitures 2':2, 'Voitures 3':3, 'Voitures 4':4 };
-    // Exclure la saison en cours (matchs non terminés → bonus à 0 → brise faussement les streaks)
-    const liveSeason = db.seasons[db.seasons.length - 1];
-    const sortedSeasons = [...db.seasons]
-      .filter(s => s !== liveSeason)
-      .sort((a,b) => b.season - a.season);
-    let consecPlayoffs = 0, consecPromo = 0, consecRel = 0, consecNoPlayoffs = 0;
-    let playoffsStreak = true, promoStreak = true, relStreak = true, noPlayoffsStreak = true;
-
-    sortedSeasons.forEach((s, idx) => {
-      const sNum = s.season;
-      // Trouver la ligue de la voiture cette saison
-      let foundLnS = null;
+    // Rang de toutes les ligues (main + aux) pour détecter promo/relégation
+    const ALL_LEAGUE_RANK = {};
+    [...LEAGUES, ...AUXILIARY_LEAGUES].forEach((l, i) => { ALL_LEAGUE_RANK[l] = i; });
+    const getCarLeague = (s) => {
       for (const ln of ALL_PROFILE_LEAGUES) {
-        const lg = s.leagues[ln];
-        if (lg && lg.cars.find(c => c.id === carId)) { foundLnS = ln; break; }
+        if (s.leagues[ln]?.cars.find(c => c.id === carId)) return ln;
       }
-      if (!foundLnS) { playoffsStreak = false; promoStreak = false; relStreak = false; noPlayoffsStreak = false; return; }
+      return null;
+    };
+    // Toutes saisons triées du plus récent au plus ancien (S36 inclus pour promo/rel)
+    const allSeasonsSorted = [...db.seasons].sort((a, b) => b.season - a.season);
+    const liveSeason = db.seasons[db.seasons.length - 1];
+    // Saisons TERMINÉES seulement pour les playoffs (saison courante = 0 matchs → bp=0 faux)
+    const completedSeasons = allSeasonsSorted.filter(s => s !== liveSeason);
 
-      // Playoffs
+    // Playoffs (saisons terminées, ligues principales seulement)
+    let consecPlayoffs = 0, consecNoPlayoffs = 0;
+    let playoffsStreak = true, noPlayoffsStreak = true;
+    for (const s of completedSeasons) {
+      const foundLnS = getCarLeague(s);
+      if (!foundLnS) { playoffsStreak = false; noPlayoffsStreak = false; break; }
+      const isMain = LEAGUES.includes(foundLnS);
+      const sNum = s.season;
+      const threshold = sNum >= 30 ? 3 : 1;
+      const bp = isMain ? (computeBonusPoints(s, foundLnS)[carId] || 0) : 0;
       if (playoffsStreak) {
-        const threshold = sNum >= 30 ? 3 : 1;
-        const bp = computeBonusPoints(s, foundLnS)[carId] || 0;
-        if (bp >= threshold) consecPlayoffs++;
+        if (isMain && bp >= threshold) consecPlayoffs++;
         else playoffsStreak = false;
       }
-
-      // Sans playoffs (inverse)
+      // Sans playoffs : seulement pour les ligues principales (sans sens pour les aux)
       if (noPlayoffsStreak) {
-        const threshold = sNum >= 30 ? 3 : 1;
-        const bp = computeBonusPoints(s, foundLnS)[carId] || 0;
-        if (bp < threshold) consecNoPlayoffs++;
+        if (!isMain) { noPlayoffsStreak = false; }
+        else if (bp < threshold) consecNoPlayoffs++;
         else noPlayoffsStreak = false;
       }
+      if (!playoffsStreak && !noPlayoffsStreak) break;
+    }
 
-      // Relégation : cette voiture était-elle le relégué de sa ligue cette saison ?
-      if (relStreak) {
-        if (s.relegated?.[foundLnS] === carId) consecRel++;
-        else relStreak = false;
-      }
-
-      // Promotion : comparer la ligue de cette saison avec la suivante (idx-1 = saison plus récente)
-      if (promoStreak && idx > 0) {
-        const prevS = sortedSeasons[idx - 1]; // saison plus récente
-        let prevLn = null;
-        for (const ln of ALL_PROFILE_LEAGUES) {
-          if (prevS.leagues[ln]?.cars.find(c => c.id === carId)) { prevLn = ln; break; }
-        }
-        const rankNow = LEAGUE_RANK[foundLnS];
-        const rankPrev = LEAGUE_RANK[prevLn];
-        if (rankNow && rankPrev && rankPrev < rankNow) consecPromo++; // était dans une meilleure ligue la saison suivante = promu
-        else promoStreak = false;
-      }
-    });
+    // Promotion / relégation — inclure S36 car c'est elle qui révèle la fin de S35
+    let consecPromo = 0, consecRel = 0;
+    let promoStreak = true, relStreak = true;
+    for (let i = 1; i < allSeasonsSorted.length; i++) {
+      if (!promoStreak && !relStreak) break;
+      const lnNow  = getCarLeague(allSeasonsSorted[i]);     // ligue dans la saison plus ancienne
+      const lnPrev = getCarLeague(allSeasonsSorted[i - 1]); // ligue dans la saison plus récente
+      if (!lnNow || !lnPrev) { promoStreak = false; relStreak = false; break; }
+      const rankNow  = ALL_LEAGUE_RANK[lnNow];
+      const rankPrev = ALL_LEAGUE_RANK[lnPrev];
+      if (rankNow === undefined || rankPrev === undefined) { promoStreak = false; relStreak = false; break; }
+      // rankPrev > rankNow → voiture dans une ligue moins bonne la saison suivante → relégation
+      if (relStreak) { if (rankPrev > rankNow) consecRel++; else relStreak = false; }
+      // rankPrev < rankNow → voiture dans une ligue meilleure la saison suivante → promotion
+      if (promoStreak) { if (rankPrev < rankNow) consecPromo++; else promoStreak = false; }
+    }
 
     function handlePhoto(e) {
       const file = e.target.files[0];
