@@ -6605,25 +6605,60 @@ export default function App() {
     // Playoffs (saisons terminées, ligues principales seulement)
     let consecPlayoffs = 0, consecNoPlayoffs = 0, consecPtsAnnexes = 0;
     let playoffsStreak = true, noPlayoffsStreak = true, ptsAnnexesStreak = true;
-    for (const s of completedSeasons) {
+
+    // Construire un tableau unifié (sNum → bp) pour toutes les saisons en ligues principales
+    // incluant l'historique S1-S29 via HISTORICAL_DATA.historicalBonus
+    const bpBySeason = {};
+    LEAGUES.forEach(ln => {
+      const histCars = HISTORICAL_DATA.historicalBonus[ln] || [];
+      const histCar = histCars.find(c => c.name === effectiveName);
+      if (histCar) {
+        Object.entries(histCar.bySeason || {}).forEach(([sNum, bp]) => {
+          const n = Number(sNum);
+          bpBySeason[n] = (bpBySeason[n] || 0) + bp;
+        });
+      }
+    });
+    completedSeasons.forEach(s => {
       const foundLnS = getCarLeague(s);
-      if (!foundLnS) { playoffsStreak = false; noPlayoffsStreak = false; break; }
-      const isMain = LEAGUES.includes(foundLnS);
-      const sNum = s.season;
+      if (!foundLnS || !LEAGUES.includes(foundLnS)) return;
+      const bp = computeBonusPoints(s, foundLnS)[carId] || 0;
+      bpBySeason[s.season] = (bpBySeason[s.season] || 0) + bp;
+    });
+
+    // Construire la liste des saisons où la voiture était en ligue principale, triée du plus récent
+    const mainSeasonNums = new Set();
+    completedSeasons.forEach(s => {
+      const ln = getCarLeague(s);
+      if (ln && LEAGUES.includes(ln)) mainSeasonNums.add(s.season);
+    });
+    LEAGUES.forEach(ln => {
+      const histCars = HISTORICAL_DATA.historicalBonus[ln] || [];
+      const histCar = histCars.find(c => c.name === effectiveName);
+      if (histCar) Object.keys(histCar.bySeason || {}).forEach(n => mainSeasonNums.add(Number(n)));
+    });
+    const sortedMainNums = [...mainSeasonNums].sort((a, b) => b - a);
+
+    // Parcourir les saisons consécutives (sans trou) du plus récent au plus ancien
+    let prevNum = null;
+    for (const sNum of sortedMainNums) {
+      // Si saut de saison (> 1 de différence), brise tous les streaks
+      if (prevNum !== null && prevNum - sNum > 1) {
+        playoffsStreak = false; noPlayoffsStreak = false; ptsAnnexesStreak = false;
+      }
+      prevNum = sNum;
+      const bp = bpBySeason[sNum] || 0;
       const threshold = sNum >= 30 ? 3 : 1;
-      const bp = isMain ? (computeBonusPoints(s, foundLnS)[carId] || 0) : 0;
       if (playoffsStreak) {
-        if (isMain && bp >= threshold) consecPlayoffs++;
+        if (bp >= threshold) consecPlayoffs++;
         else playoffsStreak = false;
       }
-      // Sans playoffs : seulement pour les ligues principales (sans sens pour les aux)
       if (noPlayoffsStreak) {
-        if (!isMain) { noPlayoffsStreak = false; }
-        else if (bp < threshold) consecNoPlayoffs++;
+        if (bp < threshold) consecNoPlayoffs++;
         else noPlayoffsStreak = false;
       }
       if (ptsAnnexesStreak) {
-        if (isMain && bp >= 1) consecPtsAnnexes++;
+        if (bp >= 1) consecPtsAnnexes++;
         else ptsAnnexesStreak = false;
       }
       if (!playoffsStreak && !noPlayoffsStreak && !ptsAnnexesStreak) break;
