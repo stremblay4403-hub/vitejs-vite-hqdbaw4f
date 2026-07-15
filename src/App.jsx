@@ -1194,6 +1194,36 @@ const css = `
   }
   .badge-fire { animation: flameAnim 1.2s ease-in-out infinite; }
   .badge-ice  { animation: iceAnim  1.8s ease-in-out infinite; }
+  @keyframes shineGold {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes shineSilver {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  @keyframes shineBronze {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .row-gold {
+    background: linear-gradient(105deg, rgba(201,168,76,0.12) 0%, rgba(241,196,15,0.22) 40%, rgba(201,168,76,0.12) 100%);
+    background-size: 200% auto;
+    animation: shineGold 3s linear infinite;
+    border-bottom: 1px solid rgba(201,168,76,0.3) !important;
+  }
+  .row-silver {
+    background: linear-gradient(105deg, rgba(180,180,195,0.08) 0%, rgba(220,220,235,0.2) 40%, rgba(180,180,195,0.08) 100%);
+    background-size: 200% auto;
+    animation: shineSilver 3.5s linear infinite;
+    border-bottom: 1px solid rgba(189,195,199,0.25) !important;
+  }
+  .row-bronze {
+    background: linear-gradient(105deg, rgba(160,100,60,0.08) 0%, rgba(205,127,50,0.2) 40%, rgba(160,100,60,0.08) 100%);
+    background-size: 200% auto;
+    animation: shineBronze 4s linear infinite;
+    border-bottom: 1px solid rgba(160,100,60,0.25) !important;
+  }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -2164,10 +2194,10 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
                      : `1px solid #1a1a1a`;
 
   return (
-    <div style={{ display:'flex', alignItems:'stretch', height:ROW_H,
+    <div className={rank === 1 ? 'row-gold' : rank === 2 ? 'row-silver' : rank === 3 ? 'row-bronze' : ''}
+      style={{ display:'flex', alignItems:'stretch', height:ROW_H,
       borderLeft:`4px solid ${borderColor || 'transparent'}`,
-      borderBottom: podiumBorder,
-      background: podiumBg,
+      borderBottom: rank > 3 ? '1px solid #1a1a1a' : undefined,
       boxShadow: rank <= 3 ? `inset 0 0 40px rgba(${rank===1?'201,168,76':rank===2?'180,180,195':'160,100,60'},0.05)` : 'none',
     }}>
 
