@@ -5646,14 +5646,14 @@ export default function App() {
             if (!podiumSecured) return null;
             const order = [standings[1], standings[0], standings[2]];
             const isDesktop = window.innerWidth >= 768;
-            const photoW  = isDesktop ? 240 : 110;
-            const photoH  = isDesktop ? 160 : 76;
-            const cardW   = isDesktop ? 260 : 120;
-            const barH    = isDesktop ? [180, 240, 130] : [80, 110, 60];
-            const nameFs  = isDesktop ? 22 : 12;
-            const ptsFs   = isDesktop ? 20 : 13;
-            const rankFs  = isDesktop ? 42 : 22;
-            const totalH  = isDesktop ? 460 : 220;
+            const photoW  = isDesktop ? 320 : 110;
+            const photoH  = isDesktop ? 210 : 76;
+            const cardW   = isDesktop ? 340 : 120;
+            const barH    = isDesktop ? [240, 310, 170] : [80, 110, 60];
+            const nameFs  = isDesktop ? 28 : 12;
+            const ptsFs   = isDesktop ? 24 : 13;
+            const rankFs  = isDesktop ? 56 : 22;
+            const totalH  = isDesktop ? 600 : 220;
             const colors  = ['#bdc3c7','#f1c40f','#cd7f32'];
             const labels  = ['2e','1er','3e'];
             return (
