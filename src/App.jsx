@@ -1576,6 +1576,23 @@ const css = `
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 
+  /* Car profile — mise en page verticale sur ordinateur uniquement (photo / nom / stats empilés) */
+  @media (min-width: 768px) {
+    .car-profile-card { max-width: 480px; }
+    .car-profile-header {
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      position: relative;
+      padding: 28px 24px 20px;
+    }
+    .car-photo-box { width: 100%; max-width: 380px; height: 240px; }
+    .car-profile-info { flex: none; width: 100%; margin-top: 14px; }
+    .car-profile-badges { justify-content: center; }
+    .car-profile-actions { position: absolute; top: 14px; right: 16px; }
+    .car-stat-grid { grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; }
+  }
+
   /* Sim buttons */
   .sim-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
   .btn-sim { background: rgba(41,128,185,0.15); border: 1px solid rgba(41,128,185,0.4); color: #5dade2; }
@@ -6729,7 +6746,7 @@ export default function App() {
               {!isPublicMode && <div className="car-photo-overlay">📷</div>}
               {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />}
             </label>
-            <div style={{ flex:1 }}>
+            <div className="car-profile-info" style={{ flex:1 }}>
               <div className="font-bebas" style={{ fontSize:22,color:'var(--gold)',letterSpacing:3 }}>{effectiveName}</div>
               <div className="text-dim" style={{ fontSize:12 }}>{(() => {
                 let foundLeague = null;
@@ -6741,7 +6758,7 @@ export default function App() {
                 }
                 return foundLeague || leagueName;
               })()}</div>
-              <div style={{ marginTop:6,display:'flex',gap:6,flexWrap:'wrap',alignItems:'center' }}>
+              <div className="car-profile-badges" style={{ marginTop:6,display:'flex',gap:6,flexWrap:'wrap',alignItems:'center' }}>
                 {(champCount + histChampions.length) > 0 && <span className="badge badge-gold">🏆 ×{champCount + histChampions.length}</span>}
                 {(relCount + histRelegated.length) > 0 && <span className="badge badge-red">⬇ ×{relCount + histRelegated.length}</span>}
                 {(() => {
@@ -6756,7 +6773,7 @@ export default function App() {
                 })()}
               </div>
             </div>
-            <div style={{ display:'flex', gap:6 }}>
+            <div className="car-profile-actions" style={{ display:'flex', gap:6 }}>
               <button className="btn btn-dark btn-sm" onClick={() => { setProfileCar(null); setCompareMode(false); setCompareCarId(null); }}>✕</button>
             </div>
           </div>
