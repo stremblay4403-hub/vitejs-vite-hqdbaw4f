@@ -1581,15 +1581,20 @@ const css = `
     .car-profile-card { max-width: 480px; }
     .car-profile-header {
       flex-direction: column;
-      align-items: center;
+      align-items: stretch;
       text-align: center;
       position: relative;
-      padding: 28px 24px 20px;
+      padding: 0 0 20px;
     }
-    .car-photo-box { width: 100%; max-width: 380px; height: 240px; }
-    .car-profile-info { flex: none; width: 100%; margin-top: 14px; }
+    .car-photo-box {
+      width: 100%; max-width: none; height: 260px; border-radius: 6px 6px 0 0;
+      border: none; background: transparent;
+    }
+    .car-photo-box img { object-fit: cover; }
+    .car-profile-info { flex: none; width: 100%; margin-top: 16px; padding: 0 24px; }
     .car-profile-badges { justify-content: center; }
-    .car-profile-actions { position: absolute; top: 14px; right: 16px; }
+    .car-profile-actions { position: absolute; top: 12px; right: 12px; z-index: 2; }
+    .car-profile-actions .btn { background: rgba(0,0,0,0.55); backdrop-filter: blur(3px); }
     .car-stat-grid { grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; }
   }
 
