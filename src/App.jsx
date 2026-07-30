@@ -6195,7 +6195,7 @@ export default function App() {
         ) : car && (
           <div key={car.id} style={{ textAlign:'center', animation:'introSlideUp 0.5s ease', maxWidth:420, padding:'0 24px' }}>
             <div style={{
-              width:220, height:220, margin:'0 auto 20px', borderRadius:10, overflow:'hidden',
+              width:320, maxWidth:'100%', height:190, margin:'0 auto 20px', borderRadius:10, overflow:'hidden',
               background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center',
               boxShadow:'0 0 40px rgba(201,168,76,0.15)',
             }}>
