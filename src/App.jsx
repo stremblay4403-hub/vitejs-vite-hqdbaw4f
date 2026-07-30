@@ -6010,13 +6010,17 @@ export default function App() {
     }
 
     // Records/extrêmes du groupe (basés sur la saison principale la plus récente de chaque voiture)
-    if (groupExtremes.biggestWinCarId === car.id && lastSeasonStats?.bestMargin > 0) {
+    // Garde-fou : on n'affirme "la saison dernière" que si la donnée vient VRAIMENT de seasonNum-1
+    // (si une saison passée manque de données de matchs, lastSeasonStats pourrait remonter plus loin —
+    //  dans ce cas on préfère ne rien affirmer plutôt que de se tromper de saison)
+    const lastStatsIsTrulyLastSeason = lastSeasonStats?.season === seasonNum - 1;
+    if (lastStatsIsTrulyLastSeason && groupExtremes.biggestWinCarId === car.id && lastSeasonStats.bestMargin > 0) {
       return { icon:'💥', text:`Détient la plus grosse victoire du groupe la saison dernière (${lastSeasonStats.bestScore})` };
     }
-    if (groupExtremes.bestAttackCarId === car.id) {
+    if (lastStatsIsTrulyLastSeason && groupExtremes.bestAttackCarId === car.id) {
       return { icon:'⚡', text:`Meilleure attaque du groupe la saison dernière (${lastSeasonStats.gf} buts)` };
     }
-    if (groupExtremes.bestDefenseCarId === car.id) {
+    if (lastStatsIsTrulyLastSeason && groupExtremes.bestDefenseCarId === car.id) {
       return { icon:'🧱', text:`Défense de fer — la moins de buts encaissés du groupe la saison dernière (${lastSeasonStats.ga})` };
     }
 
@@ -6026,7 +6030,8 @@ export default function App() {
     }
 
     // Progression / chute au classement
-    if (rankHistory.length >= 3) {
+    // Même garde-fou : le rang "actuel" doit venir de seasonNum-1, sinon on ne compare pas
+    if (rankHistory.length >= 3 && rankHistory[0].season === seasonNum - 1) {
       const [current, ...rest] = rankHistory;
       let betterCount = 0;
       for (const r of rest) { if (r.rank >= current.rank) betterCount++; else break; }
@@ -6041,15 +6046,16 @@ export default function App() {
     }
 
     // Toujours proche des playoffs sans jamais y accéder
-    const recentMain = sortedMain.slice(0, 4);
+    // (seulement pertinent pour les saisons S30+, où le seuil de 3 pts laisse place à un "presque" ;
+    //  avant S30 le seuil est 1 pt, donc 0 pt = rien, pas "presque")
+    const recentMain = sortedMain.slice(0, 4).filter(n => n >= 30);
     let closeCount = 0, reachedPlayoffs = false;
     recentMain.forEach(n => {
       const bp = bpBySeason[n] || 0;
-      const threshold = n >= 30 ? 3 : 1;
-      if (bp >= threshold) reachedPlayoffs = true;
-      if (bp === threshold - 1) closeCount++;
+      if (bp >= 3) reachedPlayoffs = true;
+      if (bp === 2) closeCount++;
     });
-    if (!reachedPlayoffs && closeCount >= 2) {
+    if (recentMain.length >= 2 && !reachedPlayoffs && closeCount >= 2) {
       return { icon:'🎯', text:'Toujours proche des playoffs sans jamais y accéder' };
     }
 
@@ -6086,7 +6092,13 @@ export default function App() {
     if (tenure >= 8) {
       return { icon:'🎖️', text:`Vétérane de la ligue principale — ${tenure} saisons consécutives` };
     }
-    return null;
+
+    // Filet de sécurité — garantit qu'aucune voiture ne se retrouve sans phrase
+    const lastPts = bpBySeason[sortedMain[0]] || 0;
+    if (lastPts > 0) {
+      return { icon:'🚗', text:`${tenure}ᵉ saison consécutive en ligue principale — ${lastPts} pts annexes la saison dernière` };
+    }
+    return { icon:'🚗', text:`${tenure}ᵉ saison consécutive en ligue principale (${car.total} pts annexes en carrière)` };
   }
 
   function GroupIntroPresentation({ leagueName, group, groupCars, seasonNum, onClose }) {
@@ -6103,7 +6115,7 @@ export default function App() {
           .map(([k, pts]) => ({ num: Number((k.match(/S(\d+)$/) || [])[1] || 0), pts }))
           .filter(s => s.num > 0)
           .sort((a, b) => b.num - a.num)
-          .slice(0, 3) : [];
+          .slice(0, 5) : [];
         const hist = computeCarMainHistory(c.id, c.name, seasonNum);
         return {
           ...c,
@@ -6116,14 +6128,16 @@ export default function App() {
         };
       });
 
-      // Extrêmes du groupe, basés sur la saison principale la plus récente jouée par chaque voiture
+      // Extrêmes du groupe, basés sur la saison principale la plus récente jouée par chaque voiture.
+      // On ne compare que les voitures dont les stats viennent VRAIMENT de seasonNum-1
+      // (comparaison pomme-avec-pomme — sinon une donnée plus ancienne fausserait le classement)
       let bestAttackCarId = null, bestAttackVal = -1;
       let bestDefenseCarId = null, bestDefenseVal = Infinity;
       let biggestWinCarId = null, biggestWinVal = 0;
       let mostTitledCarId = null, mostTitledVal = 0, mostTitledCount = 0;
       base.forEach(c => {
         const ls = c.hist.lastSeasonStats;
-        if (ls) {
+        if (ls && ls.season === seasonNum - 1) {
           if (ls.gf > bestAttackVal) { bestAttackVal = ls.gf; bestAttackCarId = c.id; }
           if (ls.ga < bestDefenseVal) { bestDefenseVal = ls.ga; bestDefenseCarId = c.id; }
           if (ls.bestMargin > biggestWinVal) { biggestWinVal = ls.bestMargin; biggestWinCarId = c.id; }
@@ -6222,9 +6236,9 @@ export default function App() {
             </div>
 
             {car.seasons.length > 0 && (
-              <div style={{ marginTop:18, display:'flex', gap:8, justifyContent:'center' }}>
+              <div style={{ marginTop:18, display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap' }}>
                 {car.seasons.map(s => (
-                  <div key={s.num} style={{ background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, padding:'8px 12px', textAlign:'center', minWidth:64 }}>
+                  <div key={s.num} style={{ background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, padding:'8px 10px', textAlign:'center', minWidth:52 }}>
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'var(--gold)' }}>{s.pts}</div>
                     <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>S{s.num}</div>
                   </div>
