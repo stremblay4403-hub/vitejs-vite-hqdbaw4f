@@ -5631,8 +5631,37 @@ export default function App() {
     const days = [...new Set(matches.map(m => m.day))].sort((a, b) => a - b);
     const nextUnplayedDay = days.find(d => matches.filter(m => m.day === d).some(m => m.homeGoals === null));
 
+    // ── Intro cinématique du groupe ─────────────────────────────────────
+    // Affichée uniquement la toute première fois qu'on ouvre ce groupe pour cette saison,
+    // ET seulement si aucun match n'a encore été joué (disparaît définitivement dès le 1er match).
+    const introStorageKey = `groupIntroSeen_${leagueTab}_G${activeGroup}_S${currentSeason.season}`;
+    const [showGroupIntro, setShowGroupIntro] = useState(false);
+    useEffect(() => {
+      if (isPublicMode) { setShowGroupIntro(false); return; }
+      if (totalMatches > 0 && playedMatches === 0) {
+        const alreadySeen = localStorage.getItem(introStorageKey);
+        setShowGroupIntro(!alreadySeen);
+      } else {
+        setShowGroupIntro(false);
+      }
+    }, [leagueTab, activeGroup, currentSeason.season, totalMatches, playedMatches]);
+
+    function closeGroupIntro() {
+      localStorage.setItem(introStorageKey, '1');
+      setShowGroupIntro(false);
+    }
+
     return (
       <div>
+        {showGroupIntro && (
+          <GroupIntroPresentation
+            leagueName={leagueTab}
+            group={activeGroup}
+            groupCars={groupCars}
+            seasonNum={currentSeason.season}
+            onClose={closeGroupIntro}
+          />
+        )}
         <div className="group-tabs">
           {Array.from({ length: GROUPS }, (_, i) => (
             <button key={i} className={`group-tab ${activeGroup === i ? 'active' : ''}`}
@@ -5887,6 +5916,336 @@ export default function App() {
   }
 
   const [showBracket, setShowBracket] = useState(false);
+
+  // ── Historique complet d'une voiture en ligue principale (rang, GF/GA, meilleure victoire) ──
+  function computeCarMainHistory(carId, effectiveName, seasonNum) {
+    const ALL_L = [...LEAGUES, ...AUXILIARY_LEAGUES];
+    const getLn = (s) => {
+      for (const ln of ALL_L) {
+        const lg = s.leagues[ln];
+        if (!lg) continue;
+        if (lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName))) return ln;
+      }
+      return null;
+    };
+    const pastSeasons = db.seasons.filter(s => s.season < seasonNum).sort((a, b) => b.season - a.season);
+
+    const mainNums = new Set();
+    pastSeasons.forEach(s => { const ln = getLn(s); if (ln && LEAGUES.includes(ln)) mainNums.add(s.season); });
+    LEAGUES.forEach(ln => {
+      const histCars = HISTORICAL_DATA.historicalBonus[ln] || [];
+      const hc = histCars.find(c => namesMatch(c.name, effectiveName));
+      if (hc) Object.keys(hc.bySeason || {}).forEach(n => mainNums.add(Number(n)));
+    });
+    const sortedMain = [...mainNums].sort((a, b) => b - a);
+
+    const bpBySeason = {};
+    LEAGUES.forEach(ln => {
+      const histCars = HISTORICAL_DATA.historicalBonus[ln] || [];
+      const hc = histCars.find(c => namesMatch(c.name, effectiveName));
+      if (hc) Object.entries(hc.bySeason || {}).forEach(([n, pts]) => { bpBySeason[Number(n)] = (bpBySeason[Number(n)] || 0) + pts; });
+    });
+    pastSeasons.forEach(s => {
+      const ln = getLn(s);
+      if (!ln || !LEAGUES.includes(ln)) return;
+      const bp = computeBonusPoints(s, ln)[carId] || 0;
+      bpBySeason[s.season] = (bpBySeason[s.season] || 0) + bp;
+    });
+
+    // Rang + stats détaillées (GF/GA/meilleure victoire) pour les saisons "app" avec matchs disponibles (S30+)
+    const rankHistory = [];
+    let lastSeasonStats = null;
+    for (const sNum of sortedMain) {
+      const s = db.seasons.find(ss => ss.season === sNum);
+      if (!s) continue;
+      const ln = getLn(s);
+      if (!ln || !LEAGUES.includes(ln)) continue;
+      const lg = s.leagues[ln];
+      const carEntry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+      if (!carEntry) continue;
+      const grp = carEntry.group;
+      const groupCarsS = lg.cars.filter(c => c.group === grp);
+      const groupMatchesS = (lg.groupResults?.[grp] || []).filter(m => m.homeGoals !== null);
+      if (groupMatchesS.length === 0) continue;
+      const standings = computeStandings(groupCarsS, groupMatchesS);
+      const rankIdx = standings.findIndex(c => c.id === carEntry.id);
+      if (rankIdx >= 0) rankHistory.push({ season: sNum, rank: rankIdx + 1 });
+
+      if (!lastSeasonStats) {
+        let gf = 0, ga = 0, bestMargin = 0, bestScore = '';
+        groupMatchesS.forEach(m => {
+          if (m.homeId === carEntry.id) {
+            gf += m.homeGoals; ga += m.awayGoals;
+            const margin = m.homeGoals - m.awayGoals;
+            if (margin > bestMargin) { bestMargin = margin; bestScore = `${m.homeGoals}-${m.awayGoals}`; }
+          } else if (m.awayId === carEntry.id) {
+            gf += m.awayGoals; ga += m.homeGoals;
+            const margin = m.awayGoals - m.homeGoals;
+            if (margin > bestMargin) { bestMargin = margin; bestScore = `${m.awayGoals}-${m.homeGoals}`; }
+          }
+        });
+        lastSeasonStats = { season: sNum, gf, ga, bestMargin, bestScore };
+      }
+      if (rankHistory.length >= 5) break;
+    }
+
+    return { sortedMain, bpBySeason, rankHistory, lastSeasonStats };
+  }
+
+  // ── Narration/storyline d'une voiture pour l'intro de groupe ────────────
+  function computeCarNarrative(car, hist, seasonNum, groupExtremes) {
+    const { sortedMain, bpBySeason, rankHistory, lastSeasonStats } = hist;
+
+    if (sortedMain.length === 0) {
+      return { icon:'🆕', text:'Première saison en ligue principale' };
+    }
+
+    const lastMain = sortedMain[0];
+    if (lastMain < seasonNum - 1) {
+      return { icon:'↩️', text:`De retour en ligue principale depuis sa relégation de la saison ${lastMain}` };
+    }
+
+    if (sortedMain.length === 1) {
+      return { icon:'⬆️', text:'Fraîchement promue — seulement sa 2ᵉ saison en ligue principale' };
+    }
+
+    // Records/extrêmes du groupe (basés sur la saison principale la plus récente de chaque voiture)
+    if (groupExtremes.biggestWinCarId === car.id && lastSeasonStats?.bestMargin > 0) {
+      return { icon:'💥', text:`Détient la plus grosse victoire du groupe la saison dernière (${lastSeasonStats.bestScore})` };
+    }
+    if (groupExtremes.bestAttackCarId === car.id) {
+      return { icon:'⚡', text:`Meilleure attaque du groupe la saison dernière (${lastSeasonStats.gf} buts)` };
+    }
+    if (groupExtremes.bestDefenseCarId === car.id) {
+      return { icon:'🧱', text:`Défense de fer — la moins de buts encaissés du groupe la saison dernière (${lastSeasonStats.ga})` };
+    }
+
+    // Dynastie
+    if (groupExtremes.mostTitledCarId === car.id && car.titres >= 2) {
+      return { icon:'👑', text:`Dynastie : ${car.titres} titres en carrière, la plus titrée du groupe` };
+    }
+
+    // Progression / chute au classement
+    if (rankHistory.length >= 3) {
+      const [current, ...rest] = rankHistory;
+      let betterCount = 0;
+      for (const r of rest) { if (r.rank >= current.rank) betterCount++; else break; }
+      if (betterCount >= 2) {
+        return { icon:'📊', text:`Meilleur classement en ${betterCount + 1} saisons (#${current.rank})` };
+      }
+      const worst = Math.max(...rankHistory.map(r => r.rank));
+      const secondWorst = Math.max(...rest.map(r => r.rank));
+      if (current.rank === worst && worst > secondWorst) {
+        return { icon:'📉', text:`Pire saison de son passage en ligue principale (#${current.rank})` };
+      }
+    }
+
+    // Toujours proche des playoffs sans jamais y accéder
+    const recentMain = sortedMain.slice(0, 4);
+    let closeCount = 0, reachedPlayoffs = false;
+    recentMain.forEach(n => {
+      const bp = bpBySeason[n] || 0;
+      const threshold = n >= 30 ? 3 : 1;
+      if (bp >= threshold) reachedPlayoffs = true;
+      if (bp === threshold - 1) closeCount++;
+    });
+    if (!reachedPlayoffs && closeCount >= 2) {
+      return { icon:'🎯', text:'Toujours proche des playoffs sans jamais y accéder' };
+    }
+
+    // Ancienneté consécutive en ligue principale (sans trou) depuis la saison la plus récente
+    let tenure = 0, prevT = null;
+    for (const n of sortedMain) {
+      if (prevT !== null && prevT - n > 1) break;
+      prevT = n; tenure++;
+    }
+
+    // Séries de points annexes / playoffs
+    let consecPlayoffs = 0, consecNone = 0, consecPts = 0;
+    let sP = true, sN = true, sPts = true, prev = null;
+    for (const n of sortedMain) {
+      if (prev !== null && prev - n > 1) break;
+      prev = n;
+      const bp = bpBySeason[n] || 0;
+      const threshold = n >= 30 ? 3 : 1;
+      if (sP)   { if (bp >= threshold) consecPlayoffs++; else sP = false; }
+      if (sN)   { if (bp < threshold) consecNone++; else sN = false; }
+      if (sPts) { if (bp >= 1) consecPts++; else sPts = false; }
+      if (!sP && !sN && !sPts) break;
+    }
+
+    if (consecPlayoffs >= 3) {
+      return { icon:'🔥', text:`Qualifiée aux playoffs ${consecPlayoffs} saisons consécutives` };
+    }
+    if (consecPts >= 3) {
+      return { icon:'📈', text:`A inscrit des points annexes ${consecPts} saisons de suite` };
+    }
+    if (consecNone >= 3) {
+      return { icon:'😴', text:`En léthargie depuis ${consecNone} saisons — aucun point annexe ni playoffs` };
+    }
+    if (tenure >= 8) {
+      return { icon:'🎖️', text:`Vétérane de la ligue principale — ${tenure} saisons consécutives` };
+    }
+    return null;
+  }
+
+  function GroupIntroPresentation({ leagueName, group, groupCars, seasonNum, onClose }) {
+    const [idx, setIdx] = useState(-1); // -1 = carton de titre du groupe
+    const [paused, setPaused] = useState(false);
+    const total = groupCars.length;
+
+    const allBonus = React.useMemo(() => computeAllSeasonsBonus(leagueName), [leagueName]);
+
+    const cars = React.useMemo(() => {
+      const base = groupCars.map(c => {
+        const entry = allBonus.find(e => e.id === c.id || namesMatch(e.name, c.name));
+        const seasons = entry ? Object.entries(entry.bySeason || {})
+          .map(([k, pts]) => ({ num: Number((k.match(/S(\d+)$/) || [])[1] || 0), pts }))
+          .filter(s => s.num > 0)
+          .sort((a, b) => b.num - a.num)
+          .slice(0, 3) : [];
+        const hist = computeCarMainHistory(c.id, c.name, seasonNum);
+        return {
+          ...c,
+          total: entry?.total || 0,
+          titres: (entry?.appChampions?.length || 0) + (entry?.histChampions?.length || 0),
+          relegs: (entry?.appRelegated?.length || 0) + (entry?.histRelegated?.length || 0),
+          seasons,
+          hist,
+        };
+      });
+
+      // Extrêmes du groupe, basés sur la saison principale la plus récente jouée par chaque voiture
+      let bestAttackCarId = null, bestAttackVal = -1;
+      let bestDefenseCarId = null, bestDefenseVal = Infinity;
+      let biggestWinCarId = null, biggestWinVal = 0;
+      let mostTitledCarId = null, mostTitledVal = 0, mostTitledCount = 0;
+      base.forEach(c => {
+        const ls = c.hist.lastSeasonStats;
+        if (ls) {
+          if (ls.gf > bestAttackVal) { bestAttackVal = ls.gf; bestAttackCarId = c.id; }
+          if (ls.ga < bestDefenseVal) { bestDefenseVal = ls.ga; bestDefenseCarId = c.id; }
+          if (ls.bestMargin > biggestWinVal) { biggestWinVal = ls.bestMargin; biggestWinCarId = c.id; }
+        }
+        if (c.titres > mostTitledVal) { mostTitledVal = c.titres; mostTitledCarId = c.id; mostTitledCount = 1; }
+        else if (c.titres > 0 && c.titres === mostTitledVal) { mostTitledCount++; }
+      });
+      const groupExtremes = {
+        bestAttackCarId, bestDefenseCarId, biggestWinCarId,
+        mostTitledCarId: mostTitledCount === 1 ? mostTitledCarId : null, // pas de couronne en cas d'égalité
+      };
+
+      return base.map(c => ({ ...c, narrative: computeCarNarrative(c, c.hist, seasonNum, groupExtremes) }));
+    }, [groupCars, allBonus, seasonNum]);
+
+    useEffect(() => {
+      if (paused) return;
+      const delay = idx === -1 ? 1800 : 3200;
+      const t = setTimeout(() => {
+        setIdx(i => {
+          if (i + 1 >= total) { onClose(); return i; }
+          return i + 1;
+        });
+      }, delay);
+      return () => clearTimeout(t);
+    }, [idx, paused, total]);
+
+    const car = idx >= 0 ? cars[idx] : null;
+
+    return (
+      <div
+        onClick={() => { if (idx + 1 >= total) onClose(); else setIdx(i => i + 1); }}
+        style={{
+          position:'fixed', inset:0, zIndex:9999, background:'radial-gradient(ellipse at center, #1a1a1a 0%, #000 100%)',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          cursor:'pointer', animation:'fadeIn 0.4s ease',
+        }}>
+        <button
+          onClick={e => { e.stopPropagation(); onClose(); }}
+          style={{
+            position:'absolute', top:18, right:18, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.2)',
+            color:'#fff', borderRadius:20, padding:'6px 14px', fontSize:12, letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif",
+          }}>
+          PASSER L'INTRO ›
+        </button>
+
+        {/* Barre de progression */}
+        <div style={{ position:'absolute', top:18, left:18, right:100, display:'flex', gap:4 }}>
+          {groupCars.map((_, i) => (
+            <div key={i} style={{
+              flex:1, height:3, borderRadius:2, background: i < idx ? 'var(--gold)' : i === idx ? 'rgba(201,168,76,0.5)' : 'rgba(255,255,255,0.15)',
+              overflow:'hidden',
+            }}>
+              {i === idx && <div style={{ height:'100%', width:'100%', background:'var(--gold)', animation:'introFill 3.2s linear forwards' }} />}
+            </div>
+          ))}
+        </div>
+
+        {idx === -1 ? (
+          <div style={{ textAlign:'center', animation:'introSlideUp 0.6s ease' }}>
+            <div style={{ color:'var(--gold-dim)', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:4, marginBottom:8 }}>
+              SAISON {seasonNum} — {leagueName}
+            </div>
+            <div style={{ color:'var(--gold)', fontFamily:"'Bebas Neue',sans-serif", fontSize:44, letterSpacing:6 }}>
+              GROUPE {group + 1}
+            </div>
+            <div style={{ color:'var(--text-dim)', fontSize:13, marginTop:10 }}>Présentation des {total} voitures</div>
+          </div>
+        ) : car && (
+          <div key={car.id} style={{ textAlign:'center', animation:'introSlideUp 0.5s ease', maxWidth:420, padding:'0 24px' }}>
+            <div style={{
+              width:220, height:220, margin:'0 auto 20px', borderRadius:10, overflow:'hidden',
+              background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center',
+              boxShadow:'0 0 40px rgba(201,168,76,0.15)',
+            }}>
+              {car.photo ? <img src={car.photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:64 }}>🚗</span>}
+            </div>
+            <div style={{ color:'var(--gold)', fontFamily:"'Bebas Neue',sans-serif", fontSize:32, letterSpacing:2 }}>{car.name}</div>
+            <div style={{ color:'var(--text-dim)', fontSize:12, marginTop:4 }}>
+              #{idx + 1} / {total} — Groupe {group + 1}
+            </div>
+
+            {car.narrative && (
+              <div style={{
+                marginTop:14, display:'inline-block', background:'rgba(201,168,76,0.08)', border:'1px solid rgba(201,168,76,0.25)',
+                borderRadius:8, padding:'8px 16px', color:'var(--gold-dim)', fontSize:13, lineHeight:1.4, maxWidth:360,
+              }}>
+                {car.narrative.icon} {car.narrative.text}
+              </div>
+            )}
+
+            <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:14, flexWrap:'wrap' }}>
+              {car.titres > 0 && <span className="badge badge-gold">🏆 ×{car.titres}</span>}
+              {car.relegs > 0 && <span className="badge badge-red">⬇ ×{car.relegs}</span>}
+              <span className="badge badge-blue">{car.total} pts annexes (carrière)</span>
+            </div>
+
+            {car.seasons.length > 0 && (
+              <div style={{ marginTop:18, display:'flex', gap:8, justifyContent:'center' }}>
+                {car.seasons.map(s => (
+                  <div key={s.num} style={{ background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, padding:'8px 12px', textAlign:'center', minWidth:64 }}>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'var(--gold)' }}>{s.pts}</div>
+                    <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>S{s.num}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div style={{ position:'absolute', bottom:20, color:'var(--text-dim)', fontSize:11, letterSpacing:1 }}>
+          Touchez l'écran pour continuer
+        </div>
+
+        <style>{`
+          @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+          @keyframes introSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
+          @keyframes introFill { from { width:0%; } to { width:100%; } }
+        `}</style>
+      </div>
+    );
+  }
+
 
   function PlayoffsView() {
     const league = getLeague(leagueTab);
