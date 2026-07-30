@@ -6722,6 +6722,13 @@ export default function App() {
       if (!playoffsStreak && !noPlayoffsStreak && !ptsAnnexesStreak) break;
     }
 
+    // Si la voiture n'est PLUS actuellement dans une ligue principale (Voitures 1-4),
+    // on masque les séries de playoffs/points annexes — elles n'ont plus de sens hors ligues principales
+    const currentCarLeague = getCarLeague(liveSeason);
+    if (!currentCarLeague || !LEAGUES.includes(currentCarLeague)) {
+      consecPlayoffs = 0; consecNoPlayoffs = 0; consecPtsAnnexes = 0;
+    }
+
     // Promotion / relégation — inclure S36 car c'est elle qui révèle la fin de S35
     let consecPromo = 0, consecRel = 0;
     let promoStreak = true, relStreak = true;
