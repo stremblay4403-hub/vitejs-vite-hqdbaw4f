@@ -1376,6 +1376,12 @@ const css = `
   }
   input:focus, select:focus { border-color: var(--gold-dim); }
   input[type="number"] { width: 60px; text-align: center; }
+
+  /* Empêche le zoom automatique de Safari iOS au focus (qui ne se dézoome pas tout seul) */
+  @media (max-width: 767px) {
+    input, select { font-size: 16px; }
+    input[type="number"] { width: 60px; }
+  }
   
   /* Table */
   .tbl { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 15px; }
