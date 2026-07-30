@@ -1576,8 +1576,8 @@ const css = `
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 
-  /* Car profile — mise en page verticale sur ordinateur uniquement (photo / nom / stats empilés) */
-  @media (min-width: 768px) {
+  /* Car profile — mise en page verticale (photo / nom / stats empilés) — TEST: appliqué à toutes les tailles pour l'instant, remettre "768px" pour repasser desktop-only */
+  @media (min-width: 0px) {
     .car-profile-card { max-width: 480px; }
     .car-profile-header {
       flex-direction: column;
@@ -12517,4 +12517,3 @@ export default function App() {
     </PublicModeContext.Provider>
   );
 };
-
