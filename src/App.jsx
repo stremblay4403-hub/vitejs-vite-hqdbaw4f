@@ -6107,6 +6107,7 @@ export default function App() {
         const hist = computeCarMainHistory(c.id, c.name, seasonNum);
         return {
           ...c,
+          photo: getCarPhoto(c.id),
           total: entry?.total || 0,
           titres: (entry?.appChampions?.length || 0) + (entry?.histChampions?.length || 0),
           relegs: (entry?.appRelegated?.length || 0) + (entry?.histRelegated?.length || 0),
