@@ -5996,16 +5996,21 @@ export default function App() {
       bpBySeason[s.season] = (bpBySeason[s.season] || 0) + bp;
     });
 
-    let consecPlayoffs = 0, consecPts = 0, consecNone = 0, sP = true, sPts = true, sN = true, prev = null;
-    for (const n of sortedMain) {
-      if (prev !== null && prev - n > 1) break;
-      prev = n;
-      const bp = bpBySeason[n] || 0;
-      const threshold = n >= 30 ? 3 : 1;
-      if (sP)   { if (bp >= threshold) consecPlayoffs++; else sP = false; }
-      if (sPts) { if (bp >= 1) consecPts++; else sPts = false; }
-      if (sN)   { if (bp < threshold) consecNone++; else sN = false; }
-      if (!sP && !sPts && !sN) break;
+    // Séries consécutives : on parcourt les saisons CALENDAIRES en continu (seasonNum-1, -2, -3...),
+    // avec 0 pt par défaut si l'archive n'a pas d'entrée pour cette saison (elle ne conserve que les
+    // saisons où la voiture a marqué). On s'arrête à la première saison connue où elle était en ligue
+    // principale (earliestMain), pour ne pas inventer des saisons "sans playoffs" avant son arrivée.
+    const earliestMain = sortedMain.length ? Math.min(...sortedMain) : null;
+    let consecPlayoffs = 0, consecPts = 0, consecNone = 0, sP = true, sPts = true, sN = true;
+    if (earliestMain !== null) {
+      for (let n = seasonNum - 1; n >= earliestMain; n--) {
+        const bp = bpBySeason[n] || 0;
+        const threshold = n >= 30 ? 3 : 1;
+        if (sP)   { if (bp >= threshold) consecPlayoffs++; else sP = false; }
+        if (sPts) { if (bp >= 1) consecPts++; else sPts = false; }
+        if (sN)   { if (bp < threshold) consecNone++; else sN = false; }
+        if (!sP && !sPts && !sN) break;
+      }
     }
     let streak = null;
     if (consecPlayoffs >= 3) streak = { type:'playoffs', count: consecPlayoffs };
