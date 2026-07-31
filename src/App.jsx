@@ -1678,6 +1678,48 @@ const css = `
   .public-mode .btn-sim-all,
   .public-mode .btn-xs.btn-sim,
   .public-mode input[type="file"] { display: none !important; }
+
+  /* Séparateur pointillé animé — marque la frontière entre zones (promotion/relégation) */
+  @keyframes dashPulse {
+    0%,100% { opacity: 0.35; }
+    50%     { opacity: 0.9; }
+  }
+  .zone-separator {
+    height: 0;
+    border-top: 2px dashed var(--gold-dim);
+    margin: 2px 10px;
+    animation: dashPulse 2.2s ease-in-out infinite;
+  }
+
+  /* Écran de démarrage — logo qui "vrombit" (scale + fade) avant d'afficher le tableau de bord */
+  @keyframes splashOverlayFade {
+    0%, 72%  { opacity: 1; }
+    100%     { opacity: 0; }
+  }
+  @keyframes splashLogoVroom {
+    0%   { opacity: 0; transform: scale(0.72); }
+    28%  { opacity: 1; transform: scale(1.06); }
+    42%  { opacity: 1; transform: scale(1); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .splash-screen {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--black);
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+    animation: splashOverlayFade 1.3s ease forwards;
+  }
+  .splash-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 34px; letter-spacing: 5px; text-align: center;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold2), var(--gold-dim));
+    background-size: 220% auto;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: splashLogoVroom 0.9s cubic-bezier(0.34,1.56,0.64,1) both, chromeShine 2.4s ease-in-out infinite 0.4s;
+    filter: drop-shadow(0 0 20px rgba(212,175,55,0.4));
+  }
+  .splash-logo span { display: block; font-size: 48px; margin-top: 10px; -webkit-text-fill-color: initial; }
+  @media (min-width: 768px) { .splash-logo { font-size: 52px; } .splash-logo span { font-size: 64px; } }
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
@@ -2491,6 +2533,11 @@ export default function App() {
     });
   }, []);
   const [loaded, setLoaded] = useState(false);
+  const [showSplash, setShowSplash] = useState(true);
+  useEffect(() => {
+    const t = setTimeout(() => setShowSplash(false), 1300);
+    return () => clearTimeout(t);
+  }, []);
   // Compteur pour FORCER un re-rendu garanti après chaque application de données Firebase.
   // Un changement d'état primitif est toujours « commit » par React, même si le changement de
   // référence du db passait inaperçu (cas observé : playoffs appliqués au db mais affichage figé).
@@ -5784,7 +5831,9 @@ export default function App() {
                 <div style={{display:'flex',justifyContent:'center',alignItems:'flex-end',gap:isDesktop?16:8,height:totalH}}>
                   {order.map((car, idx) => {
                     const photo = getCarPhoto(car.id);
-                    const delay = `${idx*0.15}s`;
+                    // order = [2e, 1er, 3e] → on veut faire monter 3e d'abord, puis 2e, puis 1er en dernier (effet de révélation)
+                    const delaySteps = [0.25, 0.5, 0];
+                    const delay = `${delaySteps[idx]}s`;
                     return (
                       <div key={car.id} className="podium-card" style={{display:'flex',flexDirection:'column',alignItems:'center',width:cardW,animationDelay:delay}}>
                         <div style={{width:photoW,height:photoH,borderRadius:8,overflow:'hidden',border:`2px solid ${colors[idx]}`,marginBottom:6,boxShadow:`0 0 16px ${colors[idx]}55`}}>
@@ -5839,7 +5888,10 @@ export default function App() {
                         const streakBadge = getStreakBadge(s.id, leagueTab);
                         const recentForm = getRecentForm(s.id, leagueTab);
                         return (
-                          <LeaderboardRow key={s.id}
+                          <React.Fragment key={s.id}>
+                            {i === 7 && <div className="zone-separator" />}
+                            {i === 9 && <div className="zone-separator" />}
+                            <LeaderboardRow
                             rank={i+1} rankDiff={rankDiff}
                             carId={s.id} leagueName={leagueTab}
                             name={s.name} photo={photo} badge={badge} streakBadge={streakBadge}
@@ -5849,6 +5901,7 @@ export default function App() {
                             borderColor={borderColor}
                             onClick={() => openProfileCar({ leagueName: leagueTab, carId: s.id })}
                           />
+                          </React.Fragment>
                         );
                       })}
                   </div>
@@ -7865,7 +7918,10 @@ export default function App() {
                                   : inZoneSucSucc ? { label:'⬇⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' }
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 4 && <div className="zone-separator" />}
+                        {rank === (total - 11) && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={leagueName}
                           name={s.name} photo={photo} badge={badge}
@@ -7874,6 +7930,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })}
               </div>
@@ -8171,7 +8228,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 12 && <div className="zone-separator" />}
+                        {rank === (total - 15) && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -8180,6 +8240,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -8408,7 +8469,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 49 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -8417,6 +8481,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -8640,7 +8705,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 25 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -8649,6 +8717,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -8848,7 +8917,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 8 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -8857,6 +8929,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -9056,7 +9129,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 33 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -9065,6 +9141,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -9264,7 +9341,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 32 && <div className="zone-separator" />}
+                        {rank === 49 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -9273,6 +9353,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -9472,7 +9553,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 49 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -9481,6 +9565,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -9680,7 +9765,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 25 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -9689,6 +9777,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -9888,7 +9977,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 8 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -9897,6 +9989,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -10096,7 +10189,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 77 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -10105,6 +10201,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -10304,7 +10401,10 @@ export default function App() {
                       const td = { padding: '0 6px', borderBottom: '1px solid #1a1a1a', background: rowBg, height: 72 };
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 83 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -10313,6 +10413,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
@@ -10497,7 +10598,9 @@ export default function App() {
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; return null; })();
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 4 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
                           name={s.name} photo={photo} badge={badge}
@@ -10506,6 +10609,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,color:'var(--text-dim)' }}>
@@ -10706,7 +10810,9 @@ export default function App() {
                                   : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' }
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
-                        <LeaderboardRow key={s.id}
+                        <React.Fragment key={s.id}>
+                        {rank === 4 && <div className="zone-separator" />}
+                        <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={leagueName}
                           name={s.name} photo={photo} badge={badge}
@@ -10715,6 +10821,7 @@ export default function App() {
                           borderColor={borderColor}
                           onClick={() => openProfileCar({ leagueName, carId: s.id })}
                         />
+                        </React.Fragment>
                       );
                     })}
               </div>
@@ -12511,6 +12618,14 @@ export default function App() {
     <PublicModeContext.Provider value={isPublicMode}>
     <>
       <style>{css}</style>
+      {showSplash && (
+        <div className="splash-screen">
+          <div className="splash-logo">
+            TOURNOIS DE VOITURES
+            <span>🏎️</span>
+          </div>
+        </div>
+      )}
       <div className={`app${isPublicMode ? ' public-mode' : ''}`}>
         {/* Avertissement navigation privée */}
         {isPrivate && (
