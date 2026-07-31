@@ -6987,29 +6987,28 @@ export default function App() {
     });
     const sortedMainNums = [...mainSeasonNums].sort((a, b) => b - a);
 
-    // Parcourir les saisons consécutives (sans trou) du plus récent au plus ancien
-    let prevNum = null;
-    for (const sNum of sortedMainNums) {
-      // Si saut de saison (> 1 de différence), brise tous les streaks
-      if (prevNum !== null && prevNum - sNum > 1) {
-        playoffsStreak = false; noPlayoffsStreak = false; ptsAnnexesStreak = false;
+    // Parcourir les saisons CALENDAIRES en continu (sans trou dû à l'archive qui ne garde que
+    // les saisons avec points), du plus récent au plus ancien, jusqu'à la première saison connue
+    // en ligue principale (earliestMainNum) — même logique que dans l'intro de groupe.
+    const earliestMainNum = sortedMainNums.length ? Math.min(...sortedMainNums) : null;
+    if (earliestMainNum !== null) {
+      for (let sNum = liveSeason.season - 1; sNum >= earliestMainNum; sNum--) {
+        const bp = bpBySeason[sNum] || 0;
+        const threshold = sNum >= 30 ? 3 : 1;
+        if (playoffsStreak) {
+          if (bp >= threshold) consecPlayoffs++;
+          else playoffsStreak = false;
+        }
+        if (noPlayoffsStreak) {
+          if (bp < threshold) consecNoPlayoffs++;
+          else noPlayoffsStreak = false;
+        }
+        if (ptsAnnexesStreak) {
+          if (bp >= 1) consecPtsAnnexes++;
+          else ptsAnnexesStreak = false;
+        }
+        if (!playoffsStreak && !noPlayoffsStreak && !ptsAnnexesStreak) break;
       }
-      prevNum = sNum;
-      const bp = bpBySeason[sNum] || 0;
-      const threshold = sNum >= 30 ? 3 : 1;
-      if (playoffsStreak) {
-        if (bp >= threshold) consecPlayoffs++;
-        else playoffsStreak = false;
-      }
-      if (noPlayoffsStreak) {
-        if (bp < threshold) consecNoPlayoffs++;
-        else noPlayoffsStreak = false;
-      }
-      if (ptsAnnexesStreak) {
-        if (bp >= 1) consecPtsAnnexes++;
-        else ptsAnnexesStreak = false;
-      }
-      if (!playoffsStreak && !noPlayoffsStreak && !ptsAnnexesStreak) break;
     }
 
     // Si la voiture n'est PLUS actuellement dans une ligue principale (Voitures 1-4),
