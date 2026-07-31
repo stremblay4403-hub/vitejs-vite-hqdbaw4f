@@ -6014,7 +6014,16 @@ export default function App() {
 
     // 5 dernières saisons réelles en ligue principale, avec points annexes explicites (0 si aucun,
     // plutôt que d'omettre la saison — pour donner une vraie idée de la régularité)
-    const recentSeasons = sortedMain.slice(0, 5).map(n => ({ num: n, pts: bpBySeason[n] || 0 }));
+    // 5 dernières saisons CALENDAIRES (seasonNum-1 à seasonNum-5), sans jamais en sauter une :
+    // si la voiture n'était pas en ligue principale cette saison-là (ligue annexe ou pas encore créée),
+    // ou si elle n'y a marqué aucun point, la case affiche un tiret plutôt que d'être remplacée par
+    // une saison plus ancienne.
+    const recentSeasons = [];
+    for (let i = 1; i <= 5; i++) {
+      const sNum = seasonNum - i;
+      if (sNum < 1) break;
+      recentSeasons.push({ num: sNum, pts: mainNums.has(sNum) ? (bpBySeason[sNum] || 0) : null });
+    }
 
     return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted, recentSeasons };
   }
@@ -6140,7 +6149,7 @@ export default function App() {
                     padding:'8px 10px', textAlign:'center', minWidth:52,
                   }}>
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: s.pts > 0 ? 'var(--gold)' : 'var(--text-dim)' }}>
-                      {s.pts > 0 ? s.pts : '—'}
+                      {s.pts === null ? '—' : (s.pts > 0 ? s.pts : '0')}
                     </div>
                     <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>S{s.num}</div>
                   </div>
