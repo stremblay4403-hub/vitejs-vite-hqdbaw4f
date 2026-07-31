@@ -5668,7 +5668,7 @@ export default function App() {
               Groupe {i + 1}
             </button>
           ))}
-          <button className="btn btn-xs btn-dark" style={{ marginLeft:4 }}
+          <button className="btn btn-xs btn-dark" style={{ display: isPublicMode ? 'none' : undefined, marginLeft:4 }}
             onClick={() => setShowGroupIntro(true)}>
             👁️ Aperçu intro
           </button>
@@ -5920,8 +5920,11 @@ export default function App() {
 
   const [showBracket, setShowBracket] = useState(false);
 
-  // ── Historique complet d'une voiture en ligue principale (rang, GF/GA, meilleure victoire) ──
-  function computeCarMainHistory(carId, effectiveName, seasonNum) {
+  // ── Infos simplifiées d'une voiture pour l'intro de groupe ───────────────
+  // Points annexes totaux + rang de la saison dernière (toujours affichés),
+  // et 4 indicateurs conditionnels : série playoffs/points, danger d'élimination,
+  // championne la saison dernière, nouvellement promue.
+  function computeCarSimpleInfo(carId, effectiveName, seasonNum, totalPts) {
     const ALL_L = [...LEAGUES, ...AUXILIARY_LEAGUES];
     const getLn = (s) => {
       for (const ln of ALL_L) {
@@ -5933,6 +5936,7 @@ export default function App() {
     };
     const pastSeasons = db.seasons.filter(s => s.season < seasonNum).sort((a, b) => b.season - a.season);
 
+    // Saisons passées en ligue principale (V1-V4), y compris via l'historique S1-S29
     const mainNums = new Set();
     pastSeasons.forEach(s => { const ln = getLn(s); if (ln && LEAGUES.includes(ln)) mainNums.add(s.season); });
     LEAGUES.forEach(ln => {
@@ -5942,6 +5946,43 @@ export default function App() {
     });
     const sortedMain = [...mainNums].sort((a, b) => b - a);
 
+    // Nouvellement promue : absente de la ligue principale la saison précédente (ou jamais présente)
+    const newlyPromoted = sortedMain.length === 0 || sortedMain[0] < seasonNum - 1;
+
+    let lastSeasonRank = null, lastSeasonGroupSize = null, dangerLastSeason = false, championLastSeason = null;
+    const lastSeasonNum = seasonNum - 1;
+    const lastSeasonObj = db.seasons.find(ss => ss.season === lastSeasonNum);
+
+    if (lastSeasonObj) {
+      // Championne : le carId correspond au champion d'une des ligues principales la saison dernière
+      for (const ln of LEAGUES) {
+        if (lastSeasonObj.champions?.[ln] === carId) { championLastSeason = ln; break; }
+      }
+      // Rang / zone de danger dans sa ligue principale de la saison dernière (si elle y était déjà)
+      if (!newlyPromoted) {
+        const ln = getLn(lastSeasonObj);
+        if (ln && LEAGUES.includes(ln)) {
+          const lg = lastSeasonObj.leagues[ln];
+          const carEntry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+          if (carEntry) {
+            const grp = carEntry.group;
+            const groupCarsS = lg.cars.filter(c => c.group === grp);
+            const groupMatchesS = (lg.groupResults?.[grp] || []).filter(m => m.homeGoals !== null);
+            if (groupMatchesS.length > 0) {
+              const standings = computeStandings(groupCarsS, groupMatchesS);
+              const rankIdx = standings.findIndex(c => c.id === carEntry.id);
+              if (rankIdx >= 0) {
+                lastSeasonRank = rankIdx + 1;
+                lastSeasonGroupSize = groupCarsS.length;
+                dangerLastSeason = lastSeasonRank === lastSeasonGroupSize; // dernière place seulement
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Séries de playoffs / points annexes consécutives (mêmes seuils que partout ailleurs : 3 pts S30+, 1 pt avant)
     const bpBySeason = {};
     LEAGUES.forEach(ln => {
       const histCars = HISTORICAL_DATA.historicalBonus[ln] || [];
@@ -5955,153 +5996,23 @@ export default function App() {
       bpBySeason[s.season] = (bpBySeason[s.season] || 0) + bp;
     });
 
-    // Rang + stats détaillées (GF/GA/meilleure victoire) pour les saisons "app" avec matchs disponibles (S30+)
-    const rankHistory = [];
-    let lastSeasonStats = null;
-    for (const sNum of sortedMain) {
-      const s = db.seasons.find(ss => ss.season === sNum);
-      if (!s) continue;
-      const ln = getLn(s);
-      if (!ln || !LEAGUES.includes(ln)) continue;
-      const lg = s.leagues[ln];
-      const carEntry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
-      if (!carEntry) continue;
-      const grp = carEntry.group;
-      const groupCarsS = lg.cars.filter(c => c.group === grp);
-      const groupMatchesS = (lg.groupResults?.[grp] || []).filter(m => m.homeGoals !== null);
-      if (groupMatchesS.length === 0) continue;
-      const standings = computeStandings(groupCarsS, groupMatchesS);
-      const rankIdx = standings.findIndex(c => c.id === carEntry.id);
-      if (rankIdx >= 0) rankHistory.push({ season: sNum, rank: rankIdx + 1 });
-
-      if (!lastSeasonStats) {
-        let gf = 0, ga = 0, bestMargin = 0, bestScore = '';
-        groupMatchesS.forEach(m => {
-          if (m.homeId === carEntry.id) {
-            gf += m.homeGoals; ga += m.awayGoals;
-            const margin = m.homeGoals - m.awayGoals;
-            if (margin > bestMargin) { bestMargin = margin; bestScore = `${m.homeGoals}-${m.awayGoals}`; }
-          } else if (m.awayId === carEntry.id) {
-            gf += m.awayGoals; ga += m.homeGoals;
-            const margin = m.awayGoals - m.homeGoals;
-            if (margin > bestMargin) { bestMargin = margin; bestScore = `${m.awayGoals}-${m.homeGoals}`; }
-          }
-        });
-        lastSeasonStats = { season: sNum, gf, ga, bestMargin, bestScore };
-      }
-      if (rankHistory.length >= 5) break;
-    }
-
-    return { sortedMain, bpBySeason, rankHistory, lastSeasonStats };
-  }
-
-  // ── Narration/storyline d'une voiture pour l'intro de groupe ────────────
-  function computeCarNarrative(car, hist, seasonNum, groupExtremes) {
-    const { sortedMain, bpBySeason, rankHistory, lastSeasonStats } = hist;
-
-    if (sortedMain.length === 0) {
-      return { icon:'🆕', text:'Première saison en ligue principale' };
-    }
-
-    const lastMain = sortedMain[0];
-    if (lastMain < seasonNum - 1) {
-      return { icon:'↩️', text:`De retour en ligue principale depuis sa relégation de la saison ${lastMain}` };
-    }
-
-    if (sortedMain.length === 1) {
-      return { icon:'⬆️', text:'Fraîchement promue — seulement sa 2ᵉ saison en ligue principale' };
-    }
-
-    // Records/extrêmes du groupe (basés sur la saison principale la plus récente de chaque voiture)
-    // Garde-fou : on n'affirme "la saison dernière" que si la donnée vient VRAIMENT de seasonNum-1
-    // (si une saison passée manque de données de matchs, lastSeasonStats pourrait remonter plus loin —
-    //  dans ce cas on préfère ne rien affirmer plutôt que de se tromper de saison)
-    const lastStatsIsTrulyLastSeason = lastSeasonStats?.season === seasonNum - 1;
-    if (lastStatsIsTrulyLastSeason && groupExtremes.biggestWinCarId === car.id && lastSeasonStats.bestMargin > 0) {
-      return { icon:'💥', text:`Détient la plus grosse victoire du groupe la saison dernière (${lastSeasonStats.bestScore})` };
-    }
-    if (lastStatsIsTrulyLastSeason && groupExtremes.bestAttackCarId === car.id) {
-      return { icon:'⚡', text:`Meilleure attaque du groupe la saison dernière (${lastSeasonStats.gf} buts)` };
-    }
-    if (lastStatsIsTrulyLastSeason && groupExtremes.bestDefenseCarId === car.id) {
-      return { icon:'🧱', text:`Défense de fer — la moins de buts encaissés du groupe la saison dernière (${lastSeasonStats.ga})` };
-    }
-
-    // Dynastie
-    if (groupExtremes.mostTitledCarId === car.id && car.titres >= 2) {
-      return { icon:'👑', text:`Dynastie : ${car.titres} titres en carrière, la plus titrée du groupe` };
-    }
-
-    // Progression / chute au classement
-    // Même garde-fou : le rang "actuel" doit venir de seasonNum-1, sinon on ne compare pas
-    if (rankHistory.length >= 3 && rankHistory[0].season === seasonNum - 1) {
-      const [current, ...rest] = rankHistory;
-      let betterCount = 0;
-      for (const r of rest) { if (r.rank >= current.rank) betterCount++; else break; }
-      if (betterCount >= 2) {
-        return { icon:'📊', text:`Meilleur classement en ${betterCount + 1} saisons (#${current.rank})` };
-      }
-      const worst = Math.max(...rankHistory.map(r => r.rank));
-      const secondWorst = Math.max(...rest.map(r => r.rank));
-      if (current.rank === worst && worst > secondWorst) {
-        return { icon:'📉', text:`Pire saison de son passage en ligue principale (#${current.rank})` };
-      }
-    }
-
-    // Toujours proche des playoffs sans jamais y accéder
-    // (seulement pertinent pour les saisons S30+, où le seuil de 3 pts laisse place à un "presque" ;
-    //  avant S30 le seuil est 1 pt, donc 0 pt = rien, pas "presque")
-    const recentMain = sortedMain.slice(0, 4).filter(n => n >= 30);
-    let closeCount = 0, reachedPlayoffs = false;
-    recentMain.forEach(n => {
-      const bp = bpBySeason[n] || 0;
-      if (bp >= 3) reachedPlayoffs = true;
-      if (bp === 2) closeCount++;
-    });
-    if (recentMain.length >= 2 && !reachedPlayoffs && closeCount >= 2) {
-      return { icon:'🎯', text:'Toujours proche des playoffs sans jamais y accéder' };
-    }
-
-    // Ancienneté consécutive en ligue principale (sans trou) depuis la saison la plus récente
-    let tenure = 0, prevT = null;
-    for (const n of sortedMain) {
-      if (prevT !== null && prevT - n > 1) break;
-      prevT = n; tenure++;
-    }
-
-    // Séries de points annexes / playoffs
-    let consecPlayoffs = 0, consecNone = 0, consecPts = 0;
-    let sP = true, sN = true, sPts = true, prev = null;
+    let consecPlayoffs = 0, consecPts = 0, consecNone = 0, sP = true, sPts = true, sN = true, prev = null;
     for (const n of sortedMain) {
       if (prev !== null && prev - n > 1) break;
       prev = n;
       const bp = bpBySeason[n] || 0;
       const threshold = n >= 30 ? 3 : 1;
       if (sP)   { if (bp >= threshold) consecPlayoffs++; else sP = false; }
-      if (sN)   { if (bp < threshold) consecNone++; else sN = false; }
       if (sPts) { if (bp >= 1) consecPts++; else sPts = false; }
-      if (!sP && !sN && !sPts) break;
+      if (sN)   { if (bp < threshold) consecNone++; else sN = false; }
+      if (!sP && !sPts && !sN) break;
     }
+    let streak = null;
+    if (consecPlayoffs >= 3) streak = { type:'playoffs', count: consecPlayoffs };
+    else if (consecPts >= 3) streak = { type:'points', count: consecPts };
+    else if (consecNone >= 3) streak = { type:'none', count: consecNone };
 
-    if (consecPlayoffs >= 3) {
-      return { icon:'🔥', text:`Qualifiée aux playoffs ${consecPlayoffs} saisons consécutives` };
-    }
-    if (consecPts >= 3) {
-      return { icon:'📈', text:`A inscrit des points annexes ${consecPts} saisons de suite` };
-    }
-    if (consecNone >= 3) {
-      return { icon:'😴', text:`En léthargie depuis ${consecNone} saisons — aucun point annexe ni playoffs` };
-    }
-    if (tenure >= 8) {
-      return { icon:'🎖️', text:`Vétérane de la ligue principale — ${tenure} saisons consécutives` };
-    }
-
-    // Filet de sécurité — garantit qu'aucune voiture ne se retrouve sans phrase
-    const lastPts = bpBySeason[sortedMain[0]] || 0;
-    if (lastPts > 0) {
-      return { icon:'🚗', text:`${tenure}ᵉ saison consécutive en ligue principale — ${lastPts} pts annexes la saison dernière` };
-    }
-    return { icon:'🚗', text:`${tenure}ᵉ saison consécutive en ligue principale (${car.total} pts annexes en carrière)` };
+    return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted };
   }
 
   function GroupIntroPresentation({ leagueName, group, groupCars, seasonNum, onClose }) {
@@ -6112,48 +6023,16 @@ export default function App() {
     const allBonus = React.useMemo(() => computeAllSeasonsBonus(leagueName), [leagueName]);
 
     const cars = React.useMemo(() => {
-      const base = groupCars.map(c => {
+      return groupCars.map(c => {
         const entry = allBonus.find(e => e.id === c.id || namesMatch(e.name, c.name));
-        const seasons = entry ? Object.entries(entry.bySeason || {})
-          .map(([k, pts]) => ({ num: Number((k.match(/S(\d+)$/) || [])[1] || 0), pts }))
-          .filter(s => s.num > 0)
-          .sort((a, b) => b.num - a.num)
-          .slice(0, 5) : [];
-        const hist = computeCarMainHistory(c.id, c.name, seasonNum);
+        const totalPts = entry?.total || 0;
+        const info = computeCarSimpleInfo(c.id, c.name, seasonNum, totalPts);
         return {
           ...c,
           photo: getCarPhoto(c.id),
-          total: entry?.total || 0,
-          titres: (entry?.appChampions?.length || 0) + (entry?.histChampions?.length || 0),
-          relegs: (entry?.appRelegated?.length || 0) + (entry?.histRelegated?.length || 0),
-          seasons,
-          hist,
+          info,
         };
       });
-
-      // Extrêmes du groupe, basés sur la saison principale la plus récente jouée par chaque voiture.
-      // On ne compare que les voitures dont les stats viennent VRAIMENT de seasonNum-1
-      // (comparaison pomme-avec-pomme — sinon une donnée plus ancienne fausserait le classement)
-      let bestAttackCarId = null, bestAttackVal = -1;
-      let bestDefenseCarId = null, bestDefenseVal = Infinity;
-      let biggestWinCarId = null, biggestWinVal = 0;
-      let mostTitledCarId = null, mostTitledVal = 0, mostTitledCount = 0;
-      base.forEach(c => {
-        const ls = c.hist.lastSeasonStats;
-        if (ls && ls.season === seasonNum - 1) {
-          if (ls.gf > bestAttackVal) { bestAttackVal = ls.gf; bestAttackCarId = c.id; }
-          if (ls.ga < bestDefenseVal) { bestDefenseVal = ls.ga; bestDefenseCarId = c.id; }
-          if (ls.bestMargin > biggestWinVal) { biggestWinVal = ls.bestMargin; biggestWinCarId = c.id; }
-        }
-        if (c.titres > mostTitledVal) { mostTitledVal = c.titres; mostTitledCarId = c.id; mostTitledCount = 1; }
-        else if (c.titres > 0 && c.titres === mostTitledVal) { mostTitledCount++; }
-      });
-      const groupExtremes = {
-        bestAttackCarId, bestDefenseCarId, biggestWinCarId,
-        mostTitledCarId: mostTitledCount === 1 ? mostTitledCarId : null, // pas de couronne en cas d'égalité
-      };
-
-      return base.map(c => ({ ...c, narrative: computeCarNarrative(c, c.hist, seasonNum, groupExtremes) }));
     }, [groupCars, allBonus, seasonNum]);
 
     useEffect(() => {
@@ -6223,31 +6102,31 @@ export default function App() {
               #{idx + 1} / {total} — Groupe {group + 1}
             </div>
 
-            {car.narrative && (
-              <div style={{
-                marginTop:14, display:'inline-block', background:'rgba(201,168,76,0.08)', border:'1px solid rgba(201,168,76,0.25)',
-                borderRadius:8, padding:'8px 16px', color:'var(--gold-dim)', fontSize:13, lineHeight:1.4, maxWidth:360,
-              }}>
-                {car.narrative.icon} {car.narrative.text}
-              </div>
-            )}
-
-            <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:14, flexWrap:'wrap' }}>
-              {car.titres > 0 && <span className="badge badge-gold">🏆 ×{car.titres}</span>}
-              {car.relegs > 0 && <span className="badge badge-red">⬇ ×{car.relegs}</span>}
-              <span className="badge badge-blue">{car.total} pts annexes (carrière)</span>
+            <div style={{ marginTop:14, color:'var(--gold-dim)', fontSize:14 }}>
+              {car.info.totalPts} pts annexes (carrière)
+              {car.info.lastSeasonRank && ` · #${car.info.lastSeasonRank}/${car.info.lastSeasonGroupSize} la saison dernière`}
             </div>
 
-            {car.seasons.length > 0 && (
-              <div style={{ marginTop:18, display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap' }}>
-                {car.seasons.map(s => (
-                  <div key={s.num} style={{ background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, padding:'8px 10px', textAlign:'center', minWidth:52 }}>
-                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color:'var(--gold)' }}>{s.pts}</div>
-                    <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>S{s.num}</div>
-                  </div>
-                ))}
-              </div>
-            )}
+            <div style={{ display:'flex', gap:8, justifyContent:'center', marginTop:14, flexWrap:'wrap' }}>
+              {car.info.championLastSeason && (
+                <span className="badge badge-gold">🏆 Championne {car.info.championLastSeason} — saison dernière</span>
+              )}
+              {car.info.dangerLastSeason && (
+                <span className="badge badge-red">⚠️ Zone de danger la saison dernière</span>
+              )}
+              {car.info.streak?.type === 'playoffs' && (
+                <span className="badge badge-blue">🔥 {car.info.streak.count} saisons consécutives en playoffs</span>
+              )}
+              {car.info.streak?.type === 'points' && (
+                <span className="badge badge-blue">📈 {car.info.streak.count} saisons consécutives avec points annexes</span>
+              )}
+              {car.info.streak?.type === 'none' && (
+                <span className="badge badge-red">😴 {car.info.streak.count} saisons consécutives sans playoffs</span>
+              )}
+              {car.info.newlyPromoted && (
+                <span className="badge badge-blue">⬆️ Nouvelle promue en ligue principale</span>
+              )}
+            </div>
           </div>
         )}
 
