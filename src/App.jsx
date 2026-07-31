@@ -6012,7 +6012,11 @@ export default function App() {
     else if (consecPts >= 3) streak = { type:'points', count: consecPts };
     else if (consecNone >= 3) streak = { type:'none', count: consecNone };
 
-    return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted };
+    // 5 dernières saisons réelles en ligue principale, avec points annexes explicites (0 si aucun,
+    // plutôt que d'omettre la saison — pour donner une vraie idée de la régularité)
+    const recentSeasons = sortedMain.slice(0, 5).map(n => ({ num: n, pts: bpBySeason[n] || 0 }));
+
+    return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted, recentSeasons };
   }
 
   function GroupIntroPresentation({ leagueName, group, groupCars, seasonNum, onClose }) {
@@ -6127,6 +6131,22 @@ export default function App() {
                 <span className="badge badge-blue">⬆️ Nouvelle promue en ligue principale</span>
               )}
             </div>
+
+            {car.info.recentSeasons.length > 0 && (
+              <div style={{ marginTop:18, display:'flex', gap:6, justifyContent:'center', flexWrap:'wrap' }}>
+                {car.info.recentSeasons.map(s => (
+                  <div key={s.num} style={{
+                    background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6,
+                    padding:'8px 10px', textAlign:'center', minWidth:52,
+                  }}>
+                    <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: s.pts > 0 ? 'var(--gold)' : 'var(--text-dim)' }}>
+                      {s.pts > 0 ? s.pts : '—'}
+                    </div>
+                    <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>S{s.num}</div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
