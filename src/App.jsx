@@ -5889,8 +5889,8 @@ export default function App() {
                         const recentForm = getRecentForm(s.id, leagueTab);
                         return (
                           <React.Fragment key={s.id}>
-                            {i === 7 && <div className="zone-separator" />}
-                            {i === 9 && <div className="zone-separator" />}
+                            {i === 8 && <div className="zone-separator" />}
+                            {i === 10 && <div className="zone-separator" />}
                             <LeaderboardRow
                             rank={i+1} rankDiff={rankDiff}
                             carId={s.id} leagueName={leagueTab}
@@ -7919,7 +7919,7 @@ export default function App() {
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 4 && <div className="zone-separator" />}
+                        {rank === 5 && <div className="zone-separator" />}
                         {rank === (total - 11) && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -8229,7 +8229,7 @@ export default function App() {
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 12 && <div className="zone-separator" />}
+                        {rank === 13 && <div className="zone-separator" />}
                         {rank === (total - 15) && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -8470,7 +8470,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 49 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -8706,7 +8706,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 25 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -8918,7 +8918,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 8 && <div className="zone-separator" />}
+                        {rank === 9 && <div className="zone-separator" />}
                         {rank === 17 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -9130,7 +9130,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 33 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -9342,7 +9342,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 32 && <div className="zone-separator" />}
+                        {rank === 33 && <div className="zone-separator" />}
                         {rank === 49 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -9554,7 +9554,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 49 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -9766,7 +9766,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 25 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -9978,7 +9978,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 8 && <div className="zone-separator" />}
+                        {rank === 9 && <div className="zone-separator" />}
                         {rank === 17 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -10190,7 +10190,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 77 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -10402,7 +10402,7 @@ export default function App() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 16 && <div className="zone-separator" />}
+                        {rank === 17 && <div className="zone-separator" />}
                         {rank === 83 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
@@ -10599,7 +10599,7 @@ export default function App() {
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; return null; })();
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 4 && <div className="zone-separator" />}
+                        {rank === 5 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
@@ -10811,7 +10811,7 @@ export default function App() {
                                   : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 4 && <div className="zone-separator" />}
+                        {rank === 5 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={leagueName}
