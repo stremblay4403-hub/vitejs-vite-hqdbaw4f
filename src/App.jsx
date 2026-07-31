@@ -6022,7 +6022,7 @@ export default function App() {
     for (let i = 1; i <= 5; i++) {
       const sNum = seasonNum - i;
       if (sNum < 1) break;
-      recentSeasons.push({ num: sNum, pts: mainNums.has(sNum) ? (bpBySeason[sNum] || 0) : null });
+      recentSeasons.push({ num: sNum, pts: bpBySeason[sNum] || 0 });
     }
 
     return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted, recentSeasons };
@@ -6149,7 +6149,7 @@ export default function App() {
                     padding:'8px 10px', textAlign:'center', minWidth:52,
                   }}>
                     <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, color: s.pts > 0 ? 'var(--gold)' : 'var(--text-dim)' }}>
-                      {s.pts === null ? '—' : (s.pts > 0 ? s.pts : '0')}
+                      {s.pts > 0 ? s.pts : '0'}
                     </div>
                     <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>S{s.num}</div>
                   </div>
