@@ -1303,8 +1303,6 @@ const css = `
     --radius: 6px;
   }
 
-  html { scroll-behavior: smooth; }
-
   body {
     background: var(--black);
     color: var(--text);
