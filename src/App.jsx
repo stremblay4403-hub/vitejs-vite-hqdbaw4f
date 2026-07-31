@@ -5637,7 +5637,6 @@ export default function App() {
     const introStorageKey = `groupIntroSeen_${leagueTab}_G${activeGroup}_S${currentSeason.season}`;
     const [showGroupIntro, setShowGroupIntro] = useState(false);
     useEffect(() => {
-      if (isPublicMode) { setShowGroupIntro(false); return; }
       if (totalMatches > 0 && playedMatches === 0) {
         const alreadySeen = localStorage.getItem(introStorageKey);
         setShowGroupIntro(!alreadySeen);
@@ -5669,6 +5668,10 @@ export default function App() {
               Groupe {i + 1}
             </button>
           ))}
+          <button className="btn btn-xs btn-dark" style={{ marginLeft:4 }}
+            onClick={() => setShowGroupIntro(true)}>
+            👁️ Aperçu intro
+          </button>
         </div>
 
         <div className="sim-bar">
