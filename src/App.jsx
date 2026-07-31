@@ -1358,12 +1358,10 @@ const css = `
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
     padding: 14px 20px; cursor: pointer; border: none; background: none;
     color: var(--text-dim); border-bottom: 3px solid transparent;
-    transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
-    white-space: nowrap; position: relative;
+    transition: all 0.2s; white-space: nowrap;
   }
-  .tab:hover { color: var(--gold); background: rgba(212,175,55,0.05); }
-  .tab.active { color: var(--gold); border-bottom-color: var(--gold); text-shadow: 0 0 12px rgba(212,175,55,0.35); }
-  .tab:active { transform: translateY(1px); }
+  .tab:hover { color: var(--gold); }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 
   /* Content */
   .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
@@ -1494,11 +1492,11 @@ const css = `
   .group-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
   .group-tab {
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 1px; font-size: 13px;
-    padding: 5px 12px; border: 1px solid var(--border); border-radius: 3px;
-    background: var(--dark3); color: var(--text-dim); cursor: pointer; transition: all 0.15s ease;
+    padding: 5px 12px; border: 1px solid var(--border); border-radius: 2px;
+    background: var(--dark3); color: var(--text-dim); cursor: pointer; transition: all 0.15s;
   }
   .group-tab:hover { border-color: var(--gold-dim); color: var(--gold); }
-  .group-tab.active { background: rgba(212,175,55,0.16); border-color: var(--gold); color: var(--gold); box-shadow: 0 0 12px rgba(212,175,55,0.12); }
+  .group-tab.active { background: rgba(201,168,76,0.15); border-color: var(--gold); color: var(--gold); }
 
   /* Playoff bracket */
   .bracket { display: flex; gap: 0; overflow-x: auto; }
