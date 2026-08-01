@@ -5805,13 +5805,14 @@ export default function App() {
         // Une simulation en bloc joue plusieurs matchs d'un coup → pas d'animation, trop chaotique.
         if (playedDelta >= 1 && playedDelta <= 2) {
           // La ligne qui a bougé le plus = celle du match joué → effet "vedette" (ombre + léger agrandissement).
-          // Les autres lignes glissent simplement pour lui faire de la place, sans effet ajouté.
+          // Les autres lignes descendent en cascade façon "escalier", décalées selon leur distance à la ligne vedette.
           let heroId = null, heroAbsDelta = 0;
           ids.forEach(id => {
             if (prevRects[id] === undefined || newRects[id] === undefined) return;
             const d = Math.abs(prevRects[id] - newRects[id]);
             if (d > heroAbsDelta) { heroAbsDelta = d; heroId = id; }
           });
+          const heroNewIdx = heroId ? ids.indexOf(heroId) : 0;
 
           ids.forEach(id => {
             const el = standingsRowRefs.current[id];
@@ -5819,6 +5820,7 @@ export default function App() {
             const deltaPx = prevRects[id] - newRects[id];
             if (Math.abs(deltaPx) < 1) return;
             const isHero = id === heroId;
+            const stepDelay = isHero ? 0 : Math.min(Math.abs(ids.indexOf(id) - heroNewIdx) * 0.09, 0.7);
 
             el.style.transition = 'none';
             el.style.transform = isHero ? `translateY(${deltaPx}px) scale(1.02)` : `translateY(${deltaPx}px)`;
@@ -5831,13 +5833,13 @@ export default function App() {
             // Force le reflow avant de relâcher vers la position finale
             void el.getBoundingClientRect();
             requestAnimationFrame(() => {
-              el.style.transition = isHero
-                ? 'transform 0.6s cubic-bezier(0.22,1,0.36,1), box-shadow 0.6s ease'
-                : 'transform 0.6s cubic-bezier(0.22,1,0.36,1)';
+              el.style.transition = (isHero
+                ? 'transform 1.5s cubic-bezier(0.65,0,0.35,1), box-shadow 1.5s ease'
+                : 'transform 0.9s cubic-bezier(0.65,0,0.35,1)') + ` ${stepDelay}s`;
               el.style.transform = '';
               if (isHero) el.style.boxShadow = '';
             });
-            setTimeout(() => { el.style.zIndex = ''; el.style.position = ''; el.style.borderRadius = ''; }, 650);
+            setTimeout(() => { el.style.zIndex = ''; el.style.position = ''; el.style.borderRadius = ''; }, (isHero ? 1500 : 900 + stepDelay*1000) + 50);
           });
         }
       }
