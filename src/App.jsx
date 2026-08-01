@@ -5786,43 +5786,64 @@ export default function App() {
 
     React.useLayoutEffect(() => {
       const groupKey = leagueTab + '-' + activeGroup;
-      const newOrder = standingsKey.split(',').filter(Boolean);
-      const prevOrder = prevStandingsOrderRef.current;
+      const ids = standingsKey.split(',').filter(Boolean);
+      const newRects = {};
+      ids.forEach(id => {
+        const el = standingsRowRefs.current[id];
+        if (el) newRects[id] = el.getBoundingClientRect().top;
+      });
+
+      const prevRects = prevStandingsRectsRef.current;
       const sameGroup = prevStandingsGroupKeyRef.current === groupKey;
 
-      if (sameGroup && prevOrder && prevOrder.length === newOrder.length) {
-        const prevIndex = {};
-        prevOrder.forEach((id, idx) => { prevIndex[id] = idx; });
+      if (sameGroup && prevRects) {
         let changedCount = 0;
-        newOrder.forEach((id, idx) => {
-          if (prevIndex[id] !== undefined && prevIndex[id] !== idx) changedCount++;
+        ids.forEach(id => {
+          if (prevRects[id] !== undefined && newRects[id] !== undefined && Math.abs(prevRects[id] - newRects[id]) > 1) changedCount++;
         });
 
-        // On n'anime que pour un petit nombre de changements (résultat d'un seul match).
+        // On n'anime que pour un petit nombre de lignes déplacées (résultat d'un seul match).
         // Une simulation en bloc bouscule beaucoup de lignes d'un coup → pas d'animation, trop chaotique.
-        if (changedCount > 0 && changedCount <= 6) {
-          newOrder.forEach((id, newIdx) => {
-            const oldIdx = prevIndex[id];
-            if (oldIdx === undefined || oldIdx === newIdx) return;
+        if (changedCount > 0 && changedCount <= 12) {
+          // La ligne qui a bougé le plus = celle du match joué → effet "vedette" (ombre + léger agrandissement).
+          // Les autres lignes glissent simplement pour lui faire de la place, sans effet ajouté.
+          let heroId = null, heroAbsDelta = 0;
+          ids.forEach(id => {
+            if (prevRects[id] === undefined || newRects[id] === undefined) return;
+            const d = Math.abs(prevRects[id] - newRects[id]);
+            if (d > heroAbsDelta) { heroAbsDelta = d; heroId = id; }
+          });
+
+          ids.forEach(id => {
             const el = standingsRowRefs.current[id];
-            if (!el) return;
-            const rowHeight = el.offsetHeight || 98;
-            const deltaPx = (oldIdx - newIdx) * rowHeight;
+            if (!el || prevRects[id] === undefined || newRects[id] === undefined) return;
+            const deltaPx = prevRects[id] - newRects[id];
+            if (Math.abs(deltaPx) < 1) return;
+            const isHero = id === heroId;
+
             el.style.transition = 'none';
-            el.style.transform = `translateY(${deltaPx}px)`;
-            el.style.zIndex = '5';
+            el.style.transform = isHero ? `translateY(${deltaPx}px) scale(1.02)` : `translateY(${deltaPx}px)`;
             el.style.position = 'relative';
+            el.style.zIndex = isHero ? '5' : '2';
+            if (isHero) {
+              el.style.boxShadow = '0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)';
+              el.style.borderRadius = '6px';
+            }
             // Force le reflow avant de relâcher vers la position finale
             void el.getBoundingClientRect();
             requestAnimationFrame(() => {
-              el.style.transition = 'transform 0.6s cubic-bezier(0.22,1,0.36,1)';
+              el.style.transition = isHero
+                ? 'transform 0.6s cubic-bezier(0.22,1,0.36,1), box-shadow 0.6s ease'
+                : 'transform 0.6s cubic-bezier(0.22,1,0.36,1)';
               el.style.transform = '';
+              if (isHero) el.style.boxShadow = '';
             });
+            setTimeout(() => { el.style.zIndex = ''; el.style.position = ''; el.style.borderRadius = ''; }, 650);
           });
         }
       }
 
-      prevStandingsOrderRef.current = newOrder;
+      prevStandingsRectsRef.current = newRects;
       prevStandingsGroupKeyRef.current = groupKey;
     }, [standingsKey, leagueTab, activeGroup]);
     const groupCars = getGroupCars(leagueTab, activeGroup);
@@ -5832,7 +5853,7 @@ export default function App() {
     // Live standings — FLIP animation quand le classement bouge légèrement (un seul match joué),
     // désactivée si trop de lignes changent en même temps (simulation en bloc)
     const standingsRowRefs = React.useRef({});
-    const prevStandingsOrderRef = React.useRef(null);
+    const prevStandingsRectsRef = React.useRef(null);
     const prevStandingsGroupKeyRef = React.useRef(null);
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
