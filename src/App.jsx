@@ -5989,8 +5989,8 @@ export default function App() {
                                     : quals.X.has(s.id) ? { label:'X', bg:'#2980b9', color:'#fff' }
                                     : quals.P.has(s.id) ? { label:'P', bg:'#16a085', color:'#fff' }
                                     : quals.ELIM.has(s.id) ? { label:'!', bg:'#e74c3c', color:'#fff' }
-                                    : getCarMovement(s.id, leagueTab) === 'promoted' ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
-                                    : getCarMovement(s.id, leagueTab) === 'relegated' ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }
+                                    : getCarMovement(s.id, leagueTab) === 'promoted' ? { label:'↗ Arrivée (promu)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }
+                                    : getCarMovement(s.id, leagueTab) === 'relegated' ? { label:'↘ Arrivée (relégué)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }
                                     : null;
                         const prevRank = maxPlayedDay > 0 ? (prevDayRankMap[s.id] ?? null) : null;
                         const rankDiff = prevRank !== null ? prevRank - (i + 1) : null;
@@ -8065,7 +8065,7 @@ export default function App() {
                                   : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' }
                                   : inZoneActuelles ? { label:'⬇', bg:'rgba(201,168,76,0.12)', color:'var(--gold)' }
                                   : inZoneSucSucc ? { label:'⬇⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' }
-                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
+                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'↗ Arrivée (promu)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }; if (mv === 'relegated') return { label:'↘ Arrivée (relégué)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }; return null; })();
                       return (
                         <React.Fragment key={s.id}>
                         {rank === 5 && <div className="zone-separator" />}
@@ -10746,7 +10746,7 @@ export default function App() {
                       const promoted = rank <= 4;
                       const borderColor = promoted ? 'var(--green)' : 'transparent';
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
-                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; return null; })();
+                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'↗ Arrivée (promu)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }; return null; })();
                       return (
                         <React.Fragment key={s.id}>
                         {rank === 5 && <div className="zone-separator" />}
@@ -10958,7 +10958,7 @@ export default function App() {
                       const photo = getCarPhoto(s.id);
                       const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }
                                   : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' }
-                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' }; if (mv === 'relegated') return { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' }; return null; })();
+                                  : (() => { const mv = getCarMovement(s.id, leagueName); if (mv === 'promoted') return { label:'↗ Arrivée (promu)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }; if (mv === 'relegated') return { label:'↘ Arrivée (relégué)', bg:'rgba(41,128,185,0.18)', color:'#5dade2' }; return null; })();
                       return (
                         <React.Fragment key={s.id}>
                         {rank === 5 && <div className="zone-separator" />}
