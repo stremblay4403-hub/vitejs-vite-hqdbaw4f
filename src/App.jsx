@@ -1618,12 +1618,12 @@ const css = `
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
   @keyframes headerRiseIn {
-    0%   { opacity: 0; transform: translateY(46px) scale(0.98); }
-    18%  { opacity: 1; transform: translateY(46px) scale(1); }
+    0%   { opacity: 0; transform: translateY(120px) scale(0.98); }
+    22%  { opacity: 1; transform: translateY(120px) scale(1); }
     100% { opacity: 1; transform: translateY(0) scale(1); }
   }
   @keyframes statsRevealIn {
-    0%   { opacity: 0; transform: translateY(10px); }
+    0%   { opacity: 0; transform: translateY(14px); }
     100% { opacity: 1; transform: translateY(0); }
   }
   .car-profile-modal {
@@ -1644,8 +1644,8 @@ const css = `
     border-bottom: 1px solid var(--gold-dim); padding: 16px 20px;
     display: flex; align-items: center; gap: 12px;
     position: relative; z-index: 2;
-    animation: headerRiseIn 0.55s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: 0.05s;
+    animation: headerRiseIn 1.1s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: 0.1s;
   }
   .car-photo-box {
     width: 200px; height: 110px; border: 2px dashed var(--border); border-radius: 6px;
@@ -1662,8 +1662,8 @@ const css = `
   }
   .car-photo-box:hover .car-photo-overlay { opacity: 1; }
   .car-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 16px;
-    animation: statsRevealIn 0.4s ease both;
-    animation-delay: 0.4s;
+    animation: statsRevealIn 0.5s ease both;
+    animation-delay: 1.1s;
   }
   .car-stat-item { background: var(--dark3); border-radius: 4px; padding: 10px; text-align: center; box-shadow: var(--shadow-sm); }
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
