@@ -1617,14 +1617,14 @@ const css = `
     0%   { opacity: 0; transform: scale(0.92) translateY(10px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
-  @keyframes photoGrowIn {
-    0%   { opacity: 0; transform: scale(0.6); }
-    60%  { opacity: 1; transform: scale(1.04); }
-    100% { opacity: 1; transform: scale(1); }
+  @keyframes headerRiseIn {
+    0%   { opacity: 0; transform: translateY(46px) scale(0.98); }
+    18%  { opacity: 1; transform: translateY(46px) scale(1); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
   }
-  @keyframes infoSettleIn {
-    0%   { opacity: 0; transform: translateX(-10px); }
-    100% { opacity: 1; transform: translateX(0); }
+  @keyframes statsRevealIn {
+    0%   { opacity: 0; transform: translateY(10px); }
+    100% { opacity: 1; transform: translateY(0); }
   }
   .car-profile-modal {
     position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200;
@@ -1643,13 +1643,15 @@ const css = `
     background: linear-gradient(135deg, var(--dark3), var(--dark2));
     border-bottom: 1px solid var(--gold-dim); padding: 16px 20px;
     display: flex; align-items: center; gap: 12px;
+    position: relative; z-index: 2;
+    animation: headerRiseIn 0.55s cubic-bezier(0.22,1,0.36,1) both;
+    animation-delay: 0.05s;
   }
   .car-photo-box {
     width: 200px; height: 110px; border: 2px dashed var(--border); border-radius: 6px;
     background: var(--dark3); display: flex; align-items: center; justify-content: center;
     cursor: pointer; overflow: hidden; flex-shrink: 0; transition: border-color 0.15s ease;
     position: relative;
-    animation: photoGrowIn 0.5s cubic-bezier(0.22,1,0.36,1) both;
   }
   .car-photo-box:hover { border-color: var(--gold-dim); }
   .car-photo-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
@@ -1659,11 +1661,10 @@ const css = `
     opacity: 0; transition: opacity 0.15s ease; font-size: 20px;
   }
   .car-photo-box:hover .car-photo-overlay { opacity: 1; }
-  .car-profile-info {
-    animation: infoSettleIn 0.45s cubic-bezier(0.22,1,0.36,1) both;
-    animation-delay: 0.1s;
+  .car-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 16px;
+    animation: statsRevealIn 0.4s ease both;
+    animation-delay: 0.4s;
   }
-  .car-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 16px; }
   .car-stat-item { background: var(--dark3); border-radius: 4px; padding: 10px; text-align: center; box-shadow: var(--shadow-sm); }
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
