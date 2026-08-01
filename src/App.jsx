@@ -2600,6 +2600,7 @@ export default function App() {
   const prevStandingsRectsRef = React.useRef(null);
   const prevStandingsGroupKeyRef = React.useRef(null);
   const prevPlayedCountRef = React.useRef(null);
+  const pendingFlipRef = React.useRef(null);
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 1300);
@@ -5800,6 +5801,59 @@ export default function App() {
         if (el) newRects[id] = el.getBoundingClientRect().top;
       });
 
+      // Joue (ou rejoue) l'animation de déplacement pour un jeu de décalages donné.
+      // Utilisée à la fois pour le déclenchement normal ET pour "relancer" l'animation
+      // si un rendu forcé (ex: setSyncTick, 150ms après une sync Firebase) est venu
+      // détruire les lignes en plein milieu — sans quoi les appareils qui suivent en
+      // direct (iPad visiteur) ne verraient jamais l'animation, contrairement à
+      // l'appareil admin qui déclenche le match localement.
+      function playFlip(offsets, heroId) {
+        const idsWithOffset = Object.keys(offsets);
+        const els = idsWithOffset.map(id => ({
+          id, el: standingsRowRefs.current[id], deltaPx: offsets[id], isHero: id === heroId
+        })).filter(x => x.el);
+        if (!els.length) return;
+
+        els.forEach(({ el, deltaPx, isHero }) => {
+          el.style.transition = 'none';
+          el.style.position = 'relative';
+          el.style.zIndex = isHero ? '5' : '2';
+          el.style.transform = `translateY(${deltaPx}px)${isHero ? ' scale(1.03)' : ''}`;
+          if (isHero) {
+            el.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6), 0 0 0 1.5px var(--gold)';
+            el.style.background = 'linear-gradient(180deg, var(--dark3), var(--dark2))';
+            el.style.borderRadius = '8px';
+          }
+        });
+
+        void els[0].el.getBoundingClientRect(); // force le reflow
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            els.forEach(({ el, isHero }) => {
+              el.style.transition = isHero
+                ? 'transform 2.2s cubic-bezier(0.45,0,0.4,1), box-shadow 0.6s ease 1.6s, background 0.6s ease 1.6s'
+                : 'transform 1.8s cubic-bezier(0.45,0,0.4,1)';
+              el.style.transform = '';
+              if (isHero) { el.style.boxShadow = 'none'; el.style.background = ''; }
+            });
+            setTimeout(() => {
+              els.forEach(({ el }) => {
+                el.style.position = ''; el.style.zIndex = ''; el.style.borderRadius = ''; el.style.transition = '';
+              });
+            }, 2400);
+          });
+        });
+      }
+
+      // Cas 1 : un rendu forcé (setSyncTick) est venu interrompre une animation qui vient
+      // tout juste d'être déclenchée sur CET appareil (ou reçue via sync) → on la relance
+      // proprement sur les lignes fraîchement montées, plutôt que de laisser un saut sec.
+      const pending = pendingFlipRef.current;
+      if (pending && pending.groupKey === groupKey && (Date.now() - pending.triggeredAt) < 2200 && !pending.resumed) {
+        pending.resumed = true;
+        playFlip(pending.offsets, pending.heroId);
+      }
+
       const prevRects = prevStandingsRectsRef.current;
       const prevPlayed = prevPlayedCountRef.current;
       const sameGroup = prevStandingsGroupKeyRef.current === groupKey;
@@ -5825,45 +5879,10 @@ export default function App() {
           });
 
           if (heroId && Object.keys(offsets).length) {
-            const idsWithOffset = Object.keys(offsets);
-            // On applique directement au DOM (pas via l'état React) : un setState ici déclencherait
-            // un nouveau rendu de App, qui recrée GroupesView, qui détruirait la ligne en plein milieu
-            // de la transition. En manipulant le DOM directement, rien ne vient interrompre l'animation.
-            const els = idsWithOffset.map(id => ({
-              id, el: standingsRowRefs.current[id], deltaPx: offsets[id], isHero: id === heroId
-            })).filter(x => x.el);
-
-            els.forEach(({ el, deltaPx, isHero }) => {
-              el.style.transition = 'none';
-              el.style.position = 'relative';
-              el.style.zIndex = isHero ? '5' : '2';
-              el.style.transform = `translateY(${deltaPx}px)${isHero ? ' scale(1.03)' : ''}`;
-              if (isHero) {
-                el.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6), 0 0 0 1.5px var(--gold)';
-                el.style.background = 'linear-gradient(180deg, var(--dark3), var(--dark2))';
-                el.style.borderRadius = '8px';
-              }
-            });
-
-            if (els.length) {
-              void els[0].el.getBoundingClientRect(); // force le reflow
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  els.forEach(({ el, isHero }) => {
-                    el.style.transition = isHero
-                      ? 'transform 2.2s cubic-bezier(0.45,0,0.4,1), box-shadow 0.6s ease 1.6s, background 0.6s ease 1.6s'
-                      : 'transform 1.8s cubic-bezier(0.45,0,0.4,1)';
-                    el.style.transform = '';
-                    if (isHero) { el.style.boxShadow = 'none'; el.style.background = ''; }
-                  });
-                  setTimeout(() => {
-                    els.forEach(({ el }) => {
-                      el.style.position = ''; el.style.zIndex = ''; el.style.borderRadius = ''; el.style.transition = '';
-                    });
-                  }, 2400);
-                });
-              });
-            }
+            // On mémorise cette animation pour pouvoir la relancer si un rendu forcé
+            // (setSyncTick) vient l'interrompre dans les ~2 prochaines secondes.
+            pendingFlipRef.current = { offsets, heroId, groupKey, triggeredAt: Date.now(), resumed: false };
+            playFlip(offsets, heroId);
           }
         }
       }
