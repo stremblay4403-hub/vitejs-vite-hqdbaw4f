@@ -5784,6 +5784,7 @@ export default function App() {
     const standings = getGroupStandings(leagueTab, activeGroup);
     const standingsKey = standings.map(s => s.id).join(',');
     const playedMatchCount = matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
+    const [flipState, setFlipState] = useState(null); // { offsets: {id: px}, heroId, dir }
 
     React.useLayoutEffect(() => {
       const groupKey = leagueTab + '-' + activeGroup;
@@ -5804,53 +5805,31 @@ export default function App() {
         // On n'anime que si UN SEUL match vient d'être joué (delta de 1 ou 2 pour couvrir les stepper +/-).
         // Une simulation en bloc joue plusieurs matchs d'un coup → pas d'animation, trop chaotique.
         if (playedDelta >= 1 && playedDelta <= 2) {
-          // La ligne qui a bougé le plus = celle du match joué → effet "vedette" (ombre + léger agrandissement).
-          // Les autres lignes descendent en cascade façon "escalier", décalées selon leur distance à la ligne vedette.
           let heroId = null, heroAbsDelta = 0;
           ids.forEach(id => {
             if (prevRects[id] === undefined || newRects[id] === undefined) return;
             const d = Math.abs(prevRects[id] - newRects[id]);
             if (d > heroAbsDelta) { heroAbsDelta = d; heroId = id; }
           });
-          const heroNewIdx = heroId ? ids.indexOf(heroId) : 0;
 
-          const toAnimate = [];
+          const offsets = {};
           ids.forEach(id => {
-            const el = standingsRowRefs.current[id];
-            if (!el || prevRects[id] === undefined || newRects[id] === undefined) return;
+            if (prevRects[id] === undefined || newRects[id] === undefined) return;
             const deltaPx = prevRects[id] - newRects[id];
-            if (Math.abs(deltaPx) < 1) return;
-            const isHero = id === heroId;
-            const stepDelay = isHero ? 0 : Math.min(Math.abs(ids.indexOf(id) - heroNewIdx) * 0.09, 0.7);
-
-            el.style.transition = 'none';
-            el.style.transform = isHero ? `translateY(${deltaPx}px) scale(1.02)` : `translateY(${deltaPx}px)`;
-            el.style.position = 'relative';
-            el.style.zIndex = isHero ? '5' : '2';
-            if (isHero) {
-              el.style.boxShadow = '0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)';
-              el.style.borderRadius = '6px';
-            }
-            toAnimate.push({ el, isHero, stepDelay });
+            if (Math.abs(deltaPx) >= 1) offsets[id] = deltaPx;
           });
 
-          if (toAnimate.length) {
-            // Force le reflow pour que le navigateur peigne bien l'état de départ (décalé) avant d'animer
-            void toAnimate[0].el.getBoundingClientRect();
-            // Double RAF : le premier attend le prochain paint (état de départ visible),
-            // le second déclenche la transition vers l'état final — sinon le navigateur saute directement au résultat.
+          if (heroId && Object.keys(offsets).length) {
+            const dir = offsets[heroId] > 0 ? 'up' : 'down'; // positif = venait de plus bas → monte
+            // Étape 1 : on affiche les lignes décalées à leur ancienne position (sans transition), piloté par état React
+            setFlipState({ offsets, heroId, dir, phase: 'start' });
+            // Étape 2 (2 frames plus tard) : on relâche vers la position finale, la transition CSS fait le reste
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
-                toAnimate.forEach(({ el, isHero, stepDelay }) => {
-                  el.style.transition = (isHero
-                    ? 'transform 1.5s cubic-bezier(0.65,0,0.35,1), box-shadow 1.5s ease'
-                    : 'transform 0.9s cubic-bezier(0.65,0,0.35,1)') + ` ${stepDelay}s`;
-                  el.style.transform = '';
-                  if (isHero) el.style.boxShadow = '';
-                });
+                setFlipState(prev => (prev && prev.heroId === heroId) ? { ...prev, phase: 'end' } : prev);
                 setTimeout(() => {
-                  toAnimate.forEach(({ el }) => { el.style.zIndex = ''; el.style.position = ''; el.style.borderRadius = ''; });
-                }, 1600);
+                  setFlipState(prev => (prev && prev.heroId === heroId) ? null : prev);
+                }, 1700);
               });
             });
           }
@@ -6037,7 +6016,16 @@ export default function App() {
                           <React.Fragment key={s.id}>
                             {i === 8 && <div className="zone-separator" />}
                             {i === 10 && <div className="zone-separator" />}
-                            <div ref={el => { standingsRowRefs.current[s.id] = el; }}>
+                            <div ref={el => { standingsRowRefs.current[s.id] = el; }}
+                              style={flipState && flipState.offsets[s.id] !== undefined ? {
+                                position: 'relative',
+                                zIndex: flipState.heroId === s.id ? 5 : 2,
+                                transform: flipState.phase === 'start' ? `translateY(${flipState.offsets[s.id]}px)${flipState.heroId === s.id ? ' scale(1.02)' : ''}` : 'translateY(0)',
+                                transition: flipState.phase === 'end' ? (flipState.heroId === s.id ? 'transform 1.4s cubic-bezier(0.65,0,0.35,1)' : 'transform 0.9s cubic-bezier(0.65,0,0.35,1)') : 'none',
+                                boxShadow: flipState.heroId === s.id && flipState.phase === 'start' ? '0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)' : 'none',
+                                borderRadius: flipState.heroId === s.id ? 6 : 0,
+                              } : undefined}
+                            >
                               <LeaderboardRow
                               rank={i+1} rankDiff={rankDiff}
                               carId={s.id} leagueName={leagueTab}
