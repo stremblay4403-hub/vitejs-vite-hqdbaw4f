@@ -5783,6 +5783,7 @@ export default function App() {
     const matches = getGroupMatches(leagueTab, activeGroup);
     const standings = getGroupStandings(leagueTab, activeGroup);
     const standingsKey = standings.map(s => s.id).join(',');
+    const playedMatchCount = matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
 
     React.useLayoutEffect(() => {
       const groupKey = leagueTab + '-' + activeGroup;
@@ -5794,17 +5795,15 @@ export default function App() {
       });
 
       const prevRects = prevStandingsRectsRef.current;
+      const prevPlayed = prevPlayedCountRef.current;
       const sameGroup = prevStandingsGroupKeyRef.current === groupKey;
 
-      if (sameGroup && prevRects) {
-        let changedCount = 0;
-        ids.forEach(id => {
-          if (prevRects[id] !== undefined && newRects[id] !== undefined && Math.abs(prevRects[id] - newRects[id]) > 1) changedCount++;
-        });
+      if (sameGroup && prevRects && prevPlayed !== null) {
+        const playedDelta = playedMatchCount - prevPlayed;
 
-        // On n'anime que pour un petit nombre de lignes déplacées (résultat d'un seul match).
-        // Une simulation en bloc bouscule beaucoup de lignes d'un coup → pas d'animation, trop chaotique.
-        if (changedCount > 0 && changedCount <= 12) {
+        // On n'anime que si UN SEUL match vient d'être joué (delta de 1 ou 2 pour couvrir les stepper +/-).
+        // Une simulation en bloc joue plusieurs matchs d'un coup → pas d'animation, trop chaotique.
+        if (playedDelta >= 1 && playedDelta <= 2) {
           // La ligne qui a bougé le plus = celle du match joué → effet "vedette" (ombre + léger agrandissement).
           // Les autres lignes glissent simplement pour lui faire de la place, sans effet ajouté.
           let heroId = null, heroAbsDelta = 0;
@@ -5843,9 +5842,10 @@ export default function App() {
         }
       }
 
+      prevPlayedCountRef.current = playedMatchCount;
       prevStandingsRectsRef.current = newRects;
       prevStandingsGroupKeyRef.current = groupKey;
-    }, [standingsKey, leagueTab, activeGroup]);
+    }, [standingsKey, leagueTab, activeGroup, playedMatchCount]);
     const groupCars = getGroupCars(leagueTab, activeGroup);
     const listRef = React.useRef(null);
     const listScrollPos = groupListScrollRef; // ref au niveau de l'app : survit aux remontages de GroupesView
@@ -5855,6 +5855,7 @@ export default function App() {
     const standingsRowRefs = React.useRef({});
     const prevStandingsRectsRef = React.useRef(null);
     const prevStandingsGroupKeyRef = React.useRef(null);
+    const prevPlayedCountRef = React.useRef(null);
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
