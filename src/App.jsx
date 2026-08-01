@@ -1618,9 +1618,10 @@ const css = `
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
   @keyframes headerRiseIn {
-    0%   { opacity: 0; transform: translateY(420px) scale(0.98); }
-    22%  { opacity: 1; transform: translateY(420px) scale(1); }
-    100% { opacity: 1; transform: translateY(0) scale(1); }
+    0%   { opacity: 0; transform: translateY(420px) scale(0.98); pointer-events: none; }
+    22%  { opacity: 1; transform: translateY(420px) scale(1); pointer-events: none; }
+    99%  { pointer-events: none; }
+    100% { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
   }
   @keyframes statsRevealIn {
     0%   { opacity: 0; transform: translateY(14px); }
@@ -7059,6 +7060,7 @@ export default function App() {
   function CarProfileModal() {
     const [showChampSeasons, setShowChampSeasons] = useState(false);
     const [showRelSeasons, setShowRelSeasons] = useState(false);
+    const mountTimeRef = React.useRef(Date.now());
     if (!profileCar) return null;
     const { leagueName, carId, histName } = profileCar;
     const car = getCar(leagueName, carId);
@@ -7277,7 +7279,8 @@ export default function App() {
         <div className="car-profile-card" onClick={e => e.stopPropagation()}>
           {/* Header */}
           <div className="car-profile-header">
-            <label className="car-photo-box" title={isPublicMode ? '' : "Cliquer pour changer la photo"} style={{ cursor: isPublicMode ? 'default' : 'pointer' }}>
+            <label className="car-photo-box" title={isPublicMode ? '' : "Cliquer pour changer la photo"} style={{ cursor: isPublicMode ? 'default' : 'pointer' }}
+              onClickCapture={e => { if (Date.now() - mountTimeRef.current < 1400) { e.preventDefault(); e.stopPropagation(); } }}>
               {photo
                 ? <img src={photo} alt={effectiveName} style={{ position:'absolute',inset:0,width:'100%',height:'100%',objectFit:'cover',objectPosition:'center' }} />
                 : <span style={{ fontSize:28,color:'var(--text-dim)' }}>🚗</span>}
