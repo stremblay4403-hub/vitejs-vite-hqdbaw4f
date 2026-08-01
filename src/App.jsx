@@ -5835,7 +5835,7 @@ export default function App() {
                 setFlipState(prev => (prev && prev.heroId === heroId) ? { ...prev, phase: 'end' } : prev);
                 setTimeout(() => {
                   setFlipState(prev => (prev && prev.heroId === heroId) ? null : prev);
-                }, 1700);
+                }, 2400);
               });
             });
           }
@@ -6022,10 +6022,11 @@ export default function App() {
                               style={flipState && flipState.offsets[s.id] !== undefined ? {
                                 position: 'relative',
                                 zIndex: flipState.heroId === s.id ? 5 : 2,
-                                transform: flipState.phase === 'start' ? `translateY(${flipState.offsets[s.id]}px)${flipState.heroId === s.id ? ' scale(1.02)' : ''}` : 'translateY(0)',
-                                transition: flipState.phase === 'end' ? (flipState.heroId === s.id ? 'transform 1.4s cubic-bezier(0.65,0,0.35,1)' : 'transform 0.9s cubic-bezier(0.65,0,0.35,1)') : 'none',
-                                boxShadow: flipState.heroId === s.id && flipState.phase === 'start' ? '0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)' : 'none',
-                                borderRadius: flipState.heroId === s.id ? 6 : 0,
+                                transform: flipState.phase === 'start' ? `translateY(${flipState.offsets[s.id]}px)${flipState.heroId === s.id ? ' scale(1.03)' : ''}` : 'translateY(0)',
+                                transition: flipState.phase === 'end' ? (flipState.heroId === s.id ? 'transform 2.2s cubic-bezier(0.45,0,0.4,1), box-shadow 0.6s ease 1.6s, background 0.6s ease 1.6s' : 'transform 1.8s cubic-bezier(0.45,0,0.4,1)') : 'none',
+                                boxShadow: flipState.heroId === s.id ? '0 12px 32px rgba(0,0,0,0.6), 0 0 0 1.5px var(--gold)' : 'none',
+                                background: flipState.heroId === s.id ? 'linear-gradient(180deg, var(--dark3), var(--dark2))' : undefined,
+                                borderRadius: flipState.heroId === s.id ? 8 : 0,
                               } : undefined}
                             >
                               <LeaderboardRow
