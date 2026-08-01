@@ -5848,9 +5848,11 @@ export default function App() {
       // Cas 1 : un rendu forcé (setSyncTick) est venu interrompre une animation qui vient
       // tout juste d'être déclenchée sur CET appareil (ou reçue via sync) → on la relance
       // proprement sur les lignes fraîchement montées, plutôt que de laisser un saut sec.
+      // On la relance à CHAQUE remontage tant qu'on est dans la fenêtre (pas juste une fois) :
+      // en PWA, plusieurs remontages rapprochés peuvent survenir, et se limiter à une seule
+      // relance laissait les lignes réapparaître "nues" entre deux remontages → effet d'éclairs.
       const pending = pendingFlipRef.current;
-      if (pending && pending.groupKey === groupKey && (Date.now() - pending.triggeredAt) < 2200 && !pending.resumed) {
-        pending.resumed = true;
+      if (pending && pending.groupKey === groupKey && (Date.now() - pending.triggeredAt) < 2200) {
         playFlip(pending.offsets, pending.heroId);
       }
 
@@ -5881,7 +5883,7 @@ export default function App() {
           if (heroId && Object.keys(offsets).length) {
             // On mémorise cette animation pour pouvoir la relancer si un rendu forcé
             // (setSyncTick) vient l'interrompre dans les ~2 prochaines secondes.
-            pendingFlipRef.current = { offsets, heroId, groupKey, triggeredAt: Date.now(), resumed: false };
+            pendingFlipRef.current = { offsets, heroId, groupKey, triggeredAt: Date.now() };
             playFlip(offsets, heroId);
           }
         }
@@ -5973,18 +5975,9 @@ export default function App() {
         </div>
 
         <div className="grid-2">
-          {/* Podium animé — s'affiche quand le top 3 est mathématiquement assuré */}
+          {/* Podium animé — s'affiche seulement une fois TOUS les matchs du groupe joués */}
           {(() => {
-            if (standings.length < 3 || playedMatches < 30) return null;
-            // Vérifier que les 3 premières places sont mathématiquement assurées :
-            // aucune voiture hors top 3 ne peut atteindre les points du 3e.
-            const car3pts = standings[2].pts;
-            const outsiders = standings.slice(3);
-            const podiumSecured = outsiders.every(car => {
-              const rem = matches.filter(m => m.homeGoals === null && (m.homeId === car.id || m.awayId === car.id)).length;
-              return car.pts + rem * 3 <= car3pts;
-            });
-            if (!podiumSecured) return null;
+            if (standings.length < 3 || playedMatches < totalMatches) return null;
             const order = [standings[1], standings[0], standings[2]];
             const isDesktop = window.innerWidth >= 768;
             const photoW  = isDesktop ? 320 : 110;
