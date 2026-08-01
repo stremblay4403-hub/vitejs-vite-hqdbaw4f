@@ -2600,7 +2600,6 @@ export default function App() {
   const prevStandingsRectsRef = React.useRef(null);
   const prevStandingsGroupKeyRef = React.useRef(null);
   const prevPlayedCountRef = React.useRef(null);
-  const [flipState, setFlipState] = useState(null); // { offsets: {id: px}, heroId, dir, phase }
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 1300);
@@ -5826,18 +5825,45 @@ export default function App() {
           });
 
           if (heroId && Object.keys(offsets).length) {
-            const dir = offsets[heroId] > 0 ? 'up' : 'down'; // positif = venait de plus bas → monte
-            // Étape 1 : on affiche les lignes décalées à leur ancienne position (sans transition), piloté par état React
-            setFlipState({ offsets, heroId, dir, phase: 'start' });
-            // Étape 2 (2 frames plus tard) : on relâche vers la position finale, la transition CSS fait le reste
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                setFlipState(prev => (prev && prev.heroId === heroId) ? { ...prev, phase: 'end' } : prev);
-                setTimeout(() => {
-                  setFlipState(prev => (prev && prev.heroId === heroId) ? null : prev);
-                }, 2400);
-              });
+            const idsWithOffset = Object.keys(offsets);
+            // On applique directement au DOM (pas via l'état React) : un setState ici déclencherait
+            // un nouveau rendu de App, qui recrée GroupesView, qui détruirait la ligne en plein milieu
+            // de la transition. En manipulant le DOM directement, rien ne vient interrompre l'animation.
+            const els = idsWithOffset.map(id => ({
+              id, el: standingsRowRefs.current[id], deltaPx: offsets[id], isHero: id === heroId
+            })).filter(x => x.el);
+
+            els.forEach(({ el, deltaPx, isHero }) => {
+              el.style.transition = 'none';
+              el.style.position = 'relative';
+              el.style.zIndex = isHero ? '5' : '2';
+              el.style.transform = `translateY(${deltaPx}px)${isHero ? ' scale(1.03)' : ''}`;
+              if (isHero) {
+                el.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6), 0 0 0 1.5px var(--gold)';
+                el.style.background = 'linear-gradient(180deg, var(--dark3), var(--dark2))';
+                el.style.borderRadius = '8px';
+              }
             });
+
+            if (els.length) {
+              void els[0].el.getBoundingClientRect(); // force le reflow
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  els.forEach(({ el, isHero }) => {
+                    el.style.transition = isHero
+                      ? 'transform 2.2s cubic-bezier(0.45,0,0.4,1), box-shadow 0.6s ease 1.6s, background 0.6s ease 1.6s'
+                      : 'transform 1.8s cubic-bezier(0.45,0,0.4,1)';
+                    el.style.transform = '';
+                    if (isHero) { el.style.boxShadow = 'none'; el.style.background = ''; }
+                  });
+                  setTimeout(() => {
+                    els.forEach(({ el }) => {
+                      el.style.position = ''; el.style.zIndex = ''; el.style.borderRadius = ''; el.style.transition = '';
+                    });
+                  }, 2400);
+                });
+              });
+            }
           }
         }
       }
@@ -6018,17 +6044,7 @@ export default function App() {
                           <React.Fragment key={s.id}>
                             {i === 8 && <div className="zone-separator" />}
                             {i === 10 && <div className="zone-separator" />}
-                            <div ref={el => { standingsRowRefs.current[s.id] = el; }}
-                              style={flipState && flipState.offsets[s.id] !== undefined ? {
-                                position: 'relative',
-                                zIndex: flipState.heroId === s.id ? 5 : 2,
-                                transform: flipState.phase === 'start' ? `translateY(${flipState.offsets[s.id]}px)${flipState.heroId === s.id ? ' scale(1.03)' : ''}` : 'translateY(0)',
-                                transition: flipState.phase === 'end' ? (flipState.heroId === s.id ? 'transform 2.2s cubic-bezier(0.45,0,0.4,1), box-shadow 0.6s ease 1.6s, background 0.6s ease 1.6s' : 'transform 1.8s cubic-bezier(0.45,0,0.4,1)') : 'none',
-                                boxShadow: flipState.heroId === s.id ? '0 12px 32px rgba(0,0,0,0.6), 0 0 0 1.5px var(--gold)' : 'none',
-                                background: flipState.heroId === s.id ? 'linear-gradient(180deg, var(--dark3), var(--dark2))' : undefined,
-                                borderRadius: flipState.heroId === s.id ? 8 : 0,
-                              } : undefined}
-                            >
+                            <div ref={el => { standingsRowRefs.current[s.id] = el; }}>
                               <LeaderboardRow
                               rank={i+1} rankDiff={rankDiff}
                               carId={s.id} leagueName={leagueTab}
