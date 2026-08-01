@@ -5814,6 +5814,7 @@ export default function App() {
           });
           const heroNewIdx = heroId ? ids.indexOf(heroId) : 0;
 
+          const toAnimate = [];
           ids.forEach(id => {
             const el = standingsRowRefs.current[id];
             if (!el || prevRects[id] === undefined || newRects[id] === undefined) return;
@@ -5830,17 +5831,29 @@ export default function App() {
               el.style.boxShadow = '0 10px 28px rgba(0,0,0,0.55), 0 0 0 1px rgba(212,175,55,0.4)';
               el.style.borderRadius = '6px';
             }
-            // Force le reflow avant de relâcher vers la position finale
-            void el.getBoundingClientRect();
-            requestAnimationFrame(() => {
-              el.style.transition = (isHero
-                ? 'transform 1.5s cubic-bezier(0.65,0,0.35,1), box-shadow 1.5s ease'
-                : 'transform 0.9s cubic-bezier(0.65,0,0.35,1)') + ` ${stepDelay}s`;
-              el.style.transform = '';
-              if (isHero) el.style.boxShadow = '';
-            });
-            setTimeout(() => { el.style.zIndex = ''; el.style.position = ''; el.style.borderRadius = ''; }, (isHero ? 1500 : 900 + stepDelay*1000) + 50);
+            toAnimate.push({ el, isHero, stepDelay });
           });
+
+          if (toAnimate.length) {
+            // Force le reflow pour que le navigateur peigne bien l'état de départ (décalé) avant d'animer
+            void toAnimate[0].el.getBoundingClientRect();
+            // Double RAF : le premier attend le prochain paint (état de départ visible),
+            // le second déclenche la transition vers l'état final — sinon le navigateur saute directement au résultat.
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                toAnimate.forEach(({ el, isHero, stepDelay }) => {
+                  el.style.transition = (isHero
+                    ? 'transform 1.5s cubic-bezier(0.65,0,0.35,1), box-shadow 1.5s ease'
+                    : 'transform 0.9s cubic-bezier(0.65,0,0.35,1)') + ` ${stepDelay}s`;
+                  el.style.transform = '';
+                  if (isHero) el.style.boxShadow = '';
+                });
+                setTimeout(() => {
+                  toAnimate.forEach(({ el }) => { el.style.zIndex = ''; el.style.position = ''; el.style.borderRadius = ''; });
+                }, 1600);
+              });
+            });
+          }
         }
       }
 
