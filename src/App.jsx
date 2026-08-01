@@ -2398,7 +2398,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, lineHeight:1,
           color: rank === 1 ? '#f1c40f' : rank === 2 ? '#bdc3c7' : rank === 3 ? '#cd7f32' : borderColor && borderColor !== 'transparent' ? borderColor : 'var(--gold-dim)',
           textShadow: rank <= 3 ? `0 0 8px ${rank===1?'rgba(241,196,15,0.6)':rank===2?'rgba(189,195,199,0.4)':'rgba(205,127,50,0.4)'}` : 'none',
-        }}>{rank}</div>
+        }}>{rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</div>
         {rankDiff !== null && rankDiff !== undefined && rankDiff !== 0 && (
           <div style={{ fontSize:9, fontWeight:700, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, background: rankDiff > 0 ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', borderRadius:2, padding:'0 2px' }}>
             {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
@@ -5781,10 +5781,58 @@ export default function App() {
     const league = getLeague(leagueTab);
     const matches = getGroupMatches(leagueTab, activeGroup);
     const standings = getGroupStandings(leagueTab, activeGroup);
+    const standingsKey = standings.map(s => s.id).join(',');
+
+    React.useLayoutEffect(() => {
+      const groupKey = leagueTab + '-' + activeGroup;
+      const newOrder = standingsKey.split(',').filter(Boolean);
+      const prevOrder = prevStandingsOrderRef.current;
+      const sameGroup = prevStandingsGroupKeyRef.current === groupKey;
+
+      if (sameGroup && prevOrder && prevOrder.length === newOrder.length) {
+        const prevIndex = {};
+        prevOrder.forEach((id, idx) => { prevIndex[id] = idx; });
+        let changedCount = 0;
+        newOrder.forEach((id, idx) => {
+          if (prevIndex[id] !== undefined && prevIndex[id] !== idx) changedCount++;
+        });
+
+        // On n'anime que pour un petit nombre de changements (résultat d'un seul match).
+        // Une simulation en bloc bouscule beaucoup de lignes d'un coup → pas d'animation, trop chaotique.
+        if (changedCount > 0 && changedCount <= 6) {
+          newOrder.forEach((id, newIdx) => {
+            const oldIdx = prevIndex[id];
+            if (oldIdx === undefined || oldIdx === newIdx) return;
+            const el = standingsRowRefs.current[id];
+            if (!el) return;
+            const rowHeight = el.offsetHeight || 98;
+            const deltaPx = (oldIdx - newIdx) * rowHeight;
+            el.style.transition = 'none';
+            el.style.transform = `translateY(${deltaPx}px)`;
+            el.style.zIndex = '5';
+            el.style.position = 'relative';
+            // Force le reflow avant de relâcher vers la position finale
+            void el.getBoundingClientRect();
+            requestAnimationFrame(() => {
+              el.style.transition = 'transform 0.6s cubic-bezier(0.22,1,0.36,1)';
+              el.style.transform = '';
+            });
+          });
+        }
+      }
+
+      prevStandingsOrderRef.current = newOrder;
+      prevStandingsGroupKeyRef.current = groupKey;
+    }, [standingsKey, leagueTab, activeGroup]);
     const groupCars = getGroupCars(leagueTab, activeGroup);
     const listRef = React.useRef(null);
     const listScrollPos = groupListScrollRef; // ref au niveau de l'app : survit aux remontages de GroupesView
     const openDayRef = React.useRef(null);
+    // Live standings — FLIP animation quand le classement bouge légèrement (un seul match joué),
+    // désactivée si trop de lignes changent en même temps (simulation en bloc)
+    const standingsRowRefs = React.useRef({});
+    const prevStandingsOrderRef = React.useRef(null);
+    const prevStandingsGroupKeyRef = React.useRef(null);
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
@@ -5951,16 +5999,18 @@ export default function App() {
                           <React.Fragment key={s.id}>
                             {i === 8 && <div className="zone-separator" />}
                             {i === 10 && <div className="zone-separator" />}
-                            <LeaderboardRow
-                            rank={i+1} rankDiff={rankDiff}
-                            carId={s.id} leagueName={leagueTab}
-                            name={s.name} photo={photo} badge={badge} streakBadge={streakBadge}
-                            recentForm={recentForm}
-                            pts={s.pts} w={s.w} d={s.d} l={s.l}
-                            gf={s.gf} ga={s.ga} gp={s.gp}
-                            borderColor={borderColor}
-                            onClick={() => openProfileCar({ leagueName: leagueTab, carId: s.id })}
-                          />
+                            <div ref={el => { standingsRowRefs.current[s.id] = el; }}>
+                              <LeaderboardRow
+                              rank={i+1} rankDiff={rankDiff}
+                              carId={s.id} leagueName={leagueTab}
+                              name={s.name} photo={photo} badge={badge} streakBadge={streakBadge}
+                              recentForm={recentForm}
+                              pts={s.pts} w={s.w} d={s.d} l={s.l}
+                              gf={s.gf} ga={s.ga} gp={s.gp}
+                              borderColor={borderColor}
+                              onClick={() => openProfileCar({ leagueName: leagueTab, carId: s.id })}
+                            />
+                            </div>
                           </React.Fragment>
                         );
                       })}
@@ -7008,6 +7058,7 @@ export default function App() {
 
   function CarProfileModal() {
     const [showChampSeasons, setShowChampSeasons] = useState(false);
+    const [showRelSeasons, setShowRelSeasons] = useState(false);
     if (!profileCar) return null;
     const { leagueName, carId, histName } = profileCar;
     const car = getCar(leagueName, carId);
@@ -7038,6 +7089,7 @@ export default function App() {
     let totalW = 0, totalD = 0, totalL = 0, totalGF = 0, totalGA = 0, totalGP = 0;
     let totalBonusPts = 0, champCount = 0, relCount = 0;
     const champSeasons = [];
+    const relSeasons = [];
     const ALL_PROFILE_LEAGUES = [...LEAGUES, ...AUXILIARY_LEAGUES];
     db.seasons.forEach(s => {
       // Retrouver la ligue de la voiture CETTE saison (elle peut changer de ligue via promotion/relégation)
@@ -7063,7 +7115,7 @@ export default function App() {
         if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
       });
       if (s.champions[foundLn] === lid) { champCount++; champSeasons.push(s.season); }
-      if (s.relegated[foundLn] === lid) relCount++;
+      if (s.relegated[foundLn] === lid) { relCount++; relSeasons.push(s.season); }
       const bp = computeBonusPoints(s, foundLn);
       totalBonusPts += bp[lid] || 0;
     });
@@ -7088,6 +7140,7 @@ export default function App() {
     const histChampions = Object.values(histByLeague).flatMap(f => (f.champions || []));
     const allChampSeasons = [...champSeasons, ...histChampions].sort((a, b) => a - b);
     const histRelegated = Object.values(histByLeague).flatMap(f => (f.relegated || []));
+    const allRelSeasons = [...relSeasons, ...histRelegated].sort((a, b) => a - b);
     const histLeagueNames = Object.keys(histByLeague);
     const multiLeague = histLeagueNames.length > 1;
 
@@ -7253,11 +7306,26 @@ export default function App() {
                     🏆 ×{champCount + histChampions.length}
                   </span>
                 )}
-                {(relCount + histRelegated.length) > 0 && <span className="badge badge-red">⬇ ×{relCount + histRelegated.length}</span>}
+                {(relCount + histRelegated.length) > 0 && (
+                  <span
+                    className="badge badge-red trophy-badge"
+                    onClick={() => setShowRelSeasons(v => !v)}
+                    title="Voir les saisons de relégation"
+                  >
+                    ⬇ ×{relCount + histRelegated.length}
+                  </span>
+                )}
                 {showChampSeasons && allChampSeasons.length > 0 && (
                   <div className="champ-seasons-reveal">
                     {allChampSeasons.map((sn, i) => (
                       <span key={sn + '-' + i} className="badge badge-gold">🏆 S{sn}</span>
+                    ))}
+                  </div>
+                )}
+                {showRelSeasons && allRelSeasons.length > 0 && (
+                  <div className="champ-seasons-reveal">
+                    {allRelSeasons.map((sn, i) => (
+                      <span key={sn + '-' + i} className="badge badge-red">⬇ S{sn}</span>
                     ))}
                   </div>
                 )}
