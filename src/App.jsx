@@ -7920,6 +7920,7 @@ export default function App() {
                       return (
                         <React.Fragment key={s.id}>
                         {rank === 5 && <div className="zone-separator" />}
+                        {rank === 25 && <div className="zone-separator" />}
                         {rank === (total - 11) && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
