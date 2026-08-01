@@ -1661,13 +1661,48 @@ const css = `
     opacity: 0; transition: opacity 0.15s ease; font-size: 20px;
   }
   .car-photo-box:hover .car-photo-overlay { opacity: 1; }
-  .car-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 16px;
-    animation: statsRevealIn 0.5s ease both;
+  .car-stat-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; padding: 16px; }
+  .car-stat-item {
+    background: var(--dark3); border-radius: 4px; padding: 10px; text-align: center; box-shadow: var(--shadow-sm);
+    opacity: 0;
+    animation: statsRevealIn 0.35s ease both;
     animation-delay: 1.35s;
   }
-  .car-stat-item { background: var(--dark3); border-radius: 4px; padding: 10px; text-align: center; box-shadow: var(--shadow-sm); }
+  .car-stat-item:nth-child(1) { animation-delay: 1.35s; }
+  .car-stat-item:nth-child(2) { animation-delay: 1.40s; }
+  .car-stat-item:nth-child(3) { animation-delay: 1.45s; }
+  .car-stat-item:nth-child(4) { animation-delay: 1.50s; }
+  .car-stat-item:nth-child(5) { animation-delay: 1.55s; }
+  .car-stat-item:nth-child(6) { animation-delay: 1.60s; }
+  .car-stat-item:nth-child(7) { animation-delay: 1.65s; }
+  .car-stat-item:nth-child(8) { animation-delay: 1.70s; }
+  .car-stat-item:nth-child(9) { animation-delay: 1.75s; }
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  /* Trophée cliquable → révèle les saisons remportées */
+  .trophy-badge { cursor: pointer; transition: transform 0.12s ease; }
+  .trophy-badge:hover { transform: scale(1.08); }
+  .trophy-badge:active { transform: scale(0.94); }
+  @keyframes champChipPop {
+    0%   { opacity: 0; transform: scale(0.5); }
+    70%  { opacity: 1; transform: scale(1.08); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .champ-seasons-reveal {
+    display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; width: 100%;
+  }
+  .champ-seasons-reveal .badge { animation: champChipPop 0.3s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .champ-seasons-reveal .badge:nth-child(1) { animation-delay: 0.00s; }
+  .champ-seasons-reveal .badge:nth-child(2) { animation-delay: 0.05s; }
+  .champ-seasons-reveal .badge:nth-child(3) { animation-delay: 0.10s; }
+  .champ-seasons-reveal .badge:nth-child(4) { animation-delay: 0.15s; }
+  .champ-seasons-reveal .badge:nth-child(5) { animation-delay: 0.20s; }
+  .champ-seasons-reveal .badge:nth-child(6) { animation-delay: 0.25s; }
+  .champ-seasons-reveal .badge:nth-child(7) { animation-delay: 0.30s; }
+  .champ-seasons-reveal .badge:nth-child(8) { animation-delay: 0.35s; }
+  .champ-seasons-reveal .badge:nth-child(9) { animation-delay: 0.40s; }
+  .champ-seasons-reveal .badge:nth-child(10) { animation-delay: 0.45s; }
 
   /* Car profile — mise en page verticale (photo / nom / stats empilés) — TEST: appliqué à toutes les tailles pour l'instant, remettre "768px" pour repasser desktop-only */
   @media (min-width: 0px) {
@@ -6972,6 +7007,7 @@ export default function App() {
   }
 
   function CarProfileModal() {
+    const [showChampSeasons, setShowChampSeasons] = useState(false);
     if (!profileCar) return null;
     const { leagueName, carId, histName } = profileCar;
     const car = getCar(leagueName, carId);
@@ -7001,6 +7037,7 @@ export default function App() {
 
     let totalW = 0, totalD = 0, totalL = 0, totalGF = 0, totalGA = 0, totalGP = 0;
     let totalBonusPts = 0, champCount = 0, relCount = 0;
+    const champSeasons = [];
     const ALL_PROFILE_LEAGUES = [...LEAGUES, ...AUXILIARY_LEAGUES];
     db.seasons.forEach(s => {
       // Retrouver la ligue de la voiture CETTE saison (elle peut changer de ligue via promotion/relégation)
@@ -7025,7 +7062,7 @@ export default function App() {
         if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
         if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
       });
-      if (s.champions[foundLn] === lid) champCount++;
+      if (s.champions[foundLn] === lid) { champCount++; champSeasons.push(s.season); }
       if (s.relegated[foundLn] === lid) relCount++;
       const bp = computeBonusPoints(s, foundLn);
       totalBonusPts += bp[lid] || 0;
@@ -7049,6 +7086,7 @@ export default function App() {
     });
 
     const histChampions = Object.values(histByLeague).flatMap(f => (f.champions || []));
+    const allChampSeasons = [...champSeasons, ...histChampions].sort((a, b) => a - b);
     const histRelegated = Object.values(histByLeague).flatMap(f => (f.relegated || []));
     const histLeagueNames = Object.keys(histByLeague);
     const multiLeague = histLeagueNames.length > 1;
@@ -7206,8 +7244,23 @@ export default function App() {
                 return foundLeague || leagueName;
               })()}</div>
               <div className="car-profile-badges" style={{ marginTop:6,display:'flex',gap:6,flexWrap:'wrap',alignItems:'center' }}>
-                {(champCount + histChampions.length) > 0 && <span className="badge badge-gold">🏆 ×{champCount + histChampions.length}</span>}
+                {(champCount + histChampions.length) > 0 && (
+                  <span
+                    className="badge badge-gold trophy-badge"
+                    onClick={() => setShowChampSeasons(v => !v)}
+                    title="Voir les saisons remportées"
+                  >
+                    🏆 ×{champCount + histChampions.length}
+                  </span>
+                )}
                 {(relCount + histRelegated.length) > 0 && <span className="badge badge-red">⬇ ×{relCount + histRelegated.length}</span>}
+                {showChampSeasons && allChampSeasons.length > 0 && (
+                  <div className="champ-seasons-reveal">
+                    {allChampSeasons.map((sn, i) => (
+                      <span key={sn + '-' + i} className="badge badge-gold">🏆 S{sn}</span>
+                    ))}
+                  </div>
+                )}
                 {(() => {
                   const allBonus = computeAllSeasonsBonus(leagueName);
                   const rank = allBonus.findIndex(e => e.name.toLowerCase() === effectiveName.toLowerCase());
