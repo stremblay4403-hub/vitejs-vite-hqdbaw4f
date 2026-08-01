@@ -2594,6 +2594,13 @@ export default function App() {
     });
   }, []);
   const [loaded, setLoaded] = useState(false);
+  // Live standings (Ligues Principales) — déclarés ici au niveau App, PAS dans GroupesView,
+  // car GroupesView est redéfini à chaque rendu de App et perdrait sinon tout son historique.
+  const standingsRowRefs = React.useRef({});
+  const prevStandingsRectsRef = React.useRef(null);
+  const prevStandingsGroupKeyRef = React.useRef(null);
+  const prevPlayedCountRef = React.useRef(null);
+  const [flipState, setFlipState] = useState(null); // { offsets: {id: px}, heroId, dir, phase }
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 1300);
@@ -5784,7 +5791,6 @@ export default function App() {
     const standings = getGroupStandings(leagueTab, activeGroup);
     const standingsKey = standings.map(s => s.id).join(',');
     const playedMatchCount = matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
-    const [flipState, setFlipState] = useState(null); // { offsets: {id: px}, heroId, dir }
 
     React.useLayoutEffect(() => {
       const groupKey = leagueTab + '-' + activeGroup;
@@ -5844,12 +5850,8 @@ export default function App() {
     const listRef = React.useRef(null);
     const listScrollPos = groupListScrollRef; // ref au niveau de l'app : survit aux remontages de GroupesView
     const openDayRef = React.useRef(null);
-    // Live standings — FLIP animation quand le classement bouge légèrement (un seul match joué),
-    // désactivée si trop de lignes changent en même temps (simulation en bloc)
-    const standingsRowRefs = React.useRef({});
-    const prevStandingsRectsRef = React.useRef(null);
-    const prevStandingsGroupKeyRef = React.useRef(null);
-    const prevPlayedCountRef = React.useRef(null);
+    // Live standings — refs/state déclarés au niveau App (voir plus haut), pas ici,
+    // car GroupesView est redéfini à chaque rendu et perdrait sinon tout son historique.
 
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
