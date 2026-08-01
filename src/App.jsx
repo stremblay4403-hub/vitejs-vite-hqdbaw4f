@@ -2601,6 +2601,10 @@ export default function App() {
   const prevStandingsGroupKeyRef = React.useRef(null);
   const prevPlayedCountRef = React.useRef(null);
   const pendingFlipRef = React.useRef(null);
+  // Voir plus bas (fin de GroupesView) pour l'explication complète : cette ref garde toujours
+  // la dernière version de GroupesView, et StableGroupesView garde une identité fixe pour React.
+  const groupesViewImplRef = React.useRef(null);
+  const StableGroupesView = React.useRef((props) => groupesViewImplRef.current ? groupesViewImplRef.current(props) : null).current;
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 1300);
@@ -6199,6 +6203,12 @@ export default function App() {
       </div>
     );
   }
+  // GroupesView est redéfini à chaque rendu de App (comme toutes les fonctions imbriquées ici),
+  // ce qui fait que React le traite comme un "nouveau composant" à chaque fois et détruit/reconstruit
+  // tout son contenu (photos de voitures incluses) — cause des flashs et empêche toute animation
+  // continue. Ce wrapper capture toujours la dernière version de la logique via une ref, mais garde
+  // une identité de composant stable pour React, qui ne le redémarre donc plus jamais inutilement.
+  groupesViewImplRef.current = GroupesView;
 
   const [showBracket, setShowBracket] = useState(false);
 
@@ -13167,7 +13177,7 @@ export default function App() {
         {/* Content */}
         <div className="content tab-content" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <GroupesView />}
+          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <StableGroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'relegation' && <RelegationView />}
           {mainTab === 'ligues' && ligueSubTab === 'champions' && <TournoiChampionsView />}
