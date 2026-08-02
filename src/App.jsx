@@ -12815,7 +12815,7 @@ export default function App() {
             const realIdx = db.seasons.indexOf(s);
             const isExpanded = expandedSeason === s.season;
             return (
-              <div key={s.season} className="card">
+              <div key={s.season} className="card" style={{ border: db.currentSeasonIdx === realIdx ? '2px solid var(--gold)' : undefined, boxShadow: db.currentSeasonIdx === realIdx ? 'var(--glow-gold)' : undefined }}>
                 {/* Header saison */}
                 <div className="card-header" style={{ cursor:'pointer' }} onClick={() => setExpandedSeason(isExpanded ? null : s.season)}>
                   <div className="card-title">Saison {s.season}</div>
@@ -12854,7 +12854,7 @@ export default function App() {
                         <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:2,marginBottom:8 }}>{l}</div>
                         <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
                           {champ && (
-                            <div style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--gold)', cursor:'pointer', background:'var(--dark2)' }}
+                            <div className="row-gold" style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--gold)', cursor:'pointer', background:'var(--dark2)' }}
                               onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
                               <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                                 {getCarPhoto(champId)
@@ -12909,7 +12909,7 @@ export default function App() {
                         const leagueKey = `${s.season}-${l}`;
                         const isLeagueOpen = expandedLeague === leagueKey;
                         return (
-                          <div key={l} style={{ marginBottom:8,border:'1px solid var(--border)',borderRadius:4 }}>
+                          <div key={l} style={{ marginBottom:8,border:'1px solid var(--border)',borderRadius:4,animation:'fadeIn 0.3s ease both',animationDelay:`${LEAGUES.indexOf(l)*0.05}s` }}>
                             <div style={{ display:'flex',alignItems:'center',padding:'8px 12px',cursor:'pointer',background:'var(--dark3)',borderRadius:isLeagueOpen ? '4px 4px 0 0' :4 }}
                               onClick={() => setExpandedLeague(isLeagueOpen ? null : leagueKey)}>
                               <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--gold)',letterSpacing:1 }}>{l}</span>
@@ -12925,7 +12925,7 @@ export default function App() {
                                   const played = (s.leagues[l].groupResults[g] || []).filter(m => m.homeGoals !== null);
                                   const standings = computeStandings(groupCars, played);
                                   return (
-                                    <div key={g} style={{ borderTop:'1px solid var(--border)' }}>
+                                    <div key={g} style={{ borderTop:'1px solid var(--border)',animation:'fadeIn 0.25s ease both',animationDelay:`${g*0.03}s` }}>
                                       <div style={{ display:'flex',alignItems:'center',padding:'6px 12px',cursor:'pointer',background:'var(--dark2)' }}
                                         onClick={() => setExpandedGroup(isGroupOpen ? null : groupKey)}>
                                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--text-dim)',letterSpacing:1 }}>GROUPE {g + 1}</span>
@@ -12950,8 +12950,11 @@ export default function App() {
                                                 const isLast = ri === standings.length - 1;
                                                 const diff = row.gf - row.ga;
                                                 return (
-                                                  <tr key={row.id} style={{ borderLeft:isTop8 ? '3px solid var(--green)' :isLast ? '3px solid #e74c3c' :'3px solid transparent' }}>
-                                                    <td style={{ padding:'6px',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:isTop8 ? 'var(--green)' :isLast ? '#e74c3c' :'var(--gold-dim)',borderBottom:'1px solid #1a1a1a' }}>{ri+1}</td>
+                                                  <React.Fragment key={row.id}>
+                                                    {ri === 8 && <tr><td colSpan={9} style={{padding:0}}><div className="zone-separator" /></td></tr>}
+                                                    {ri === 10 && <tr><td colSpan={9} style={{padding:0}}><div className="zone-separator" /></td></tr>}
+                                                    <tr style={{ borderLeft:isTop8 ? '3px solid var(--green)' :isLast ? '3px solid #e74c3c' :'3px solid transparent', animation:'fadeIn 0.3s ease both', animationDelay:`${Math.min(ri*0.03,0.4)}s` }}>
+                                                    <td style={{ padding:'6px',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:isTop8 ? 'var(--green)' :isLast ? '#e74c3c' :'var(--gold-dim)',borderBottom:'1px solid #1a1a1a' }}>{ri===0?'🥇':ri===1?'🥈':ri===2?'🥉':ri+1}</td>
                                                     <td style={{ padding:'4px',borderBottom:'1px solid #1a1a1a',width:48 }}>
                                                       <CarThumb photo={getCarPhoto(row.id)} size={40} onClick={() => openProfileCar({ leagueName: l, carId: row.id })} />
                                                     </td>
@@ -12962,7 +12965,8 @@ export default function App() {
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,color:'#e74c3c',fontWeight:700,borderBottom:'1px solid #1a1a1a' }}>{row.l}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,borderBottom:'1px solid #1a1a1a' }}>{row.gf}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,borderBottom:'1px solid #1a1a1a' }}>{row.ga}</td>
-                                                  </tr>
+                                                    </tr>
+                                                  </React.Fragment>
                                                 );
                                               })}
                                             </tbody>
