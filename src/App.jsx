@@ -11680,7 +11680,7 @@ export default function App() {
           <div>
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold-dim)',letterSpacing:1,marginBottom:6}}>{label}</div>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
-              style={{width:'100%',padding:'8px',borderRadius:4,background:'var(--dark3)',border:'1px solid var(--border)',color:'var(--text)',fontSize:13}} />
+              style={{width:'100%',padding:'8px',borderRadius:4,background:'var(--dark3)',border:'1px solid var(--border)',color:'var(--text)',fontSize:16}} />
             {search.length>=1 && allCars.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())&&c.id!==exclude?.id).slice(0,5).map(c=>(
               <div key={c.id} onClick={()=>{setCar(c);setSearch('');}}
                 style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',cursor:'pointer',borderBottom:'1px solid #111',background:'var(--dark2)',marginTop:2,borderRadius:3}}>
