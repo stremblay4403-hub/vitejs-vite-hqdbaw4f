@@ -12008,17 +12008,31 @@ export default function App() {
       });
     });
     function longestStreak(matches, isGood) {
-      let best = 0, cur = 0, prevSeason = null;
+      let best = 0, cur = 0, prevSeason = null, bestSeason = null, curStartSeason = null;
       matches.forEach(m => {
-        if (m.season !== prevSeason) cur = 0; // reset à chaque nouvelle saison
+        if (m.season !== prevSeason) { cur = 0; curStartSeason = m.season; }
         prevSeason = m.season;
-        if (isGood(m.result)) { cur++; best = Math.max(best, cur); } else cur = 0;
+        if (isGood(m.result)) {
+          cur++;
+          if (cur > best) { best = cur; bestSeason = curStartSeason; }
+        } else cur = 0;
       });
-      return best;
+      return { streak: best, season: bestSeason };
     }
     const streakEntries = Object.entries(carTimelines).map(([id, t]) => {
       const sorted = [...t.matches].sort((a, b) => a.season - b.season || a.day - b.day);
-      return { carId: id, name: t.name, unbeaten: longestStreak(sorted, r => r !== 'L'), winless: longestStreak(sorted, r => r !== 'W') };
+      const ub = longestStreak(sorted, r => r !== 'L');
+      const wl = longestStreak(sorted, r => r !== 'W');
+      const seasonRecord = (seasonNum) => {
+        if (seasonNum === null) return null;
+        const sm = sorted.filter(m => m.season === seasonNum);
+        return { w: sm.filter(m => m.result === 'W').length, d: sm.filter(m => m.result === 'D').length, l: sm.filter(m => m.result === 'L').length };
+      };
+      return {
+        carId: id, name: t.name,
+        unbeaten: ub.streak, unbeatenSeason: ub.season, unbeatenRecord: seasonRecord(ub.season),
+        winless: wl.streak, winlessSeason: wl.season, winlessRecord: seasonRecord(wl.season),
+      };
     });
     const topUnbeaten = [...streakEntries].filter(e => e.unbeaten > 0).sort((a, b) => b.unbeaten - a.unbeaten).slice(0, 20);
     const topWinless = [...streakEntries].filter(e => e.winless > 0).sort((a, b) => b.winless - a.winless).slice(0, 20);
@@ -12180,7 +12194,7 @@ export default function App() {
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
             <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
-            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>Victoires + nuls</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.unbeatenSeason} · {e.unbeatenRecord?.w}V {e.unbeatenRecord?.d}N {e.unbeatenRecord?.l}D</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--green)',...glowStat }}>{e.unbeaten} matchs</td>
           </tr>
         )} />
@@ -12189,7 +12203,7 @@ export default function App() {
             <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:i===0?'#e74c3c':'var(--text-dim)',padding:'8px 6px' }}>{i+1}</td>
             <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
-            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>Défaites + nuls</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.winlessSeason} · {e.winlessRecord?.w}V {e.winlessRecord?.d}N {e.winlessRecord?.l}D</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.winless} matchs</td>
           </tr>
         )} />
