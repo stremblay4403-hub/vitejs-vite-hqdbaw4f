@@ -1450,7 +1450,7 @@ const css = `
   .tbl .rank { color: var(--gold-dim); font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
   .tbl .car-name { font-weight: 600; font-size: 16px; }
   .tbl .pts-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,0.25); }
-  .tbl .sticky-col { position: sticky; z-index: 2; background: var(--dark2); }
+  .tbl .sticky-col { position: sticky; z-index: 2; background: var(--dark2); box-shadow: 4px 0 8px rgba(0,0,0,0.35); }
   .tbl tr:hover .sticky-col { background: #201c14; }
   .tbl th.sticky-col { background: var(--dark3); z-index: 3; }
   .tbl .sticky-right { position: sticky; right: 0; z-index: 2; background: var(--dark2); border-left: 1px solid var(--border); }
@@ -7867,7 +7867,9 @@ export default function App() {
                 { key: 'inactive', color: '#e74c3c', label: 'Inactive' },
               ].map(({ key, color, label }) => (
                 <span key={key} onClick={() => setStatusFilter(statusFilter === key ? null : key)}
-                  style={{ display:'flex',alignItems:'center',gap:4,cursor:'pointer',padding:'2px 8px',borderRadius:12,background:statusFilter === key ? color + '30' :'transparent',border:statusFilter === key ? `1px solid ${color}` :'1px solid transparent',color:statusFilter === key ? color :'var(--text-dim)',transition:'all 0.15s' }}>
+                  style={{ display:'flex',alignItems:'center',gap:4,cursor:'pointer',padding:'2px 8px',borderRadius:12,background:statusFilter === key ? color + '30' :'transparent',border:statusFilter === key ? `1px solid ${color}` :'1px solid transparent',color:statusFilter === key ? color :'var(--text-dim)',transition:'all 0.15s',transform:'scale(1)' }}
+                  onTouchStart={e => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+                  onTouchEnd={e => { e.currentTarget.style.transform = 'scale(1)'; }}>
                   <span style={{ display:'inline-block',width:8,height:8,borderRadius:'50%',background:color }} />
                   {label}
                 </span>
@@ -7957,11 +7959,11 @@ export default function App() {
                       <tr key={entryId} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
                         <td style={{ textAlign:'center',fontSize:11,width:32 }}>
                           {delta === null || delta === 0 ? <span style={{ color:'var(--text-dim)' }}>—</span>
-                            : delta > 0 ? <span style={{ color:'var(--green)',fontWeight:700 }}>▲{delta}</span>
-                            : <span style={{ color:'#e74c3c',fontWeight:700 }}>▼{Math.abs(delta)}</span>}
+                            : delta > 0 ? <span style={{ color:'var(--green)',fontWeight:700, ...(delta>=5 ? {animation:'dashPulse 1.3s ease-in-out infinite', textShadow:'0 0 8px rgba(39,174,96,0.7)'} : {}) }}>▲{delta}</span>
+                            : <span style={{ color:'#e74c3c',fontWeight:700, ...(Math.abs(delta)>=5 ? {animation:'dashPulse 1.3s ease-in-out infinite', textShadow:'0 0 8px rgba(231,76,60,0.7)'} : {}) }}>▼{Math.abs(delta)}</span>}
                         </td>
                         <td style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',textAlign:'center' }}>
-                          {(() => { const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1; return sameRank ? `=${rank}` : rank; })()}
+                          {(() => { const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1; const medal = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':null; if (medal && !sameRank) return medal; return sameRank ? `=${rank}` : rank; })()}
                         </td>
                         <td style={{ padding:0,width:130 }}>
                           <div style={{ width:130,height:90,overflow:'hidden',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center' }}>
@@ -7985,8 +7987,9 @@ export default function App() {
                           const pts = entry.bySeason[`hist-S${n}`];
                           const isChamp = (entry.histChampions || []).includes(n);
                           const isRel = (entry.histRelegated || []).includes(n);
+                          const heat = pts ? Math.min(pts / 20, 1) * 0.3 : 0;
                           return (
-                            <td key={`h${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:pts ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : 'transparent' }}>
+                            <td key={`h${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:pts ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : heat ? `rgba(212,175,55,${heat})` : 'transparent' }}>
                               {isRel ? '⬇' : (pts || '—')}
                             </td>
                           );
@@ -7995,8 +7998,9 @@ export default function App() {
                           const pts = entry.bySeason[`app-S${n}`];
                           const isChamp = (entry.appChampions || []).includes(n);
                           const isRel = (entry.appRelegated || []).includes(n);
+                          const heat = pts ? Math.min(pts / 20, 1) * 0.3 : 0;
                           return (
-                            <td key={`a${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:(isChamp || pts) ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : isRel ? '#e74c3c' : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : 'transparent' }}>
+                            <td key={`a${n}`} style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",color:(isChamp || pts) ? (isChamp ? 'var(--green)' : isRel ? '#e74c3c' : 'var(--gold)') : isRel ? '#e74c3c' : 'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' : isRel ? 'rgba(192,57,43,0.12)' : heat ? `rgba(212,175,55,${heat})` : 'transparent' }}>
                               {isRel ? '⬇' : (pts || '—')}
                             </td>
                           );
@@ -8035,9 +8039,10 @@ export default function App() {
                       {appSeasonNums.map(n => {
                         const tot = seasonTotal(`app-S${n}`);
                         const complete = isMain && tot === 485;
+                        const pct = isMain ? Math.min((tot / 485) * 100, 100) : 0;
                         return (
                           <td key={`at${n}`} title={complete ? 'Saison complète ✓ (485)' : `${tot} pts distribués`}
-                            style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",fontWeight:700,color:complete ? 'var(--green)' : (tot ? 'var(--gold)' : 'var(--text-dim)'),background:'var(--dark3)' }}>
+                            style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",fontWeight:700,color:complete ? 'var(--green)' : (tot ? 'var(--gold)' : 'var(--text-dim)'),background: isMain ? `linear-gradient(0deg, ${complete?'rgba(39,174,96,0.35)':'rgba(212,175,55,0.3)'} ${pct}%, var(--dark3) ${pct}%)` : 'var(--dark3)' }}>
                             {complete ? `✓${tot}` : (tot || '—')}
                           </td>
                         );
