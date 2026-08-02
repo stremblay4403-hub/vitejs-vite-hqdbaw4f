@@ -1740,7 +1740,52 @@ const css = `
   .public-mode .btn-xs.btn-sim,
   .public-mode input[type="file"] { display: none !important; }
 
-  /* Séparateur pointillé animé — marque la frontière entre zones (promotion/relégation) */
+  /* Comparateur tête-à-tête */
+  @keyframes vsPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.35); }
+    50%     { box-shadow: 0 0 0 8px rgba(212,175,55,0); }
+  }
+  .cmp-vs {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(180deg, var(--gold2), var(--gold-dim));
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 1px; color: #1a1305;
+    animation: vsPulse 2.4s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+  @keyframes cmpRowIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .cmp-row { animation: cmpRowIn 0.35s ease both; }
+  .cmp-row:nth-child(1)  { animation-delay: 0.02s; }
+  .cmp-row:nth-child(2)  { animation-delay: 0.06s; }
+  .cmp-row:nth-child(3)  { animation-delay: 0.10s; }
+  .cmp-row:nth-child(4)  { animation-delay: 0.14s; }
+  .cmp-row:nth-child(5)  { animation-delay: 0.18s; }
+  .cmp-row:nth-child(6)  { animation-delay: 0.22s; }
+  .cmp-row:nth-child(7)  { animation-delay: 0.26s; }
+  .cmp-row:nth-child(8)  { animation-delay: 0.30s; }
+  .cmp-row:nth-child(9)  { animation-delay: 0.34s; }
+  .cmp-row:nth-child(10) { animation-delay: 0.38s; }
+  .cmp-row:nth-child(11) { animation-delay: 0.42s; }
+  @keyframes cmpPhotoIn {
+    0%   { opacity: 0; transform: scale(0.9); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .cmp-photo { animation: cmpPhotoIn 0.4s cubic-bezier(0.22,1,0.36,1) both; }
+  @keyframes cmpSuggestIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .cmp-suggest { animation: cmpSuggestIn 0.2s ease both; }
+  @keyframes cmpVerdictIn {
+    0%   { opacity: 0; transform: scale(0.92); }
+    60%  { opacity: 1; transform: scale(1.02); }
+    100% { opacity: 1; transform: scale(1); }
+  }
+  .cmp-verdict { animation: cmpVerdictIn 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+
   @keyframes dashPulse {
     0%,100% { opacity: 0.35; }
     50%     { opacity: 0.9; }
@@ -11655,7 +11700,7 @@ export default function App() {
       const win1 = !isNaN(a)&&!isNaN(b)&&(higherBetter ? a>b : a<b);
       const win2 = !isNaN(a)&&!isNaN(b)&&(higherBetter ? b>a : b<a);
       return (
-        <div style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #111'}}>
+        <div className="cmp-row" style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #111'}}>
           <span style={{textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:win1?'var(--green)':win2?'#e74c3c':'var(--gold)'}}>{v1??'—'}</span>
           <span style={{textAlign:'center',fontSize:10,color:'var(--text-dim)',letterSpacing:1,fontFamily:"'Bebas Neue',sans-serif"}}>{label}</span>
           <span style={{textAlign:'left',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:win2?'var(--green)':win1?'#e74c3c':'var(--gold)'}}>{v2??'—'}</span>
@@ -11668,7 +11713,7 @@ export default function App() {
         {value ? (
           <div style={{textAlign:'center'}}>
             {getCarPhoto(value.id) && (
-              <div style={{width:'100%',aspectRatio:'16/9',overflow:'hidden',borderRadius:8,marginBottom:8,border:`2px solid var(--border)`}}>
+              <div className="cmp-photo" style={{width:'100%',aspectRatio:'16/9',overflow:'hidden',borderRadius:8,marginBottom:8,border:`2px solid var(--border)`}}>
                 <img src={getCarPhoto(value.id)} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} />
               </div>
             )}
@@ -11681,9 +11726,9 @@ export default function App() {
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold-dim)',letterSpacing:1,marginBottom:6}}>{label}</div>
             <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Rechercher..."
               style={{width:'100%',padding:'8px',borderRadius:4,background:'var(--dark3)',border:'1px solid var(--border)',color:'var(--text)',fontSize:16}} />
-            {search.length>=1 && allCars.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())&&c.id!==exclude?.id).slice(0,5).map(c=>(
-              <div key={c.id} onClick={()=>{setCar(c);setSearch('');}}
-                style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',cursor:'pointer',borderBottom:'1px solid #111',background:'var(--dark2)',marginTop:2,borderRadius:3}}>
+            {search.length>=1 && allCars.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())&&c.id!==exclude?.id).slice(0,5).map((c, si)=>(
+              <div key={c.id} className="cmp-suggest" style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',cursor:'pointer',borderBottom:'1px solid #111',background:'var(--dark2)',marginTop:2,borderRadius:3,animationDelay:`${si*0.04}s`}}
+                onClick={()=>{setCar(c);setSearch('');}}>
                 {getCarPhoto(c.id)&&<img src={getCarPhoto(c.id)} alt="" style={{width:36,height:24,objectFit:'cover',borderRadius:2}}/>}
                 <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:13}}>{c.name}</span>
               </div>
@@ -11700,13 +11745,43 @@ export default function App() {
         {/* Sélecteurs */}
         <div style={{display:'flex',gap:16,alignItems:'flex-start',marginBottom:20}}>
           {renderPicker("VOITURE A", carA, searchA, setSearchA, setCarA, carB)}
-          <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:28,color:'var(--gold-dim)',paddingTop:40,flexShrink:0}}>VS</div>
+          <div className="cmp-vs" style={{alignSelf:'center', marginTop:40}}>VS</div>
           {renderPicker("VOITURE B", carB, searchB, setSearchB, setCarB, carA)}
         </div>
 
         {/* Stats */}
         {carA && carB && sA && sB && (
           <div>
+            {/* Verdict global — qui domine la comparaison */}
+            {(() => {
+              const comparisons = [
+                { v1: sA.gp, v2: sB.gp }, { v1: sA.w, v2: sB.w }, { v1: sA.d, v2: sB.d },
+                { v1: sA.l, v2: sB.l, higherBetter: false }, { v1: sA.pct, v2: sB.pct },
+                { v1: sA.gf, v2: sB.gf }, { v1: sA.ga, v2: sB.ga, higherBetter: false },
+                { v1: sA.diff, v2: sB.diff }, { v1: sA.bp, v2: sB.bp },
+                { v1: sA.titles, v2: sB.titles }, { v1: sA.playoffCount, v2: sB.playoffCount },
+              ];
+              let winsA = 0, winsB = 0;
+              comparisons.forEach(({ v1, v2, higherBetter = true }) => {
+                if (v1 === v2) return;
+                if (higherBetter ? v1 > v2 : v1 < v2) winsA++; else winsB++;
+              });
+              const total = comparisons.length;
+              if (winsA === winsB) {
+                return (
+                  <div className="cmp-verdict" style={{textAlign:'center',padding:'10px 12px',marginBottom:12,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,fontFamily:"'Bebas Neue',sans-serif",fontSize:14,letterSpacing:1,color:'var(--text-dim)'}}>
+                    ⚖️ Égalité — {winsA} catégories chacune
+                  </div>
+                );
+              }
+              const winnerName = winsA > winsB ? carA.name : carB.name;
+              const winCount = Math.max(winsA, winsB);
+              return (
+                <div className="cmp-verdict" style={{textAlign:'center',padding:'10px 12px',marginBottom:12,background:'linear-gradient(90deg, rgba(212,175,55,0.12), rgba(212,175,55,0.22), rgba(212,175,55,0.12))',border:'1px solid var(--gold-dim)',borderRadius:8,fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--gold)'}}>
+                  👑 {winnerName} domine — {winCount}/{total} catégories
+                </div>
+              );
+            })()}
             <div style={{background:'var(--dark2)',borderRadius:8,padding:'0 12px',border:'1px solid var(--border)',marginBottom:16}}>
               <StatRow label="MATCHS JOUÉS" v1={sA.gp} v2={sB.gp} />
               <StatRow label="VICTOIRES" v1={sA.w} v2={sB.w} />
