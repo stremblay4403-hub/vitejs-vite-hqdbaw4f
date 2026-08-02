@@ -1740,6 +1740,10 @@ const css = `
   .public-mode .btn-xs.btn-sim,
   .public-mode input[type="file"] { display: none !important; }
 
+  /* Résumé de saison (Historique) — Champion/Meilleur/Relégué/Promu : 2x2 sur mobile, 4 en ligne sur desktop */
+  .hist-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
+  @media (min-width: 640px) { .hist-summary-grid { grid-template-columns: repeat(4, 1fr); } }
+
   /* Mouvements (VoituresView) — cascade d'apparition des lignes à l'ouverture d'une ligue */
   .voitures-row { animation: cmpRowIn 0.3s ease both; }
   .voitures-row:nth-child(n+1)  { animation-delay: 0.01s; }
@@ -12834,6 +12838,17 @@ export default function App() {
                     const champ = champId ? s.leagues[l]?.cars.find(c => c.id === champId) : null;
                     const rel = relId ? s.leagues[l]?.cars.find(c => c.id === relId) : null;
 
+                    // Promu = la voiture qui remplace le relégué : présente dans l'effectif de la
+                    // saison suivante mais absente de celle-ci (pas de champ dédié en base, donc
+                    // on le déduit par comparaison des deux effectifs, saison par saison).
+                    let promu = null;
+                    const nextS = db.seasons.find(s2 => s2.season === s.season + 1);
+                    if (nextS && s.leagues[l] && nextS.leagues[l]) {
+                      const currentIds = new Set(s.leagues[l].cars.map(c => c.id));
+                      const newCar = nextS.leagues[l].cars.find(c => !currentIds.has(c.id));
+                      if (newCar) promu = newCar;
+                    }
+
                     let zCar = null;
                     if (s.leagues[l]) {
                       let bestPts = -1;
@@ -12852,7 +12867,7 @@ export default function App() {
                     return (
                       <div key={l} style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                         <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:2,marginBottom:8 }}>{l}</div>
-                        <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap:8 }}>
+                        <div className="hist-summary-grid" style={{ gap:8 }}>
                           {champ && (
                             <div className="row-gold" style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--gold)', cursor:'pointer', background:'var(--dark2)' }}
                               onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
@@ -12892,6 +12907,20 @@ export default function App() {
                               <div style={{ padding:'4px 6px' }}>
                                 <div style={{ fontSize:9, color:'#e74c3c', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>⬇ RELÉGUÉ</div>
                                 <div style={{ fontSize: rel.name.length > 12 ? 11 : 13, fontWeight:700, color:'#e74c3c', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{rel.name}</div>
+                              </div>
+                            </div>
+                          )}
+                          {promu && (
+                            <div style={{ borderRadius:8, overflow:'hidden', border:'2px solid var(--green)', cursor:'pointer', background:'var(--dark2)' }}
+                              onClick={() => openProfileCar({ leagueName: l, carId: promu.id })}>
+                              <div style={{ width:'100%', aspectRatio:'16/9', overflow:'hidden', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                {getCarPhoto(promu.id)
+                                  ? <img src={getCarPhoto(promu.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                                  : <span style={{ fontSize:28 }}>🚗</span>}
+                              </div>
+                              <div style={{ padding:'4px 6px' }}>
+                                <div style={{ fontSize:9, color:'var(--green)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>▲ PROMU</div>
+                                <div style={{ fontSize: promu.name.length > 12 ? 11 : 13, fontWeight:700, color:'var(--green)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{promu.name}</div>
                               </div>
                             </div>
                           )}
@@ -12958,7 +12987,11 @@ export default function App() {
                                                     <td style={{ padding:'4px',borderBottom:'1px solid #1a1a1a',width:48 }}>
                                                       <CarThumb photo={getCarPhoto(row.id)} size={40} onClick={() => openProfileCar({ leagueName: l, carId: row.id })} />
                                                     </td>
-                                                    <td style={{ padding:'6px',borderBottom:'1px solid #1a1a1a',fontSize:15,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer' }} onClick={() => openProfileCar({ leagueName: l, carId: row.id })}>{car?.name}</td>
+                                                    <td style={{ padding:'6px',borderBottom:'1px solid #1a1a1a',fontSize:15,fontWeight:600,whiteSpace:'nowrap',cursor:'pointer' }} onClick={() => openProfileCar({ leagueName: l, carId: row.id })}>
+                                                      {car?.name}
+                                                      {isTop8 && <span className="badge badge-green" style={{ fontSize:8,marginLeft:6,verticalAlign:'middle' }}>▲ PROMU</span>}
+                                                      {isLast && <span className="badge badge-red" style={{ fontSize:8,marginLeft:6,verticalAlign:'middle' }}>⬇ RELÉGUÉ</span>}
+                                                    </td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)',borderBottom:'1px solid #1a1a1a' }}>{row.pts}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,color:'var(--green)',fontWeight:700,borderBottom:'1px solid #1a1a1a' }}>{row.w}</td>
                                                     <td style={{ padding:'6px',textAlign:'center',fontSize:15,color:'var(--text-dim)',borderBottom:'1px solid #1a1a1a' }}>{row.d}</td>
