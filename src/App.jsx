@@ -12008,8 +12008,12 @@ export default function App() {
       });
     });
     function longestStreak(matches, isGood) {
-      let best = 0, cur = 0;
-      matches.forEach(m => { if (isGood(m.result)) { cur++; best = Math.max(best, cur); } else cur = 0; });
+      let best = 0, cur = 0, prevSeason = null;
+      matches.forEach(m => {
+        if (m.season !== prevSeason) cur = 0; // reset à chaque nouvelle saison
+        prevSeason = m.season;
+        if (isGood(m.result)) { cur++; best = Math.max(best, cur); } else cur = 0;
+      });
       return best;
     }
     const streakEntries = Object.entries(carTimelines).map(([id, t]) => {
