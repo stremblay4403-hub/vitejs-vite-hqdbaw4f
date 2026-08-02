@@ -11977,11 +11977,11 @@ export default function App() {
         });
       });
     });
-    const topRegSeason = bestRegSeason.sort((a, b) => b.pts - a.pts).slice(0, 10);
-    const topGoalsFor = [...bestRegSeason].sort((a, b) => b.gf - a.gf).slice(0, 10);
-    const topGoalsAgainst = [...bestRegSeason].sort((a, b) => b.ga - a.ga).slice(0, 10);
-    const topDiff = [...bestRegSeason].sort((a, b) => b.diff - a.diff).slice(0, 10);
-    const worstDiff = [...bestRegSeason].sort((a, b) => a.diff - b.diff).slice(0, 10);
+    const topRegSeason = bestRegSeason.sort((a, b) => b.pts - a.pts).slice(0, 20);
+    const topGoalsFor = [...bestRegSeason].sort((a, b) => b.gf - a.gf).slice(0, 20);
+    const topGoalsAgainst = [...bestRegSeason].sort((a, b) => b.ga - a.ga).slice(0, 20);
+    const topDiff = [...bestRegSeason].sort((a, b) => b.diff - a.diff).slice(0, 20);
+    const worstDiff = [...bestRegSeason].sort((a, b) => a.diff - b.diff).slice(0, 20);
 
     const totalPtsMap = {};
     LEAGUES.forEach(l => {
@@ -12004,7 +12004,7 @@ export default function App() {
         });
       });
     });
-    const topTotal = Object.values(totalPtsMap).sort((a, b) => b.total - a.total).slice(0, 10);
+    const topTotal = Object.values(totalPtsMap).sort((a, b) => b.total - a.total).slice(0, 20);
 
     const relCount = {};
     LEAGUES.forEach(l => {
