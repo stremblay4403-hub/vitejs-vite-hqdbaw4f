@@ -11987,6 +11987,38 @@ export default function App() {
     const topDiff = [...bestRegSeason].sort((a, b) => b.diff - a.diff).slice(0, 20);
     const worstDiff = [...bestRegSeason].sort((a, b) => a.diff - b.diff).slice(0, 20);
 
+    // Séries consécutives (invaincu / sans victoire) — on reconstitue la chronologie de chaque
+    // voiture (saison, journée) à partir des matchs de phase de groupes, toutes ligues confondues.
+    const carTimelines = {};
+    LEAGUES.forEach(l => {
+      allSeasons.forEach(s => {
+        const league = s.leagues[l];
+        if (!league?.cars) return;
+        const allM = league.groupResults ? Object.values(league.groupResults).flat() : [];
+        allM.forEach(m => {
+          if (m.homeGoals === null) return;
+          [{ id: m.homeId, f: m.homeGoals, a: m.awayGoals }, { id: m.awayId, f: m.awayGoals, a: m.homeGoals }].forEach(({ id, f, a }) => {
+            const car = league.cars.find(c => c.id === id);
+            if (!car) return;
+            if (!carTimelines[id]) carTimelines[id] = { name: car.name, matches: [] };
+            const result = f > a ? 'W' : f === a ? 'D' : 'L';
+            carTimelines[id].matches.push({ season: s.season, day: m.day || 0, result });
+          });
+        });
+      });
+    });
+    function longestStreak(matches, isGood) {
+      let best = 0, cur = 0;
+      matches.forEach(m => { if (isGood(m.result)) { cur++; best = Math.max(best, cur); } else cur = 0; });
+      return best;
+    }
+    const streakEntries = Object.entries(carTimelines).map(([id, t]) => {
+      const sorted = [...t.matches].sort((a, b) => a.season - b.season || a.day - b.day);
+      return { carId: id, name: t.name, unbeaten: longestStreak(sorted, r => r !== 'L'), winless: longestStreak(sorted, r => r !== 'W') };
+    });
+    const topUnbeaten = [...streakEntries].filter(e => e.unbeaten > 0).sort((a, b) => b.unbeaten - a.unbeaten).slice(0, 20);
+    const topWinless = [...streakEntries].filter(e => e.winless > 0).sort((a, b) => b.winless - a.winless).slice(0, 20);
+
     const totalPtsMap = {};
     LEAGUES.forEach(l => {
       (HISTORICAL_DATA.historicalBonus[l] || []).forEach(c => {
@@ -12137,6 +12169,24 @@ export default function App() {
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.gf}-{e.ga}</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.diff}</td>
+          </tr>
+        )} />
+        <ExpandableSection id="unbeaten" title="🛡️ Plus Longue Série Invaincue" accent="var(--green)" rows={topUnbeaten} renderRow={(e, i) => (
+          <tr key={`${e.carId}-unbeaten`} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>Victoires + nuls</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--green)',...glowStat }}>{e.unbeaten} matchs</td>
+          </tr>
+        )} />
+        <ExpandableSection id="winless" title="🥶 Plus Longue Série Sans Victoire" accent="#e74c3c" rows={topWinless} renderRow={(e, i) => (
+          <tr key={`${e.carId}-winless`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:i===0?'#e74c3c':'var(--text-dim)',padding:'8px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>Défaites + nuls</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.winless} matchs</td>
           </tr>
         )} />
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" accent="var(--gold)" rows={topTotal} renderRow={(e, i) => {
@@ -12810,9 +12860,67 @@ export default function App() {
     const [expandedSeason, setExpandedSeason] = useState(null);
     const [expandedLeague, setExpandedLeague] = useState(null);
     const [expandedGroup, setExpandedGroup] = useState(null);
+    const [showTCHistory, setShowTCHistory] = useState(false);
+
+    // Podium du Tournoi des Champions pour une saison donnée (mêmes règles que TournoiChampionsView.getTop4)
+    function getTCPodium(s) {
+      const tc = s.tournoiChampions;
+      if (!tc || !tc.matches) return null;
+      const pm = tc.matches;
+      const finalM = Object.values(pm).find(m => m.round === 'final');
+      const thirdM = Object.values(pm).find(m => m.round === 'third');
+      if (!finalM || finalM.homeGoals === null || !thirdM || thirdM.homeGoals === null) return null;
+      const first = finalM.homeGoals > finalM.awayGoals ? { id: finalM.homeId, league: finalM.homeLeague } : { id: finalM.awayId, league: finalM.awayLeague };
+      const second = finalM.homeGoals > finalM.awayGoals ? { id: finalM.awayId, league: finalM.awayLeague } : { id: finalM.homeId, league: finalM.homeLeague };
+      const third = thirdM.homeGoals > thirdM.awayGoals ? { id: thirdM.homeId, league: thirdM.homeLeague } : { id: thirdM.awayId, league: thirdM.awayLeague };
+      return [first, second, third].map((e, i) => {
+        const car = e.id && e.league ? s.leagues[e.league]?.cars.find(c => c.id === e.id) : null;
+        return { ...e, rank: i + 1, name: car ? car.name : '?', photo: e.id ? getCarPhoto(e.id) : null };
+      });
+    }
+
+    const tcSeasons = [...db.seasons].reverse().map(s => ({ s, podium: getTCPodium(s) })).filter(x => x.podium);
 
     return (
       <div>
+        {/* Historique Tournoi des Champions */}
+        <div className="card mb-16">
+          <div className="card-header" style={{ cursor:'pointer' }} onClick={() => setShowTCHistory(v => !v)}>
+            <div className="card-title">🏆 Historique Tournoi des Champions</div>
+            <div style={{ flex:1 }} />
+            <span style={{ color:'var(--gold-dim)',fontSize:16 }}>{showTCHistory ? '▲' : '▼'}</span>
+          </div>
+          {showTCHistory && (
+            <div className="card-body" style={{ display:'flex',flexDirection:'column',gap:10 }}>
+              {tcSeasons.length === 0 && <span className="text-dim" style={{ fontSize:12 }}>Aucun Tournoi des Champions terminé pour l'instant.</span>}
+              {tcSeasons.map(({ s, podium }) => (
+                <div key={s.season} style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:2,marginBottom:8 }}>Saison {s.season}</div>
+                  <div style={{ display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:8 }}>
+                    {podium.map(p => {
+                      const rowClass = p.rank === 1 ? 'row-gold' : p.rank === 2 ? 'row-silver' : 'row-bronze';
+                      const borderColor = p.rank === 1 ? 'var(--gold)' : p.rank === 2 ? '#bdc3c7' : '#cd7f32';
+                      const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : '🥉';
+                      return (
+                        <div key={p.rank} className={rowClass} style={{ borderRadius:8,overflow:'hidden',border:`2px solid ${borderColor}`,cursor:'pointer',background:'var(--dark2)' }}
+                          onClick={() => p.id && openProfileCar({ leagueName: p.league, carId: p.id })}>
+                          <div style={{ width:'100%',aspectRatio:'16/9',overflow:'hidden',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                            {p.photo ? <img src={p.photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <span style={{ fontSize:28 }}>🚗</span>}
+                          </div>
+                          <div style={{ padding:'4px 6px' }}>
+                            <div style={{ fontSize:9, color:borderColor, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{medal} {p.rank === 1 ? 'CHAMPION' : p.rank+'E PLACE'}</div>
+                            <div style={{ fontSize: p.name.length > 12 ? 11 : 13, fontWeight:700, color:borderColor, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="section-title">Historique des Saisons</div>
         <div style={{ display:'flex',flexDirection:'column',gap:12 }}>
           {[...db.seasons].reverse().map((s, idx) => {
