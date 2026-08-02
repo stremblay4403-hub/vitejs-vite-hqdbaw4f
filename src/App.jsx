@@ -1740,7 +1740,22 @@ const css = `
   .public-mode .btn-xs.btn-sim,
   .public-mode input[type="file"] { display: none !important; }
 
-  /* Comparateur tête-à-tête */
+  /* Mouvements (VoituresView) — cascade d'apparition des lignes à l'ouverture d'une ligue */
+  .voitures-row { animation: cmpRowIn 0.3s ease both; }
+  .voitures-row:nth-child(n+1)  { animation-delay: 0.01s; }
+  .voitures-row:nth-child(n+2)  { animation-delay: 0.03s; }
+  .voitures-row:nth-child(n+3)  { animation-delay: 0.05s; }
+  .voitures-row:nth-child(n+4)  { animation-delay: 0.07s; }
+  .voitures-row:nth-child(n+5)  { animation-delay: 0.09s; }
+  .voitures-row:nth-child(n+6)  { animation-delay: 0.11s; }
+  .voitures-row:nth-child(n+7)  { animation-delay: 0.13s; }
+  .voitures-row:nth-child(n+8)  { animation-delay: 0.15s; }
+  .voitures-row:nth-child(n+9)  { animation-delay: 0.17s; }
+  .voitures-row:nth-child(n+10) { animation-delay: 0.19s; }
+  .voitures-row:nth-child(n+15) { animation-delay: 0.22s; }
+  .voitures-row:nth-child(n+20) { animation-delay: 0.24s; }
+
+
   @keyframes vsPulse {
     0%,100% { box-shadow: 0 0 0 0 rgba(212,175,55,0.35); }
     50%     { box-shadow: 0 0 0 8px rgba(212,175,55,0); }
@@ -11456,7 +11471,7 @@ export default function App() {
       const photo = (mainLeague ? getCarPhoto(mainLeague.carId) : null) || getCarPhotoByName(entry.displayName || entry.name);
 
       return (
-        <tr style={{ cursor:'pointer' }}
+        <tr className="voitures-row" style={{ cursor:'pointer' }}
           onClick={() => {
             if (mainLeague) {
               openProfileCar({ leagueName: mainLeague.leagueName, carId: mainLeague.carId });
@@ -11485,26 +11500,27 @@ export default function App() {
             ) : (entry.displayName || entry.name)}
           </td>
           <td style={{ fontSize:11 }}>
-            {/* Relegation history — show all events */}
-            {entry.relegations?.length > 0 && entry.relegations.map((r, i) => {
-              const currentLeague = mainLeague?.leagueName;
-              const sameLeague = r.league === currentLeague;
-              return (
-                <span key={i} style={{ display:'inline-block',marginRight:6,fontSize:10 }}>
-                  <span style={{ color:'#e74c3c' }}>⬇ {r.league} (S{r.season})</span>
-                  {currentLeague && !sameLeague && (
-                    <span style={{ color:'var(--green)',marginLeft:4 }}>→ Revenu en {currentLeague}</span>
-                  )}
-                  {currentLeague && sameLeague && (
-                    <span style={{ color:'var(--gold)',marginLeft:4 }}>→ Revenu</span>
-                  )}
-                </span>
-              );
-            })}
-            {/* Relegated gone — only if no relegations array (shouldn't happen but safety) */}
-            {(!entry.relegations || entry.relegations.length === 0) && entry.lastRelSeason && (
-              <span style={{ color:'#e74c3c',fontSize:10 }}>⬇ {entry.lastRelLeague} (S{entry.lastRelSeason})</span>
-            )}
+            {/* Historique relégations — sous forme de chips visuels plutôt que de phrases */}
+            <div style={{ display:'flex',flexWrap:'wrap',gap:4 }}>
+              {entry.relegations?.length > 0 && entry.relegations.map((r, i) => {
+                const currentLeague = mainLeague?.leagueName;
+                const sameLeague = r.league === currentLeague;
+                return (
+                  <React.Fragment key={i}>
+                    <span className="badge badge-red" style={{ fontSize:9 }}>⬇ {r.league.replace('Voitures ','V')} · S{r.season}</span>
+                    {currentLeague && !sameLeague && (
+                      <span className="badge badge-green" style={{ fontSize:9 }}>↩ {currentLeague.replace('Voitures ','V')}</span>
+                    )}
+                    {currentLeague && sameLeague && (
+                      <span className="badge badge-gold" style={{ fontSize:9 }}>↩ Revenu</span>
+                    )}
+                  </React.Fragment>
+                );
+              })}
+              {(!entry.relegations || entry.relegations.length === 0) && entry.lastRelSeason && (
+                <span className="badge badge-red" style={{ fontSize:9 }}>⬇ {entry.lastRelLeague.replace('Voitures ','V')} · S{entry.lastRelSeason}</span>
+              )}
+            </div>
           </td>
           <td>
             {entry.hist?.champions && Object.keys(entry.hist.champions).length > 0 && (
