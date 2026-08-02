@@ -12873,7 +12873,8 @@ export default function App() {
       const first = finalM.homeGoals > finalM.awayGoals ? { id: finalM.homeId, league: finalM.homeLeague } : { id: finalM.awayId, league: finalM.awayLeague };
       const second = finalM.homeGoals > finalM.awayGoals ? { id: finalM.awayId, league: finalM.awayLeague } : { id: finalM.homeId, league: finalM.homeLeague };
       const third = thirdM.homeGoals > thirdM.awayGoals ? { id: thirdM.homeId, league: thirdM.homeLeague } : { id: thirdM.awayId, league: thirdM.awayLeague };
-      return [first, second, third].map((e, i) => {
+      const fourth = thirdM.homeGoals > thirdM.awayGoals ? { id: thirdM.awayId, league: thirdM.awayLeague } : { id: thirdM.homeId, league: thirdM.homeLeague };
+      return [first, second, third, fourth].map((e, i) => {
         const car = e.id && e.league ? s.leagues[e.league]?.cars.find(c => c.id === e.id) : null;
         return { ...e, rank: i + 1, name: car ? car.name : '?', photo: e.id ? getCarPhoto(e.id) : null };
       });
@@ -12896,11 +12897,11 @@ export default function App() {
               {tcSeasons.map(({ s, podium }) => (
                 <div key={s.season} style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                   <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'var(--gold)',letterSpacing:2,marginBottom:8 }}>Saison {s.season}</div>
-                  <div style={{ display:'grid',gridTemplateColumns:'repeat(3, 1fr)',gap:8 }}>
+                  <div className="hist-summary-grid" style={{ gap:8 }}>
                     {podium.map(p => {
-                      const rowClass = p.rank === 1 ? 'row-gold' : p.rank === 2 ? 'row-silver' : 'row-bronze';
-                      const borderColor = p.rank === 1 ? 'var(--gold)' : p.rank === 2 ? '#bdc3c7' : '#cd7f32';
-                      const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : '🥉';
+                      const rowClass = p.rank === 1 ? 'row-gold' : p.rank === 2 ? 'row-silver' : p.rank === 3 ? 'row-bronze' : '';
+                      const borderColor = p.rank === 1 ? 'var(--gold)' : p.rank === 2 ? '#bdc3c7' : p.rank === 3 ? '#cd7f32' : 'var(--border)';
+                      const medal = p.rank === 1 ? '🥇' : p.rank === 2 ? '🥈' : p.rank === 3 ? '🥉' : '4️⃣';
                       return (
                         <div key={p.rank} className={rowClass} style={{ borderRadius:8,overflow:'hidden',border:`2px solid ${borderColor}`,cursor:'pointer',background:'var(--dark2)' }}
                           onClick={() => p.id && openProfileCar({ leagueName: p.league, carId: p.id })}>
@@ -12908,8 +12909,8 @@ export default function App() {
                             {p.photo ? <img src={p.photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <span style={{ fontSize:28 }}>🚗</span>}
                           </div>
                           <div style={{ padding:'4px 6px' }}>
-                            <div style={{ fontSize:9, color:borderColor, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{medal} {p.rank === 1 ? 'CHAMPION' : p.rank+'E PLACE'}</div>
-                            <div style={{ fontSize: p.name.length > 12 ? 11 : 13, fontWeight:700, color:borderColor, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
+                            <div style={{ fontSize:9, color:p.rank<=3?borderColor:'var(--text-dim)', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>{medal} {p.rank === 1 ? 'CHAMPION' : p.rank+'E PLACE'}</div>
+                            <div style={{ fontSize: p.name.length > 12 ? 11 : 13, fontWeight:700, color:p.rank<=3?borderColor:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{p.name}</div>
                           </div>
                         </div>
                       );
