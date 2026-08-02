@@ -11890,6 +11890,7 @@ export default function App() {
     const topGoalsFor = [...bestRegSeason].sort((a, b) => b.gf - a.gf).slice(0, 10);
     const topGoalsAgainst = [...bestRegSeason].sort((a, b) => b.ga - a.ga).slice(0, 10);
     const topDiff = [...bestRegSeason].sort((a, b) => b.diff - a.diff).slice(0, 10);
+    const worstDiff = [...bestRegSeason].sort((a, b) => a.diff - b.diff).slice(0, 10);
 
     const totalPtsMap = {};
     LEAGUES.forEach(l => {
@@ -12032,6 +12033,15 @@ export default function App() {
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.gf}-{e.ga}</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.diff>=0?'+'+e.diff:e.diff}</td>
+          </tr>
+        )} />
+        <ExpandableSection id="worstdiff" title="📉 Pire Différentiel (saison)" accent="#e74c3c" rows={worstDiff} renderRow={(e, i) => (
+          <tr key={`${e.name}-${e.season}-worstdiff`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:i===0?'#e74c3c':'var(--text-dim)',padding:'8px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.gf}-{e.ga}</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.diff}</td>
           </tr>
         )} />
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" accent="var(--gold)" rows={topTotal} renderRow={(e, i) => {
