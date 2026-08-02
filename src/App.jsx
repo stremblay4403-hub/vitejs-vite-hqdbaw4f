@@ -11596,7 +11596,7 @@ export default function App() {
       return Object.values(map);
     }, [db.seasons]);
 
-    // Stats globales d'une voiture sur toutes les saisons
+    // Stats globales d'une voiture sur toutes les saisons (app actuelle + historique pré-S33)
     const getStats = React.useCallback((cid) => {
       let gp=0,w=0,d=0,l=0,gf=0,ga=0;
       let titles=0, playoffCount=0;
@@ -11620,11 +11620,29 @@ export default function App() {
           else if (sNum >= 30 && bp >= 3) playoffCount++;
         });
       });
+
+      // Historique pré-S33 : les matchs détaillés n'existent plus, mais les titres et les
+      // points annexes par saison sont conservés dans HISTORICAL_DATA — on les fusionne
+      // ici par nom de voiture, comme le fait déjà RecordsView.
+      const carName = (allCars.find(c => c.id === cid) || {}).name;
+      if (carName) {
+        LEAGUES.forEach(ln => {
+          const histCar = (HISTORICAL_DATA.historicalBonus[ln] || []).find(c => c.name === carName);
+          if (!histCar) return;
+          titles += (histCar.champions || []).length;
+          Object.entries(histCar.bySeason || {}).forEach(([sNumStr, bp]) => {
+            const sNum = parseInt(sNumStr, 10);
+            if (sNum <= 29 && bp > 0) playoffCount++;
+            else if (sNum >= 30 && bp >= 3) playoffCount++;
+          });
+        });
+      }
+
       const allBonus = computeAllSeasonsBonus(LEAGUES[0]);
       const bonusEntry = allBonus.find(e => e.id === cid);
       const bp = bonusEntry ? bonusEntry.total : 0;
       return { gp, w, d, l, gf, ga, diff:gf-ga, pct:gp?(w*3+d)/(gp*3):0, bp, titles, playoffCount };
-    }, [db.seasons]);
+    }, [db.seasons, allCars]);
 
     const filteredA = searchA.length >= 1 ? allCars.filter(c=>c.name.toLowerCase().includes(searchA.toLowerCase()) && c.id!==carB?.id).slice(0,6) : [];
     const filteredB = searchB.length >= 1 ? allCars.filter(c=>c.name.toLowerCase().includes(searchB.toLowerCase()) && c.id!==carA?.id).slice(0,6) : [];
@@ -11925,15 +11943,21 @@ export default function App() {
       return LEAGUES[0];
     }
 
-    const ExpandableSection = ({ id, title, rows, renderRow }) => {
+    const ExpandableSection = ({ id, title, rows, renderRow, accent }) => {
       const isExp = expanded === id;
       const shown = isExp ? rows : rows.slice(0, 5);
       return (
-        <div className="card" style={{ marginBottom:16 }}>
-          <div className="card-header"><div className="card-title">{title}</div></div>
+        <div className="card" style={{ marginBottom:16, borderLeft: accent ? `3px solid ${accent}` : undefined }}>
+          <div className="card-header"><div className="card-title" style={accent ? { color: accent } : undefined}>{title}</div></div>
           <div className="card-body" style={{ padding:0 }}>
             <table className="tbl" style={{ width:'100%' }}>
-              <tbody>{shown.map((e, i) => renderRow(e, i))}</tbody>
+              <tbody>{shown.map((e, i) => {
+                const row = renderRow(e, i);
+                if (i < 5) return row;
+                return React.cloneElement(row, {
+                  style: { ...(row.props.style || {}), animation: 'fadeIn 0.35s ease both', animationDelay: `${(i - 5) * 0.04}s` }
+                });
+              })}</tbody>
             </table>
             {rows.length > 5 && (
               <div style={{ padding:'8px 12px',textAlign:'center' }}>
@@ -11953,44 +11977,47 @@ export default function App() {
     };
 
     const rankColor = (i) => i === 0 ? 'var(--gold)' : i < 3 ? 'var(--gold-dim)' : 'var(--text-dim)';
+    const rankDisplay = (i) => i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1;
+    const rowShimmerClass = (i) => i === 0 ? 'row-gold' : i === 1 ? 'row-silver' : i === 2 ? 'row-bronze' : '';
+    const glowStat = { textShadow: '0 0 10px rgba(212,175,55,0.25)' };
 
     return (
       <div style={{ padding:12 }}>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:'var(--gold)',marginBottom:16 }}>🏅 Records</div>
 
-        <ExpandableSection id="champs" title="🏆 Plus de Championnats V1-V4" rows={topChamps} renderRow={(e, i) => (
-          <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
+        <ExpandableSection id="champs" title="🏆 Plus de Championnats V1-V4" accent="var(--gold)" rows={topChamps} renderRow={(e, i) => (
+          <tr key={e.name} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
             <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>{Object.entries(e.leagues).map(([l, n]) => `${n}× ${l.replace('Voitures ','V')}`).join(', ')}</td>
-            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)' }}>{e.count}×</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.count}×</td>
           </tr>
         )} />
-        <ExpandableSection id="reg" title="🏁 Meilleure Saison Régulière (pts)" rows={topRegSeason} renderRow={(e, i) => (
-          <tr key={`${e.name}-${e.season}`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
+        <ExpandableSection id="reg" title="🏁 Meilleure Saison Régulière (pts)" accent="#5dade2" rows={topRegSeason} renderRow={(e, i) => (
+          <tr key={`${e.name}-${e.season}`} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
             <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.w}V {e.d}N {e.l}D</td>
-            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)' }}>{e.pts} pts</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.pts} pts</td>
           </tr>
         )} />
-        <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" rows={topTotal} renderRow={(e, i) => {
+        <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" accent="var(--gold)" rows={topTotal} renderRow={(e, i) => {
           const league = (e.carId && findLeagueByCarId(e.carId)) || findLeagueByName(e.name);
           return (
-            <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-              <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
+            <tr key={e.name} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+              <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
               <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
               <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
               <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>{league ? league.replace('Voitures ','V') : '—'}</td>
-              <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)' }}>{e.total} pts</td>
+              <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.total} pts</td>
             </tr>
           );
         }} />
-        <ExpandableSection id="rel" title="⬇ Plus de Relégations V1-V4" rows={topRelegated} renderRow={(e, i) => (
+        <ExpandableSection id="rel" title="⬇ Plus de Relégations V1-V4" accent="#e74c3c" rows={topRelegated} renderRow={(e, i) => (
           <tr key={e.name} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
-            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{i+1}</td>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:i===0?'#e74c3c':'var(--text-dim)',padding:'8px 6px' }}>{i+1}</td>
             <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.count}×</td>
