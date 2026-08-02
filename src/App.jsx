@@ -11871,21 +11871,25 @@ export default function App() {
         if (!league?.cars) return;
         league.cars.forEach(car => {
           const allM = (league.groupResults ? Object.values(league.groupResults).flat() : []).filter(m => m.homeId === car.id || m.awayId === car.id);
-          let w = 0, d = 0, lo = 0, pts = 0;
+          let w = 0, d = 0, lo = 0, pts = 0, gf = 0, ga = 0;
           allM.forEach(m => {
             if (m.homeGoals === null) return;
             const isHome = m.homeId === car.id;
             const f = isHome ? m.homeGoals : m.awayGoals;
             const a = isHome ? m.awayGoals : m.homeGoals;
+            gf += f; ga += a;
             if (f > a) { w++; pts += 3; } else if (f === a) { d++; pts += 1; } else lo++;
           });
           if (allM.length > 0 && pts > 0) {
-            bestRegSeason.push({ name: car.name, carId: car.id, pts, w, d, l: lo, season: s.season, league: l });
+            bestRegSeason.push({ name: car.name, carId: car.id, pts, w, d, l: lo, gf, ga, diff: gf - ga, season: s.season, league: l });
           }
         });
       });
     });
     const topRegSeason = bestRegSeason.sort((a, b) => b.pts - a.pts).slice(0, 10);
+    const topGoalsFor = [...bestRegSeason].sort((a, b) => b.gf - a.gf).slice(0, 10);
+    const topGoalsAgainst = [...bestRegSeason].sort((a, b) => b.ga - a.ga).slice(0, 10);
+    const topDiff = [...bestRegSeason].sort((a, b) => b.diff - a.diff).slice(0, 10);
 
     const totalPtsMap = {};
     LEAGUES.forEach(l => {
@@ -12001,6 +12005,33 @@ export default function App() {
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.w}V {e.d}N {e.l}D</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.pts} pts</td>
+          </tr>
+        )} />
+        <ExpandableSection id="gf" title="⚽ Plus de Buts Marqués (saison)" accent="var(--green)" rows={topGoalsFor} renderRow={(e, i) => (
+          <tr key={`${e.name}-${e.season}-gf`} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')}</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--green)',...glowStat }}>{e.gf}</td>
+          </tr>
+        )} />
+        <ExpandableSection id="ga" title="🥅 Plus de Buts Encaissés (saison)" accent="#e74c3c" rows={topGoalsAgainst} renderRow={(e, i) => (
+          <tr key={`${e.name}-${e.season}-ga`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:i===0?'#e74c3c':'var(--text-dim)',padding:'8px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')}</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.ga}</td>
+          </tr>
+        )} />
+        <ExpandableSection id="diff" title="📈 Meilleur Différentiel (saison)" accent="var(--gold)" rows={topDiff} renderRow={(e, i) => (
+          <tr key={`${e.name}-${e.season}-diff`} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.season} · {e.league.replace('Voitures ','V')} · {e.gf}-{e.ga}</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.diff>=0?'+'+e.diff:e.diff}</td>
           </tr>
         )} />
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" accent="var(--gold)" rows={topTotal} renderRow={(e, i) => {
