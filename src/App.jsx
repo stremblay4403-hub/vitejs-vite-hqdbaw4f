@@ -3922,11 +3922,26 @@ export default function App() {
 
     function ProbLine({ probs }) {
       if (!probs) return null;
+      const items = [
+        { label: 'PLAYOFFS', icon: '🏁', val: probs.top8, color: 'var(--green)', bg: 'rgba(39,174,96,0.14)', border: 'rgba(39,174,96,0.4)' },
+        { label: 'POINTS', icon: '💰', val: probs.top10, color: 'var(--gold)', bg: 'rgba(212,175,55,0.14)', border: 'rgba(212,175,55,0.4)' },
+        { label: 'DANGER', icon: '⚠️', val: probs.last, color: '#e74c3c', bg: 'rgba(192,57,43,0.14)', border: 'rgba(192,57,43,0.4)' },
+      ];
       return (
-        <div style={{ display:'flex', flexDirection:'column', gap:2, marginTop:6, fontSize:10, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:0.5 }}>
-          <div style={{ color:'var(--green)' }}>🏁 Playoffs: {probs.top8}%</div>
-          <div style={{ color:'var(--gold-dim)' }}>💰 Points: {probs.top10}%</div>
-          <div style={{ color:'#e74c3c' }}>⚠️ Danger: {probs.last}%</div>
+        <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10, width:'100%' }}>
+          {items.map(it => (
+            <div key={it.label} style={{
+              display:'flex', alignItems:'center', justifyContent:'space-between', gap:6,
+              background:it.bg, border:`1px solid ${it.border}`, borderRadius:6, padding:'6px 10px'
+            }}>
+              <span style={{ fontSize:15, display:'flex', alignItems:'center', gap:5, color:it.color, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>
+                {it.icon} {it.label}
+              </span>
+              <span style={{ fontSize:26, fontFamily:"'Bebas Neue',sans-serif", color:it.color, lineHeight:1 }}>
+                {it.val}%
+              </span>
+            </div>
+          ))}
         </div>
       );
     }
