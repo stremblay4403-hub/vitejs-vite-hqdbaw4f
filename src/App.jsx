@@ -1137,7 +1137,16 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
 
   const baseStats = computeStandings(groupCars, played);
   const strength = {};
-  baseStats.forEach(s => { strength[s.id] = s.gp > 0 ? s.pts / s.gp : 1; });
+  // Lissage : chaque voiture démarre avec 3 "matchs fantômes" à 1pt/match (moyenne neutre).
+  // Ça évite qu'une seule défaite en début de saison fasse chuter la force à 0 et fausse tout.
+  baseStats.forEach(s => { strength[s.id] = (s.pts + 3) / (s.gp + 3); });
+
+  // Confiance progressive : en tout début de saison, on ne sait presque rien de la vraie force
+  // des voitures — les probabilités doivent donc rester proches de la moyenne du groupe, peu
+  // importe qui a gagné/perdu son 1er match. La confiance grandit avec le nombre de matchs
+  // réellement joués, jusqu'à atteindre 100% une fois chaque voiture à ~5 matchs joués.
+  const avgGamesPlayed = groupCars.length > 0 ? (played.length * 2) / groupCars.length : 0;
+  const confidence = Math.min(1, avgGamesPlayed / 5);
 
   const counts = {};
   groupCars.forEach(c => { counts[c.id] = { top8: 0, top10: 0, last: 0 }; });
@@ -1153,7 +1162,8 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
     for (let t = 0; t < trials; t++) {
       const simMatches = played.concat(remaining.map(m => {
         const sh = strength[m.homeId] ?? 1, sa = strength[m.awayId] ?? 1;
-        const pHome = sh / (sh + sa + 0.0001);
+        const rawPHome = sh / (sh + sa + 0.0001);
+        const pHome = 0.5 + (rawPHome - 0.5) * confidence;
         const r = Math.random();
         let hg, ag;
         if (r < pHome * 0.8) { hg = 1 + Math.floor(Math.random() * 3); ag = Math.max(0, hg - 1 - Math.floor(Math.random() * 2)); }
