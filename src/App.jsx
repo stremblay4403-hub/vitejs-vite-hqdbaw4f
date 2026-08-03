@@ -1130,6 +1130,57 @@ function computeStandings(cars, matches) {
   return Object.values(stats).sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf);
 }
 
+function simulateGroupProbabilities(groupCars, matches, trials = 500) {
+  const played = matches.filter(m => m.homeGoals !== null);
+  const remaining = matches.filter(m => m.homeGoals === null);
+  if (groupCars.length === 0) return {};
+
+  const baseStats = computeStandings(groupCars, played);
+  const strength = {};
+  baseStats.forEach(s => { strength[s.id] = s.gp > 0 ? s.pts / s.gp : 1; });
+
+  const counts = {};
+  groupCars.forEach(c => { counts[c.id] = { top8: 0, top10: 0, last: 0 }; });
+
+  if (remaining.length === 0) {
+    const final = computeStandings(groupCars, played);
+    final.forEach((s, i) => {
+      counts[s.id].top8 = i < 8 ? trials : 0;
+      counts[s.id].top10 = i < 10 ? trials : 0;
+      counts[s.id].last = i === final.length - 1 ? trials : 0;
+    });
+  } else {
+    for (let t = 0; t < trials; t++) {
+      const simMatches = played.concat(remaining.map(m => {
+        const sh = strength[m.homeId] ?? 1, sa = strength[m.awayId] ?? 1;
+        const pHome = sh / (sh + sa + 0.0001);
+        const r = Math.random();
+        let hg, ag;
+        if (r < pHome * 0.8) { hg = 1 + Math.floor(Math.random() * 3); ag = Math.max(0, hg - 1 - Math.floor(Math.random() * 2)); }
+        else if (r > 1 - (1 - pHome) * 0.8) { ag = 1 + Math.floor(Math.random() * 3); hg = Math.max(0, ag - 1 - Math.floor(Math.random() * 2)); }
+        else { hg = ag = Math.floor(Math.random() * 3); }
+        return { ...m, homeGoals: hg, awayGoals: ag };
+      }));
+      const final = computeStandings(groupCars, simMatches);
+      final.forEach((s, i) => {
+        if (i < 8) counts[s.id].top8++;
+        if (i < 10) counts[s.id].top10++;
+        if (i === final.length - 1) counts[s.id].last++;
+      });
+    }
+  }
+
+  const result = {};
+  groupCars.forEach(c => {
+    result[c.id] = {
+      top8: Math.round((counts[c.id].top8 / trials) * 100),
+      top10: Math.round((counts[c.id].top10 / trials) * 100),
+      last: Math.round((counts[c.id].last / trials) * 100),
+    };
+  });
+  return result;
+}
+
 function computeBonusPoints(season, leagueName) {
   const league = season.leagues[leagueName];
   const bonusMap = {};
@@ -3835,7 +3886,7 @@ export default function App() {
   function MatchModal() {
     if (!matchModal) return null;
     const { homeName, awayName, homePhoto, awayPhoto, onConfirm, homeStats, awayStats,
-            homeRank, awayRank, homePts, awayPts, homeQual, awayQual } = matchModal;
+            homeRank, awayRank, homePts, awayPts, homeQual, awayQual, homeProbs, awayProbs } = matchModal;
 
     // hg/ag vivent dans le state parent pour survivre aux re-renders des notifications
     const hg = matchHg;
@@ -3865,6 +3916,17 @@ export default function App() {
               <span style={{ color:'#e74c3c' }}>{stats.l}D</span>
             </div>
           )}
+        </div>
+      );
+    }
+
+    function ProbLine({ probs }) {
+      if (!probs) return null;
+      return (
+        <div style={{ display:'flex', flexDirection:'column', gap:2, marginTop:6, fontSize:10, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:0.5 }}>
+          <div style={{ color:'var(--green)' }}>🏁 Playoffs: {probs.top8}%</div>
+          <div style={{ color:'var(--gold-dim)' }}>💰 Points: {probs.top10}%</div>
+          <div style={{ color:'#e74c3c' }}>⚠️ Danger: {probs.last}%</div>
         </div>
       );
     }
@@ -3909,6 +3971,7 @@ export default function App() {
               <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: hWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:hWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{homeName}</div>
                 <StatsBadge stats={homeStats} rank={homeRank} pts={homePts} qual={homeQual} align="center" />
+                <ProbLine probs={homeProbs} />
               </div>
             </div>
 
@@ -3922,6 +3985,7 @@ export default function App() {
               <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: aWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:aWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{awayName}</div>
                 <StatsBadge stats={awayStats} rank={awayRank} pts={awayPts} qual={awayQual} align="center" />
+                <ProbLine probs={awayProbs} />
               </div>
             </div>
           </div>
@@ -6252,16 +6316,21 @@ export default function App() {
                           const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                           return (
                             <div key={m.id}
-                              onClick={() => openMatchModal({
-                                homeName: home?.name, awayName: away?.name,
-                                homePhoto, awayPhoto,
-                                homeGoals: m.homeGoals, awayGoals: m.awayGoals,
-                                homeStats, awayStats,
-                                homeRank, awayRank, homePts, awayPts,
-                                homeQual: getQualBadge(m.homeId),
-                                awayQual: getQualBadge(m.awayId),
-                                onConfirm: (hg, ag) => updateGroupMatch(leagueTab, activeGroup, m.id, hg, ag),
-                              })}
+                              onClick={() => {
+                                const groupProbs = simulateGroupProbabilities(groupCars, matches);
+                                openMatchModal({
+                                  homeName: home?.name, awayName: away?.name,
+                                  homePhoto, awayPhoto,
+                                  homeGoals: m.homeGoals, awayGoals: m.awayGoals,
+                                  homeStats, awayStats,
+                                  homeRank, awayRank, homePts, awayPts,
+                                  homeQual: getQualBadge(m.homeId),
+                                  awayQual: getQualBadge(m.awayId),
+                                  homeProbs: groupProbs[m.homeId],
+                                  awayProbs: groupProbs[m.awayId],
+                                  onConfirm: (hg, ag) => updateGroupMatch(leagueTab, activeGroup, m.id, hg, ag),
+                                });
+                              }}
                               style={{
                                 display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s',}}>
                               {/* Home */}
