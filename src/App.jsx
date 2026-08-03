@@ -1740,7 +1740,16 @@ const css = `
   .public-mode .btn-xs.btn-sim,
   .public-mode input[type="file"] { display: none !important; }
 
-  /* Résumé de saison (Historique) — Champion/Meilleur/Relégué/Promu : 2x2 sur mobile, 4 en ligne sur desktop */
+  /* Bracket playoffs — la voiture qui vient de gagner reçoit un effet d'arrivée */
+  @keyframes bracketArrive {
+    0%   { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(212,175,55,0); }
+    30%  { transform: scale(1.06); box-shadow: 0 0 20px 4px rgba(212,175,55,0.7); }
+    60%  { transform: scale(1); box-shadow: 0 0 14px 2px rgba(212,175,55,0.5); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(212,175,55,0); }
+  }
+  .bracket-car-arrived { animation: bracketArrive 1.8s cubic-bezier(0.34,1.56,0.64,1) both; z-index: 3; }
+
+
   .hist-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
   @media (min-width: 640px) { .hist-summary-grid { grid-template-columns: repeat(4, 1fr); } }
 
@@ -2669,6 +2678,28 @@ export default function App() {
   // la dernière version de GroupesView, et StableGroupesView garde une identité fixe pour React.
   const groupesViewImplRef = React.useRef(null);
   const StableGroupesView = React.useRef((props) => groupesViewImplRef.current ? groupesViewImplRef.current(props) : null).current;
+  // Même technique de stabilisation pour toutes les autres vues principales — balayage préventif
+  // pour éviter le même genre de clignotement de photos / animations interrompues partout ailleurs.
+  const playoffsViewImplRef = React.useRef(null);
+  const StablePlayoffsView = React.useRef((props) => playoffsViewImplRef.current ? playoffsViewImplRef.current(props) : null).current;
+  const relegationViewImplRef = React.useRef(null);
+  const StableRelegationView = React.useRef((props) => relegationViewImplRef.current ? relegationViewImplRef.current(props) : null).current;
+  const bonusViewImplRef = React.useRef(null);
+  const StableBonusView = React.useRef((props) => bonusViewImplRef.current ? bonusViewImplRef.current(props) : null).current;
+  const successeursViewImplRef = React.useRef(null);
+  const StableSuccesseursView = React.useRef((props) => successeursViewImplRef.current ? successeursViewImplRef.current(props) : null).current;
+  const allCarsViewImplRef = React.useRef(null);
+  const StableAllCarsView = React.useRef((props) => allCarsViewImplRef.current ? allCarsViewImplRef.current(props) : null).current;
+  const voituresViewImplRef = React.useRef(null);
+  const StableVoituresView = React.useRef((props) => voituresViewImplRef.current ? voituresViewImplRef.current(props) : null).current;
+  const comparaisonViewImplRef = React.useRef(null);
+  const StableComparaisonView = React.useRef((props) => comparaisonViewImplRef.current ? comparaisonViewImplRef.current(props) : null).current;
+  const recordsViewImplRef = React.useRef(null);
+  const StableRecordsView = React.useRef((props) => recordsViewImplRef.current ? recordsViewImplRef.current(props) : null).current;
+  const tournoiChampionsViewImplRef = React.useRef(null);
+  const StableTournoiChampionsView = React.useRef((props) => tournoiChampionsViewImplRef.current ? tournoiChampionsViewImplRef.current(props) : null).current;
+  const historiqueViewImplRef = React.useRef(null);
+  const StableHistoriqueView = React.useRef((props) => historiqueViewImplRef.current ? historiqueViewImplRef.current(props) : null).current;
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
     const t = setTimeout(() => setShowSplash(false), 1300);
@@ -6546,6 +6577,21 @@ export default function App() {
     const fin = allMatches.find(m => m.round === 'final');
     // showBracket lives in App state to persist across re-renders
 
+    // Voiture qui vient de se qualifier — reçoit un effet "arrivée" (glow + léger déplacement)
+    // là où elle apparaît, aussi bien dans le match qu'elle vient de gagner que dans son nouveau
+    // créneau du tour suivant. Fonctionne de façon fiable maintenant que PlayoffsView est stabilisé.
+    const [justDecidedCarId, setJustDecidedCarId] = useState(null);
+    function confirmWithAnim(m, leagueName) {
+      return (hg, ag) => {
+        const winnerId = hg > ag ? m.homeId : ag > hg ? m.awayId : null;
+        updatePlayoffMatch(leagueName, m.id, hg, ag);
+        if (winnerId) {
+          setJustDecidedCarId(winnerId);
+          setTimeout(() => setJustDecidedCarId(id => id === winnerId ? null : id), 2200);
+        }
+      };
+    }
+
     const ROUND_LABELS = { r1: 'Ronde 1', r2: 'Ronde 2', r3: 'Ronde 3', qf: 'Quarts de Finale', sf: 'Demi-Finales', final: 'Finale' };
 
     // Bracket visual component — symétrique gauche/droite
@@ -6576,6 +6622,7 @@ export default function App() {
 
       function CarCard({ carId, isWinner, goals }) {
         const IMG_H = 55;
+        const justArrived = carId && carId === justDecidedCarId;
         if (!carId) return (
           <div style={{ width:CARD_W, height:CARD_H, background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.3 }}>
             <span style={{ fontSize:9, color:'var(--text-dim)' }}>En attente</span>
@@ -6592,7 +6639,7 @@ export default function App() {
         const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
         const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
-          <div style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0 }}
+          <div className={justArrived ? 'bracket-car-arrived' : ''} style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0, position:'relative' }}
             onClick={e => { e.stopPropagation(); openProfileCar({ leagueName: leagueTab, carId }); }}>
             <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {photo
@@ -6673,7 +6720,7 @@ export default function App() {
                   <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
                     {roundMatches.map((m, i) => (
                       <MatchBlock key={m?.id || i} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={isLast}
-                        onConfirm={(hg, ag) => updatePlayoffMatch(leagueTab, m.id, hg, ag)} />
+                        onConfirm={m ? confirmWithAnim(m, leagueTab) : undefined} />
                     ))}
                   </div>
                 </div>
@@ -6704,7 +6751,7 @@ export default function App() {
                     homePhoto: getCarPhoto(fin.homeId),
                     awayPhoto: getCarPhoto(fin.awayId),
                     homeGoals: fin.homeGoals, awayGoals: fin.awayGoals,
-                    onConfirm: (hg, ag) => updatePlayoffMatch(leagueTab, fin.id, hg, ag),
+                    onConfirm: confirmWithAnim(fin, leagueTab),
                   })}>
                   <CarCard carId={fin.homeId} isWinner={getWinnerId(fin) === fin.homeId} goals={fin.homeGoals} />
                   <CarCard carId={fin.awayId} isWinner={getWinnerId(fin) === fin.awayId} goals={fin.awayGoals} />
@@ -6781,7 +6828,7 @@ export default function App() {
         const groupStandings = computeStandings(groupCars, groupMatches);
         const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
-          <div style={{
+          <div className={carId && carId === justDecidedCarId ? 'bracket-car-arrived' : ''} style={{
             display:'flex',alignItems:'center',gap:compact ? 6 :10,padding:compact ? '8px 10px' :'12px 14px',borderBottom:'1px solid #1a1a1a',background:isWinner ? 'rgba(201,168,76,0.12)' :'transparent',}}>
             {/* Seed badge */}
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:compact ? 15 :18,color:'var(--gold-dim)',width:compact ? 30 :36,textAlign:'center',flexShrink:0 }}>
@@ -6825,7 +6872,7 @@ export default function App() {
             homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
             homeStats, awayStats,
-            onConfirm: (hg, ag) => updatePlayoffMatch(leagueTab, m.id, hg, ag),
+            onConfirm: confirmWithAnim(m, leagueTab),
           })}>
           <TeamRow carId={m.homeId} photo={homePhoto} car={home} seed={m.homeSeed} groupRank={m.homeGroupRank} fromGroup={m.homeGroup} goals={m.homeGoals} isWinner={hWin} />
           <TeamRow carId={m.awayId} photo={awayPhoto} car={away} seed={m.awaySeed} groupRank={m.awayGroupRank} fromGroup={m.awayGroup} goals={m.awayGoals} isWinner={aWin} />
@@ -6931,6 +6978,7 @@ export default function App() {
       </div>
     );
   }
+  playoffsViewImplRef.current = PlayoffsView;
 
   function RelegationView() {
     const league = getLeague(leagueTab);
@@ -6944,6 +6992,99 @@ export default function App() {
     const listRef = React.useRef(null);
     const listScrollPos = relListScrollRef; // ref au niveau de l'app : survit aux remontages
     const openDayRef = React.useRef(null);
+
+    // Voitures mathématiquement SAFE (ne peuvent plus terminer dernières) — une voiture est safe
+    // si son total actuel dépasse déjà le maximum théorique que n'importe quelle autre voiture
+    // pourrait encore atteindre (tous ses matchs restants gagnés).
+    const remainingFor = (carId) => relMatches.filter(m => m.homeGoals === null && (m.homeId === carId || m.awayId === carId)).length;
+    const safeIds = new Set();
+    standings.forEach(s => {
+      const others = standings.filter(o => o.id !== s.id);
+      const maxOthers = others.length ? Math.max(...others.map(o => o.pts + remainingFor(o.id) * 3)) : -1;
+      if (standings.length > 0 && s.pts > maxOthers) safeIds.add(s.id);
+    });
+
+    // Bannière temporaire quand une voiture VIENT de devenir safe (transition détectée)
+    const [safeBanner, setSafeBanner] = useState(null);
+    const prevSafeIdsRef = React.useRef(null);
+    React.useEffect(() => {
+      const prev = prevSafeIdsRef.current;
+      if (prev) {
+        const newlySafe = [...safeIds].find(id => !prev.has(id));
+        if (newlySafe) {
+          const car = standings.find(s => s.id === newlySafe);
+          if (car) {
+            setSafeBanner(car.name);
+            setTimeout(() => setSafeBanner(null), 4000);
+          }
+        }
+      }
+      prevSafeIdsRef.current = safeIds;
+    }, [standings.map(s => s.id + ':' + safeIds.has(s.id)).join(',')]);
+
+    // Live standings — même mécanique que les Ligues Principales : la ligne qui bouge le plus
+    // (résultat d'un seul match) glisse vers sa nouvelle place, les autres s'ajustent autour.
+    const relStandingsRowRefs = React.useRef({});
+    const prevRelRectsRef = React.useRef(null);
+    const prevRelGroupKeyRef = React.useRef(null);
+    const prevRelPlayedCountRef = React.useRef(null);
+    const relStandingsKey = standings.map(s => s.id).join(',');
+    const relPlayedMatchCount = relMatches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
+
+    React.useLayoutEffect(() => {
+      const ids = relStandingsKey.split(',').filter(Boolean);
+      const newRects = {};
+      ids.forEach(id => {
+        const el = relStandingsRowRefs.current[id];
+        if (el) newRects[id] = el.getBoundingClientRect().top;
+      });
+
+      const prevRects = prevRelRectsRef.current;
+      const prevPlayed = prevRelPlayedCountRef.current;
+      const sameGroup = prevRelGroupKeyRef.current === leagueTab;
+
+      if (sameGroup && prevRects && prevPlayed !== null) {
+        const playedDelta = relPlayedMatchCount - prevPlayed;
+        if (playedDelta >= 1 && playedDelta <= 2) {
+          let heroId = null, heroAbsDelta = 0;
+          ids.forEach(id => {
+            if (prevRects[id] === undefined || newRects[id] === undefined) return;
+            const d = Math.abs(prevRects[id] - newRects[id]);
+            if (d > heroAbsDelta) { heroAbsDelta = d; heroId = id; }
+          });
+          ids.forEach(id => {
+            const el = relStandingsRowRefs.current[id];
+            if (!el || prevRects[id] === undefined || newRects[id] === undefined) return;
+            const deltaPx = prevRects[id] - newRects[id];
+            if (Math.abs(deltaPx) < 1) return;
+            const isHero = id === heroId;
+            el.style.transition = 'none';
+            el.style.transform = `translateY(${deltaPx}px)${isHero ? ' scale(1.03)' : ''}`;
+            el.style.position = 'relative';
+            el.style.zIndex = isHero ? '5' : '2';
+            if (isHero) {
+              el.style.boxShadow = '0 12px 32px rgba(0,0,0,0.6), 0 0 0 1.5px var(--gold)';
+              el.style.background = 'linear-gradient(180deg, var(--dark3), var(--dark2))';
+              el.style.borderRadius = '8px';
+            }
+            void el.getBoundingClientRect();
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                el.style.transition = isHero
+                  ? 'transform 2.2s cubic-bezier(0.45,0,0.4,1), box-shadow 0.6s ease 1.6s, background 0.6s ease 1.6s'
+                  : 'transform 1.8s cubic-bezier(0.45,0,0.4,1)';
+                el.style.transform = '';
+                if (isHero) { el.style.boxShadow = 'none'; el.style.background = ''; }
+                setTimeout(() => { el.style.position = ''; el.style.zIndex = ''; el.style.borderRadius = ''; el.style.transition = ''; }, 2400);
+              });
+            });
+          });
+        }
+      }
+      prevRelPlayedCountRef.current = relPlayedMatchCount;
+      prevRelRectsRef.current = newRects;
+      prevRelGroupKeyRef.current = leagueTab;
+    }, [relStandingsKey, leagueTab, relPlayedMatchCount]);
 
     const days = [...new Set(relMatches.map(m => m.day))].sort((a,b) => a - b);
     const nextUnplayedDay = days.find(d => relMatches.filter(m => m.day === d).some(m => m.homeGoals === null));
@@ -7018,22 +7159,30 @@ export default function App() {
                 <div className="card-title">Classement Barrage</div>
                 {relId && <span className="badge badge-red" style={{ marginLeft:8 }}>⬇ {getCar(leagueTab, relId)?.name}</span>}
               </div>
+              {safeBanner && (
+                <div style={{ background:'rgba(41,128,185,0.15)',borderBottom:'1px solid #5dade2',padding:'8px 14px',fontFamily:"'Bebas Neue',sans-serif",fontSize:13,color:'#5dade2',letterSpacing:1,animation:'cmpVerdictIn 0.4s ease both' }}>
+                  🛡️ {safeBanner} est maintenant SAFE — ne peut plus terminer dernière !
+                </div>
+              )}
               <div className="card-body" style={{ padding:0 }}>
                 <div>
                     {standings.map((s, i) => {
                       const photo = getCarPhoto(s.id);
                       const isLast = i === standings.length - 1;
-                      const badge = isLast ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : null;
+                      const isSafe = safeIds.has(s.id);
+                      const badge = isLast ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : isSafe ? { label:'🛡️ SAFE', bg:'rgba(41,128,185,0.18)', color:'#5dade2' } : null;
                       return (
-                        <LeaderboardRow key={s.id}
+                        <div key={s.id} ref={el => { relStandingsRowRefs.current[s.id] = el; }}>
+                          <LeaderboardRow
                           rank={i+1} rankDiff={null}
                           carId={s.id} leagueName={leagueTab}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
-                          borderColor={isLast ? '#e74c3c' : 'transparent'}
+                          borderColor={isLast ? '#e74c3c' : isSafe ? '#5dade2' : 'transparent'}
                           onClick={() => openProfileCar({ leagueName: leagueTab, carId: s.id })}
                         />
+                        </div>
                       );
                     })}
                 </div>
@@ -7142,6 +7291,7 @@ export default function App() {
       </div>
     );
   }
+  relegationViewImplRef.current = RelegationView;
 
   function BonusLeagueTable({ l, ldata, recentNums, oldNums }) {
     const allNums = [...oldNums, ...recentNums];
@@ -8057,6 +8207,7 @@ export default function App() {
       </div>
     );
   }
+  bonusViewImplRef.current = BonusView;
 
   function SuccesseursView() {
     const leagueName = 'Successeurs';
@@ -8334,6 +8485,7 @@ export default function App() {
       </div>
     );
   }
+  successeursViewImplRef.current = SuccesseursView;
 
   function AddCarButton({ leagueName }) {
     const [adding, setAdding] = React.useState(false);
@@ -11458,6 +11610,7 @@ export default function App() {
       </div>
     );
   }
+  allCarsViewImplRef.current = AllCarsView;
 
   function VoituresView() {
     const search = voituresSearch;
@@ -11646,6 +11799,7 @@ export default function App() {
       </div>
     );
   }
+  voituresViewImplRef.current = VoituresView;
 
   function ComparaisonView() {
     const [searchA, setSearchA] = React.useState('');
@@ -11884,6 +12038,7 @@ export default function App() {
       </div>
     );
   }
+  comparaisonViewImplRef.current = ComparaisonView;
 
   function RecordsView() {
     const expanded = recordsExpanded;
@@ -12235,6 +12390,7 @@ export default function App() {
       </div>
     );
   }
+  recordsViewImplRef.current = RecordsView;
 
     function TournoiChampionsView() {
     const tc = currentSeason.tournoiChampions || null;
@@ -12807,6 +12963,7 @@ export default function App() {
       </div>
     );
   }
+  tournoiChampionsViewImplRef.current = TournoiChampionsView;
 
   async function generatePodiumPDF(top4, season) {
       // Convertir les photos en base64 pour que le fichier soit autonome : sinon les URLs
@@ -13156,6 +13313,7 @@ export default function App() {
       </div>
     );
   }
+  historiqueViewImplRef.current = HistoriqueView;
   const leagueTabs = (mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus';
 
   return (
@@ -13506,10 +13664,10 @@ export default function App() {
         <div className="content tab-content" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <StableGroupesView />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <PlayoffsView />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'relegation' && <RelegationView />}
-          {mainTab === 'ligues' && ligueSubTab === 'champions' && <TournoiChampionsView />}
-          {mainTab === 'ligues' && ligueSubTab === 'successeurs' && <SuccesseursView />}
+          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <StablePlayoffsView />}
+          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'relegation' && <StableRelegationView />}
+          {mainTab === 'ligues' && ligueSubTab === 'champions' && <StableTournoiChampionsView />}
+          {mainTab === 'ligues' && ligueSubTab === 'successeurs' && <StableSuccesseursView />}
           {mainTab === 'ligues' && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'remplac' && <RemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'avantdern' && <AvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} />}
@@ -13528,12 +13686,12 @@ export default function App() {
             </div>
           )}
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
-          {mainTab === 'bonus' && <BonusView />}
-          {mainTab === 'voitures' && <AllCarsView />}
-          {mainTab === 'historique' && histSubTab === 'historique' && <HistoriqueView />}
-          {mainTab === 'historique' && histSubTab === 'mouvements' && <VoituresView />}
-          {mainTab === 'historique' && histSubTab === 'records' && <RecordsView />}
-          {mainTab === 'historique' && histSubTab === 'comparaison' && <ComparaisonView />}
+          {mainTab === 'bonus' && <StableBonusView />}
+          {mainTab === 'voitures' && <StableAllCarsView />}
+          {mainTab === 'historique' && histSubTab === 'historique' && <StableHistoriqueView />}
+          {mainTab === 'historique' && histSubTab === 'mouvements' && <StableVoituresView />}
+          {mainTab === 'historique' && histSubTab === 'records' && <StableRecordsView />}
+          {mainTab === 'historique' && histSubTab === 'comparaison' && <StableComparaisonView />}
         </div>
       </div>
     </>
