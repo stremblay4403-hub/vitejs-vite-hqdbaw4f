@@ -1156,7 +1156,7 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
     final.forEach((s, i) => {
       counts[s.id].top8 = i < 8 ? trials : 0;
       counts[s.id].top10 = i < 10 ? trials : 0;
-      counts[s.id].mid = (i >= 10 && i <= 14) ? trials : 0;
+      counts[s.id].mid = (i >= 10 && i <= final.length - 2) ? trials : 0;
       counts[s.id].last = i === final.length - 1 ? trials : 0;
     });
   } else {
@@ -1176,7 +1176,7 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
       final.forEach((s, i) => {
         if (i < 8) counts[s.id].top8++;
         if (i < 10) counts[s.id].top10++;
-        if (i >= 10 && i <= 14) counts[s.id].mid++;
+        if (i >= 10 && i <= final.length - 2) counts[s.id].mid++;
         if (i === final.length - 1) counts[s.id].last++;
       });
     }
