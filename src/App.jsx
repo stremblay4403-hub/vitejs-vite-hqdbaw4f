@@ -3923,21 +3923,19 @@ export default function App() {
     function ProbLine({ probs }) {
       if (!probs) return null;
       const items = [
-        { label: 'PLAYOFFS', icon: '🏁', val: probs.top8, color: 'var(--green)', bg: 'rgba(39,174,96,0.14)', border: 'rgba(39,174,96,0.4)' },
-        { label: 'POINTS', icon: '💰', val: probs.top10, color: 'var(--gold)', bg: 'rgba(212,175,55,0.14)', border: 'rgba(212,175,55,0.4)' },
-        { label: 'DANGER', icon: '⚠️', val: probs.last, color: '#e74c3c', bg: 'rgba(192,57,43,0.14)', border: 'rgba(192,57,43,0.4)' },
+        { icon: '🏁', val: probs.top8, color: 'var(--green)', bg: 'rgba(39,174,96,0.14)', border: 'rgba(39,174,96,0.4)' },
+        { icon: '💰', val: probs.top10, color: 'var(--gold)', bg: 'rgba(212,175,55,0.14)', border: 'rgba(212,175,55,0.4)' },
+        { icon: '⚠️', val: probs.last, color: '#e74c3c', bg: 'rgba(192,57,43,0.14)', border: 'rgba(192,57,43,0.4)' },
       ];
       return (
-        <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:10, width:'100%' }}>
-          {items.map(it => (
-            <div key={it.label} style={{
-              display:'flex', alignItems:'center', justifyContent:'space-between', gap:6,
-              background:it.bg, border:`1px solid ${it.border}`, borderRadius:6, padding:'6px 10px'
+        <div style={{ display:'flex', flexDirection:'column', gap:6, width:64 }}>
+          {items.map((it, i) => (
+            <div key={i} style={{
+              display:'flex', flexDirection:'column', alignItems:'center', gap:1,
+              background:it.bg, border:`1px solid ${it.border}`, borderRadius:6, padding:'5px 2px'
             }}>
-              <span style={{ fontSize:15, display:'flex', alignItems:'center', gap:5, color:it.color, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1 }}>
-                {it.icon} {it.label}
-              </span>
-              <span style={{ fontSize:26, fontFamily:"'Bebas Neue',sans-serif", color:it.color, lineHeight:1 }}>
+              <span style={{ fontSize:13 }}>{it.icon}</span>
+              <span style={{ fontSize:15, fontFamily:"'Bebas Neue',sans-serif", color:it.color, lineHeight:1 }}>
                 {it.val}%
               </span>
             </div>
@@ -3986,7 +3984,6 @@ export default function App() {
               <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: hWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:hWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{homeName}</div>
                 <StatsBadge stats={homeStats} rank={homeRank} pts={homePts} qual={homeQual} align="center" />
-                <ProbLine probs={homeProbs} />
               </div>
             </div>
 
@@ -4000,13 +3997,13 @@ export default function App() {
               <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: aWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:aWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{awayName}</div>
                 <StatsBadge stats={awayStats} rank={awayRank} pts={awayPts} qual={awayQual} align="center" />
-                <ProbLine probs={awayProbs} />
               </div>
             </div>
           </div>
 
           {/* ── Steppers + Score ── */}
-          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:16,padding:'20px 24px',borderTop:'1px solid var(--border)',borderBottom:'1px solid var(--border)',background:'var(--dark3)' }}>
+          <div style={{ display:'flex',alignItems:'center',justifyContent:'center',gap:16,padding:'20px 16px',borderTop:'1px solid var(--border)',borderBottom:'1px solid var(--border)',background:'var(--dark3)' }}>
+            <ProbLine probs={homeProbs} />
             {/* Home stepper */}
             <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
               <button onClick={() => setHg(h => Math.min(9, (h??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
@@ -4030,6 +4027,7 @@ export default function App() {
               </div>
               <button onClick={() => setAg(a => a !== null ? Math.max(0, a-1) : null)} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--text-dim)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>−</button>
             </div>
+            <ProbLine probs={awayProbs} />
           </div>
 
           {/* ── Boutons ── */}
