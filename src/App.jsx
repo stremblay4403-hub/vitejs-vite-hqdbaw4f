@@ -1149,13 +1149,14 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
   const confidence = Math.min(1, avgGamesPlayed / 5);
 
   const counts = {};
-  groupCars.forEach(c => { counts[c.id] = { top8: 0, top10: 0, last: 0 }; });
+  groupCars.forEach(c => { counts[c.id] = { top8: 0, top10: 0, mid: 0, last: 0 }; });
 
   if (remaining.length === 0) {
     const final = computeStandings(groupCars, played);
     final.forEach((s, i) => {
       counts[s.id].top8 = i < 8 ? trials : 0;
       counts[s.id].top10 = i < 10 ? trials : 0;
+      counts[s.id].mid = (i >= 10 && i <= 14) ? trials : 0;
       counts[s.id].last = i === final.length - 1 ? trials : 0;
     });
   } else {
@@ -1175,6 +1176,7 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
       final.forEach((s, i) => {
         if (i < 8) counts[s.id].top8++;
         if (i < 10) counts[s.id].top10++;
+        if (i >= 10 && i <= 14) counts[s.id].mid++;
         if (i === final.length - 1) counts[s.id].last++;
       });
     }
@@ -1185,6 +1187,7 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
     result[c.id] = {
       top8: Math.round((counts[c.id].top8 / trials) * 100),
       top10: Math.round((counts[c.id].top10 / trials) * 100),
+      mid: Math.round((counts[c.id].mid / trials) * 100),
       last: Math.round((counts[c.id].last / trials) * 100),
     };
   });
@@ -3935,6 +3938,7 @@ export default function App() {
       const items = [
         { icon: '🏁', val: probs.top8, color: 'var(--green)', bg: 'rgba(39,174,96,0.14)', border: 'rgba(39,174,96,0.4)' },
         { icon: '💰', val: probs.top10, color: 'var(--gold)', bg: 'rgba(212,175,55,0.14)', border: 'rgba(212,175,55,0.4)' },
+        { icon: '➖', val: probs.mid, color: 'var(--text-dim)', bg: 'rgba(255,255,255,0.05)', border: 'rgba(255,255,255,0.18)' },
         { icon: '⚠️', val: probs.last, color: '#e74c3c', bg: 'rgba(192,57,43,0.14)', border: 'rgba(192,57,43,0.4)' },
       ];
       return (
