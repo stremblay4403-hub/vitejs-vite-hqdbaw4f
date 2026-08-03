@@ -6994,14 +6994,15 @@ export default function App() {
     const openDayRef = React.useRef(null);
 
     // Voitures mathématiquement SAFE (ne peuvent plus terminer dernières) — une voiture est safe
-    // si son total actuel dépasse déjà le maximum théorique que n'importe quelle autre voiture
-    // pourrait encore atteindre (tous ses matchs restants gagnés).
+    // si au moins UNE autre voiture ne peut plus mathématiquement la rattraper — même dans le pire
+    // cas pour elle (0 point de plus) et le meilleur cas pour l'autre (tous ses matchs restants gagnés).
+    // Il suffit qu'une seule autre voiture soit garantie de finir derrière, pas toutes.
     const remainingFor = (carId) => relMatches.filter(m => m.homeGoals === null && (m.homeId === carId || m.awayId === carId)).length;
     const safeIds = new Set();
     standings.forEach(s => {
       const others = standings.filter(o => o.id !== s.id);
-      const maxOthers = others.length ? Math.max(...others.map(o => o.pts + remainingFor(o.id) * 3)) : -1;
-      if (standings.length > 0 && s.pts > maxOthers) safeIds.add(s.id);
+      const isSafe = others.some(o => s.pts > o.pts + remainingFor(o.id) * 3);
+      if (isSafe) safeIds.add(s.id);
     });
 
     // Bannière temporaire quand une voiture VIENT de devenir safe (transition détectée)
