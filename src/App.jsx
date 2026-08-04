@@ -8,6 +8,83 @@ const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
 const GROUPS = 8;
 const CARS_PER_GROUP = 18;
+
+// Pays d'origine des marques les plus courantes (code ISO 2 lettres) — sert de valeur
+// par défaut ; peut être corrigé manuellement par marque via db.brandCountries.
+const BRAND_COUNTRIES = {
+  'chevrolet': 'US', 'ford': 'US', 'chrysler': 'US', 'dodge': 'US', 'jeep': 'US', 'ram': 'US',
+  'gmc': 'US', 'cadillac': 'US', 'buick': 'US', 'lincoln': 'US', 'tesla': 'US', 'pontiac': 'US',
+  'oldsmobile': 'US', 'saturn': 'US', 'hummer': 'US', 'plymouth': 'US', 'scion': 'US',
+  'toyota': 'JP', 'honda': 'JP', 'nissan': 'JP', 'mazda': 'JP', 'subaru': 'JP', 'mitsubishi': 'JP',
+  'suzuki': 'JP', 'isuzu': 'JP', 'lexus': 'JP', 'infiniti': 'JP', 'acura': 'JP', 'datsun': 'JP',
+  'bmw': 'DE', 'mercedes-benz': 'DE', 'mercedes': 'DE', 'audi': 'DE', 'volkswagen': 'DE',
+  'porsche': 'DE', 'opel': 'DE', 'smart': 'DE',
+  'hyundai': 'KR', 'kia': 'KR', 'genesis': 'KR',
+  'peugeot': 'FR', 'renault': 'FR', 'citroën': 'FR', 'citroen': 'FR', 'alpine': 'FR', 'bugatti': 'FR',
+  'fiat': 'IT', 'alfa romeo': 'IT', 'ferrari': 'IT', 'lamborghini': 'IT', 'maserati': 'IT', 'pagani': 'IT',
+  'volvo': 'SE', 'koenigsegg': 'SE', 'saab': 'SE',
+  'rolls-royce': 'GB', 'bentley': 'GB', 'aston martin': 'GB', 'jaguar': 'GB', 'land rover': 'GB',
+  'mini': 'GB', 'mclaren': 'GB', 'lotus': 'GB', 'vauxhall': 'GB',
+  'skoda': 'CZ', 'seat': 'ES', 'dacia': 'RO',
+};
+function normalizeBrandKey(brand) {
+  return (brand || '').trim().toLowerCase();
+}
+function flagEmoji(countryCode) {
+  if (!countryCode || countryCode.length !== 2) return '';
+  const A = 0x1F1E6;
+  return String.fromCodePoint(...countryCode.toUpperCase().split('').map(c => A + (c.charCodeAt(0) - 65)));
+}
+const COUNTRY_LIST = [
+  { code:'AF', name:'Afghanistan' }, { code:'ZA', name:'Afrique du Sud' }, { code:'AL', name:'Albanie' },
+  { code:'DZ', name:'Algérie' }, { code:'DE', name:'Allemagne' }, { code:'AD', name:'Andorre' },
+  { code:'AO', name:'Angola' }, { code:'SA', name:'Arabie Saoudite' }, { code:'AR', name:'Argentine' },
+  { code:'AM', name:'Arménie' }, { code:'AU', name:'Australie' }, { code:'AT', name:'Autriche' },
+  { code:'AZ', name:'Azerbaïdjan' }, { code:'BS', name:'Bahamas' }, { code:'BH', name:'Bahreïn' },
+  { code:'BD', name:'Bangladesh' }, { code:'BE', name:'Belgique' }, { code:'BY', name:'Biélorussie' },
+  { code:'BO', name:'Bolivie' }, { code:'BA', name:'Bosnie-Herzégovine' }, { code:'BW', name:'Botswana' },
+  { code:'BR', name:'Brésil' }, { code:'BG', name:'Bulgarie' }, { code:'KH', name:'Cambodge' },
+  { code:'CM', name:'Cameroun' }, { code:'CA', name:'Canada' }, { code:'CL', name:'Chili' },
+  { code:'CN', name:'Chine' }, { code:'CY', name:'Chypre' }, { code:'CO', name:'Colombie' },
+  { code:'KR', name:'Corée du Sud' }, { code:'KP', name:'Corée du Nord' }, { code:'CR', name:'Costa Rica' },
+  { code:'CI', name:'Côte d\'Ivoire' }, { code:'HR', name:'Croatie' }, { code:'CU', name:'Cuba' },
+  { code:'DK', name:'Danemark' }, { code:'EG', name:'Égypte' }, { code:'AE', name:'Émirats Arabes Unis' },
+  { code:'EC', name:'Équateur' }, { code:'ES', name:'Espagne' }, { code:'EE', name:'Estonie' },
+  { code:'US', name:'États-Unis' }, { code:'ET', name:'Éthiopie' }, { code:'FI', name:'Finlande' },
+  { code:'FR', name:'France' }, { code:'GA', name:'Gabon' }, { code:'GE', name:'Géorgie' },
+  { code:'GH', name:'Ghana' }, { code:'GR', name:'Grèce' }, { code:'GT', name:'Guatemala' },
+  { code:'GN', name:'Guinée' }, { code:'HT', name:'Haïti' }, { code:'HN', name:'Honduras' },
+  { code:'HU', name:'Hongrie' }, { code:'IN', name:'Inde' }, { code:'ID', name:'Indonésie' },
+  { code:'IQ', name:'Irak' }, { code:'IR', name:'Iran' }, { code:'IE', name:'Irlande' },
+  { code:'IS', name:'Islande' }, { code:'IL', name:'Israël' }, { code:'IT', name:'Italie' },
+  { code:'JM', name:'Jamaïque' }, { code:'JP', name:'Japon' }, { code:'JO', name:'Jordanie' },
+  { code:'KZ', name:'Kazakhstan' }, { code:'KE', name:'Kenya' }, { code:'KW', name:'Koweït' },
+  { code:'LA', name:'Laos' }, { code:'LV', name:'Lettonie' }, { code:'LB', name:'Liban' },
+  { code:'LY', name:'Libye' }, { code:'LI', name:'Liechtenstein' }, { code:'LT', name:'Lituanie' },
+  { code:'LU', name:'Luxembourg' }, { code:'MK', name:'Macédoine du Nord' }, { code:'MY', name:'Malaisie' },
+  { code:'ML', name:'Mali' }, { code:'MA', name:'Maroc' }, { code:'MU', name:'Maurice' },
+  { code:'MX', name:'Mexique' }, { code:'MD', name:'Moldavie' }, { code:'MC', name:'Monaco' },
+  { code:'MN', name:'Mongolie' }, { code:'ME', name:'Monténégro' }, { code:'MZ', name:'Mozambique' },
+  { code:'MM', name:'Myanmar' }, { code:'NA', name:'Namibie' }, { code:'NP', name:'Népal' },
+  { code:'NI', name:'Nicaragua' }, { code:'NE', name:'Niger' }, { code:'NG', name:'Nigéria' },
+  { code:'NO', name:'Norvège' }, { code:'NZ', name:'Nouvelle-Zélande' }, { code:'OM', name:'Oman' },
+  { code:'UG', name:'Ouganda' }, { code:'UZ', name:'Ouzbékistan' }, { code:'PK', name:'Pakistan' },
+  { code:'PA', name:'Panama' }, { code:'PY', name:'Paraguay' }, { code:'NL', name:'Pays-Bas' },
+  { code:'PE', name:'Pérou' }, { code:'PH', name:'Philippines' }, { code:'PL', name:'Pologne' },
+  { code:'PT', name:'Portugal' }, { code:'QA', name:'Qatar' }, { code:'CD', name:'RD Congo' },
+  { code:'DO', name:'République Dominicaine' }, { code:'CZ', name:'Tchéquie' }, { code:'RO', name:'Roumanie' },
+  { code:'GB', name:'Royaume-Uni' }, { code:'RU', name:'Russie' }, { code:'RW', name:'Rwanda' },
+  { code:'SN', name:'Sénégal' }, { code:'RS', name:'Serbie' }, { code:'SG', name:'Singapour' },
+  { code:'SK', name:'Slovaquie' }, { code:'SI', name:'Slovénie' }, { code:'SO', name:'Somalie' },
+  { code:'SD', name:'Soudan' }, { code:'LK', name:'Sri Lanka' }, { code:'SE', name:'Suède' },
+  { code:'CH', name:'Suisse' }, { code:'SY', name:'Syrie' }, { code:'TJ', name:'Tadjikistan' },
+  { code:'TW', name:'Taïwan' }, { code:'TZ', name:'Tanzanie' }, { code:'TD', name:'Tchad' },
+  { code:'TH', name:'Thaïlande' }, { code:'TG', name:'Togo' }, { code:'TT', name:'Trinité-et-Tobago' },
+  { code:'TN', name:'Tunisie' }, { code:'TM', name:'Turkménistan' }, { code:'TR', name:'Turquie' },
+  { code:'UA', name:'Ukraine' }, { code:'UY', name:'Uruguay' }, { code:'VE', name:'Venezuela' },
+  { code:'VN', name:'Viêt Nam' }, { code:'YE', name:'Yémen' }, { code:'ZM', name:'Zambie' },
+  { code:'ZW', name:'Zimbabwe' },
+].sort((a, b) => a.name.localeCompare(b.name));
 const TOTAL_CARS = GROUPS * CARS_PER_GROUP; // 144
 
 const CAR_ALIASES = {
@@ -3888,6 +3965,14 @@ export default function App() {
 
   function getCarBrand(carId) { return db.brands?.[carId] || ''; }  function setCarBrand(carId, brand) {
     setDb(d => ({ ...d, brands: { ...(d.brands || {}), [carId]: brand } }));
+  }
+  function getBrandCountry(brand) {
+    const override = db.brandCountries?.[brand];
+    if (override) return override;
+    return BRAND_COUNTRIES[normalizeBrandKey(brand)] || '';
+  }
+  function setBrandCountry(brand, code) {
+    setDb(d => ({ ...d, brandCountries: { ...(d.brandCountries || {}), [brand]: code } }));
   }
 
   function BrandModal() {
@@ -11885,7 +11970,7 @@ export default function App() {
 
   function MarquesView({ subTab }) {
     if (brandDetail) {
-      return <BrandDetailPage brand={brandDetail} />;
+      return <BrandDetailPage key={brandDetail} brand={brandDetail} />;
     }
 
     if (!brandStats.length) {
@@ -11900,6 +11985,8 @@ export default function App() {
     }
 
     function BrandDetailPage({ brand }) {
+      const [showCountryPicker, setShowCountryPicker] = useState(false);
+      const [countrySearch, setCountrySearch] = useState('');
       const b = brandStats.find(x => x.brand === brand);
       if (!b) {
         return (
@@ -11912,6 +11999,11 @@ export default function App() {
       const sorted = [...b.cars].sort((x, y) => brandDetailSort === 'titres'
         ? (y.titles - x.titles) || (y.total - x.total)
         : (y.total - x.total) || (y.titles - x.titles));
+      const countryCode = getBrandCountry(brand);
+      const countryName = COUNTRY_LIST.find(c => c.code === countryCode)?.name || '';
+      const filteredCountries = countrySearch.trim()
+        ? COUNTRY_LIST.filter(c => c.name.toLowerCase().includes(countrySearch.trim().toLowerCase()))
+        : COUNTRY_LIST;
 
       return (
         <div>
@@ -11920,7 +12012,37 @@ export default function App() {
           </div>
 
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
+            <div style={{ display:'flex',alignItems:'center',gap:10,justifyContent:'center' }}>
+              {countryCode && <span style={{ fontSize:30,lineHeight:1 }}>{flagEmoji(countryCode)}</span>}
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
+            </div>
+            {!isPublicMode && (
+              <button className="btn btn-dark btn-sm" style={{ fontSize:11 }} onClick={() => setShowCountryPicker(v => !v)}>
+                🏳️ {countryCode ? `${countryName} — modifier` : 'Ajouter le pays d\'origine'}
+              </button>
+            )}
+            {showCountryPicker && !isPublicMode && (
+              <div style={{ width:'100%',maxWidth:340,padding:'6px 0' }}>
+                <input
+                  value={countrySearch}
+                  onChange={e => setCountrySearch(e.target.value)}
+                  placeholder="Rechercher un pays..."
+                  autoFocus
+                  style={{ width:'100%',marginBottom:8,fontSize:14,textAlign:'center' }}
+                />
+                <div style={{ display:'flex',flexWrap:'wrap',gap:6,justifyContent:'center',maxHeight:220,overflowY:'auto',WebkitOverflowScrolling:'touch' }}>
+                  {filteredCountries.map(c => (
+                    <button key={c.code} className={`btn btn-xs ${countryCode === c.code ? 'btn-gold' : 'btn-dark'}`}
+                      onClick={() => { setBrandCountry(brand, c.code); setShowCountryPicker(false); setCountrySearch(''); }}>
+                      {flagEmoji(c.code)} {c.name}
+                    </button>
+                  ))}
+                  {filteredCountries.length === 0 && (
+                    <div style={{ fontSize:12,color:'var(--text-dim)',padding:10 }}>Aucun pays trouvé.</div>
+                  )}
+                </div>
+              </div>
+            )}
             <div style={{ display:'flex',gap:14,fontSize:12,color:'var(--text-dim)',flexWrap:'wrap',justifyContent:'center' }}>
               <span>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
               <span>{b.totalPts} pts annexes</span>
@@ -12047,6 +12169,7 @@ export default function App() {
             <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { setBrandDetail(b.brand); setBrandDetailSort('points'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
                 <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                 {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
