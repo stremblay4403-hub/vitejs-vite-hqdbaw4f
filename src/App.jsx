@@ -1185,10 +1185,10 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
   const result = {};
   groupCars.forEach(c => {
     result[c.id] = {
-      top8: Math.round((counts[c.id].top8 / trials) * 100),
-      top10: Math.round((counts[c.id].top10 / trials) * 100),
-      mid: Math.round((counts[c.id].mid / trials) * 100),
-      last: Math.round((counts[c.id].last / trials) * 100),
+      top8: Math.round((counts[c.id].top8 / trials) * 1000) / 10,
+      top10: Math.round((counts[c.id].top10 / trials) * 1000) / 10,
+      mid: Math.round((counts[c.id].mid / trials) * 1000) / 10,
+      last: Math.round((counts[c.id].last / trials) * 1000) / 10,
     };
   });
   return result;
@@ -3942,15 +3942,15 @@ export default function App() {
         { icon: '⚠️', val: probs.last, color: '#e74c3c', bg: 'rgba(192,57,43,0.14)', border: 'rgba(192,57,43,0.4)' },
       ];
       return (
-        <div style={{ display:'flex', flexDirection:'column', gap:6, width:64 }}>
+        <div style={{ display:'flex', flexDirection:'column', gap:6, width:72 }}>
           {items.map((it, i) => (
             <div key={i} style={{
               display:'flex', flexDirection:'column', alignItems:'center', gap:1,
               background:it.bg, border:`1px solid ${it.border}`, borderRadius:6, padding:'5px 2px'
             }}>
               <span style={{ fontSize:13 }}>{it.icon}</span>
-              <span style={{ fontSize:15, fontFamily:"'Bebas Neue',sans-serif", color:it.color, lineHeight:1 }}>
-                {it.val}%
+              <span style={{ fontSize:13, fontFamily:"'Bebas Neue',sans-serif", color:it.color, lineHeight:1, whiteSpace:'nowrap' }}>
+                {it.val.toFixed(1)}%
               </span>
             </div>
           ))}
@@ -6345,6 +6345,19 @@ export default function App() {
                             <div key={m.id}
                               onClick={() => {
                                 const groupProbs = simulateGroupProbabilities(groupCars, matches);
+                                // Si mathématiquement confirmé (badges X/P/!), on fige la proba à 100% ou 0%
+                                // au lieu de laisser l'estimation Monte Carlo (qui peut donner 97-99%).
+                                [m.homeId, m.awayId].forEach(id => {
+                                  const p = groupProbs[id];
+                                  if (!p) return;
+                                  if (quals.ELIM.has(id)) {
+                                    p.top8 = 0; p.top10 = 0; p.mid = 0; p.last = 100;
+                                  } else if (quals.X.has(id)) {
+                                    p.top8 = 100; p.top10 = 100; p.mid = 0; p.last = 0;
+                                  } else if (quals.P.has(id)) {
+                                    p.top10 = 100; p.mid = 0; p.last = 0;
+                                  }
+                                });
                                 openMatchModal({
                                   homeName: home?.name, awayName: away?.name,
                                   homePhoto, awayPhoto,
