@@ -5782,6 +5782,20 @@ export default function App() {
       });
     });
 
+    // 3) Ajoute le bonus historique pré-app (l'ère d'avant S33, rattaché par nom)
+    LEAGUES.forEach(l => {
+      const histLeagueData = getHistLeague(l);
+      const nameMap = db.nameMap?.[l] || {};
+      Object.values(perId).forEach(car => {
+        const histLookupName = nameMap[car.id] || car.name;
+        const found = histLeagueData.find(c => namesMatch(c.name, histLookupName) || namesMatch(c.name, car.name));
+        if (found) {
+          car.total += found.total || 0;
+          car.titles += (found.champions || []).length;
+        }
+      });
+    });
+
     const stats = {};
     Object.values(perId).forEach(car => {
       const brand = getCarBrand(car.id);
@@ -5796,7 +5810,7 @@ export default function App() {
       .map(s => ({ ...s, cars: s.cars.sort((a, b) => b.total - a.total) }))
       .sort((a, b) => b.totalPts - a.totalPts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.seasons, db.brands, currentSeason]);
+  }, [db.seasons, db.brands, db.nameMap, db.histOverrides, currentSeason]);
 
   function Dashboard() {
     return (
