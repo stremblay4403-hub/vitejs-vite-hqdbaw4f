@@ -3889,10 +3889,6 @@ export default function App() {
   function getCarBrand(carId) { return db.brands?.[carId] || ''; }  function setCarBrand(carId, brand) {
     setDb(d => ({ ...d, brands: { ...(d.brands || {}), [carId]: brand } }));
   }
-  function getBrandLogo(brand) { return db.brandLogos?.[brand] || ''; }
-  function setBrandLogo(brand, url) {
-    setDb(d => ({ ...d, brandLogos: { ...(d.brandLogos || {}), [brand]: url } }));
-  }
 
   function BrandModal() {
     const [brand, setBrand] = useState(brandModal ? getCarBrand(brandModal.carId) : '');
@@ -11916,14 +11912,6 @@ export default function App() {
       const sorted = [...b.cars].sort((x, y) => brandDetailSort === 'titres'
         ? (y.titles - x.titles) || (y.total - x.total)
         : (y.total - x.total) || (y.titles - x.titles));
-      const logo = getBrandLogo(brand);
-
-      async function handleLogoUpload(e) {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const url = await uploadToCloudinary(file);
-        if (url) setBrandLogo(brand, url);
-      }
 
       return (
         <div>
@@ -11932,17 +11920,6 @@ export default function App() {
           </div>
 
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
-            <div style={{ width:84,height:84,borderRadius:'50%',overflow:'hidden',background:'var(--dark3)',border:'2px solid var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
-              {logo
-                ? <img src={logo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
-                : <span style={{ fontSize:32,fontFamily:"'Bebas Neue',sans-serif",color:'var(--gold-dim)' }}>{brand.charAt(0)}</span>}
-              {!isPublicMode && (
-                <label style={{ position:'absolute',bottom:-2,right:-2,background:'var(--gold)',color:'#000',borderRadius:'50%',width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,cursor:'pointer',border:'2px solid var(--dark2)' }}>
-                  📷
-                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleLogoUpload} />
-                </label>
-              )}
-            </div>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
             <div style={{ display:'flex',gap:14,fontSize:12,color:'var(--text-dim)',flexWrap:'wrap',justifyContent:'center' }}>
               <span>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
@@ -12070,9 +12047,6 @@ export default function App() {
             <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { setBrandDetail(b.brand); setBrandDetailSort('points'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
-                {getBrandLogo(b.brand) ? (
-                  <img src={getBrandLogo(b.brand)} alt="" style={{ width:26,height:26,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
-                ) : null}
                 <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                 {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
