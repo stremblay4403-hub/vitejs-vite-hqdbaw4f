@@ -3882,13 +3882,15 @@ export default function App() {
             placeholder="Ex: Toyota, Ford, Porsche..."
             autoFocus
             style={{ width:'100%',marginBottom:16,fontSize:15,textAlign:'center' }}
-            onKeyDown={e => { if (e.key === 'Enter' && brand.trim()) { setCarBrand(carId, brand.trim()); onConfirm && onConfirm(brand.trim()); setBrandModal(null); } }}
+            onKeyDown={e => { if (e.key === 'Enter' && brand.trim()) { lockScroll(); setCarBrand(carId, brand.trim()); onConfirm && onConfirm(brand.trim()); setBrandModal(null); requestAnimationFrame(() => unlockScroll()); } }}
           />
           <div style={{ display:'flex',gap:10 }}>
-            <button className="btn btn-dark" style={{ flex:1 }} onClick={() => setBrandModal(null)}>Annuler</button>
+            <button className="btn btn-dark" style={{ flex:1 }} onClick={() => { lockScroll(); setBrandModal(null); requestAnimationFrame(() => unlockScroll()); }}>Annuler</button>
             <button className="btn btn-gold" style={{ flex:1 }} onClick={() => {
+              lockScroll();
               if (brand.trim()) { setCarBrand(carId, brand.trim()); onConfirm && onConfirm(brand.trim()); }
               setBrandModal(null);
+              requestAnimationFrame(() => unlockScroll());
             }}>✓ Confirmer</button>
           </div>
         </div>
@@ -4521,6 +4523,7 @@ export default function App() {
         });
         const champCar = getCar(leagueName, champId);
         setTimeout(() => {
+          lockScroll();
           setBrandModal({
             carId: champId,
             carName: champCar?.name || '',
@@ -4530,6 +4533,7 @@ export default function App() {
               setCelebrationModal({ carId: champId, leagueName, type: 'playoff' });
             }
           });
+          requestAnimationFrame(() => unlockScroll());
         }, 100);
       }
     }
@@ -5750,7 +5754,7 @@ export default function App() {
                           <span style={{ fontSize:13,color:'var(--text-dim)',textAlign:'center',marginTop:2 }}>{getCarBrand(champId)}</span>
                         )}
                         <button className="btn btn-dark btn-sm" style={{ marginTop:8,fontSize:11 }}
-                          onClick={() => setBrandModal({ carId: champId, carName: champ.name, photo: getCarPhoto(champId) })}>
+                          onClick={() => { lockScroll(); setBrandModal({ carId: champId, carName: champ.name, photo: getCarPhoto(champId) }); requestAnimationFrame(() => unlockScroll()); }}>
                           {!isPublicMode && <>✏️ {getCarBrand(champId) ? 'Modifier' : 'Ajouter la marque'}</>}
                         </button>
                       </>
@@ -11723,7 +11727,7 @@ export default function App() {
                             </span>
                             {!isPublicMode && (
                               <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:9,flexShrink:0,opacity:0.85 }}
-                                onClick={e => { e.stopPropagation(); c.carId && setBrandModal({ carId: c.carId, carName: c.name, photo }); }}>
+                                onClick={e => { e.stopPropagation(); if (!c.carId) return; lockScroll(); setBrandModal({ carId: c.carId, carName: c.name, photo }); requestAnimationFrame(() => unlockScroll()); }}>
                                 🏷️ {getCarBrand(c.carId) ? '' : 'Marque'}
                               </button>
                             )}
@@ -12869,7 +12873,7 @@ export default function App() {
                             <div style={{ fontSize:20,color:'#555',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{getCarBrand(entry.id)}</div>
                           )}
                           <button className="btn btn-dark" style={{ fontSize:12,padding:'4px 10px' }}
-                            onClick={() => setBrandModal({ carId: entry.id, carName: entry.name, photo: entry.photo })}>
+                            onClick={() => { lockScroll(); setBrandModal({ carId: entry.id, carName: entry.name, photo: entry.photo }); requestAnimationFrame(() => unlockScroll()); }}>
                             {!isPublicMode && <>✏️ {getCarBrand(entry.id) ? 'Modifier' : 'Marque'}</>}
                           </button>
                           <div style={{ fontSize:15,color:color,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{entry.league.replace('Voitures ','V')}</div>
@@ -13066,6 +13070,7 @@ export default function App() {
                 <div style={{ padding:12, textAlign:'center' }}>
                   <button className="btn btn-gold" style={{ width:'100%', padding:'14px', fontSize:16, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}
                     onClick={() => {
+                      lockScroll();
                       setBrandModal({
                         carId: champId,
                         carName: champName,
@@ -13075,6 +13080,7 @@ export default function App() {
                           setCelebrationModal({ carId: champId, leagueName: champLeague, type: 'tc' });
                         }
                       });
+                      requestAnimationFrame(() => unlockScroll());
                     }}>
                     🏆 Enregistrer le Champion TC
                   </button>
