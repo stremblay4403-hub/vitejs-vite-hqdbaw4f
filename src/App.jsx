@@ -2927,7 +2927,8 @@ export default function App() {
   const [marquesSubTab, setMarquesSubTab] = useState('titres');
   const [openBrandTitres, setOpenBrandTitres] = useState(null);
   const [openBrandPrincipales, setOpenBrandPrincipales] = useState(null);
-  const [openBrandPoints, setOpenBrandPoints] = useState(null);
+  const [brandDetail, setBrandDetail] = useState(null);
+  const [brandDetailSort, setBrandDetailSort] = useState('points');
   // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
   const [voituresSection, setVoituresSection] = useState('actifs');
   const [voituresSearch, setVoituresSearch] = useState('');
@@ -3887,6 +3888,10 @@ export default function App() {
 
   function getCarBrand(carId) { return db.brands?.[carId] || ''; }  function setCarBrand(carId, brand) {
     setDb(d => ({ ...d, brands: { ...(d.brands || {}), [carId]: brand } }));
+  }
+  function getBrandLogo(brand) { return db.brandLogos?.[brand] || ''; }
+  function setBrandLogo(brand, url) {
+    setDb(d => ({ ...d, brandLogos: { ...(d.brandLogos || {}), [brand]: url } }));
   }
 
   function BrandModal() {
@@ -11883,12 +11888,85 @@ export default function App() {
   allCarsViewImplRef.current = AllCarsView;
 
   function MarquesView({ subTab }) {
+    if (brandDetail) {
+      return <BrandDetailPage brand={brandDetail} />;
+    }
+
     if (!brandStats.length) {
       return (
         <div>
           <div className="section-title">Marques</div>
           <div className="card" style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
             Aucune marque taguée pour le moment. Va dans l'onglet Voitures pour commencer.
+          </div>
+        </div>
+      );
+    }
+
+    function BrandDetailPage({ brand }) {
+      const b = brandStats.find(x => x.brand === brand);
+      if (!b) {
+        return (
+          <div>
+            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => setBrandDetail(null)}>← Retour</button>
+            <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Marque introuvable.</div>
+          </div>
+        );
+      }
+      const sorted = [...b.cars].sort((x, y) => brandDetailSort === 'titres'
+        ? (y.titles - x.titles) || (y.total - x.total)
+        : (y.total - x.total) || (y.titles - x.titles));
+      const logo = getBrandLogo(brand);
+
+      async function handleLogoUpload(e) {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const url = await uploadToCloudinary(file);
+        if (url) setBrandLogo(brand, url);
+      }
+
+      return (
+        <div>
+          <div style={{ padding:'10px 12px' }}>
+            <button className="btn btn-dark btn-sm" onClick={() => setBrandDetail(null)}>← Retour aux marques</button>
+          </div>
+
+          <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
+            <div style={{ width:84,height:84,borderRadius:'50%',overflow:'hidden',background:'var(--dark3)',border:'2px solid var(--gold-dim)',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}>
+              {logo
+                ? <img src={logo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
+                : <span style={{ fontSize:32,fontFamily:"'Bebas Neue',sans-serif",color:'var(--gold-dim)' }}>{brand.charAt(0)}</span>}
+              {!isPublicMode && (
+                <label style={{ position:'absolute',bottom:-2,right:-2,background:'var(--gold)',color:'#000',borderRadius:'50%',width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',fontSize:14,cursor:'pointer',border:'2px solid var(--dark2)' }}>
+                  📷
+                  <input type="file" accept="image/*" style={{ display:'none' }} onChange={handleLogoUpload} />
+                </label>
+              )}
+            </div>
+            <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
+            <div style={{ display:'flex',gap:14,fontSize:12,color:'var(--text-dim)',flexWrap:'wrap',justifyContent:'center' }}>
+              <span>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
+              <span>{b.totalPts} pts annexes</span>
+              {b.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {b.titles} titre{b.titles > 1 ? 's' : ''}</span>}
+            </div>
+          </div>
+
+          <div style={{ display:'flex',gap:8,padding:'0 12px 10px' }}>
+            <button className={`btn btn-sm ${brandDetailSort === 'points' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setBrandDetailSort('points')}>Trier par Points</button>
+            <button className={`btn btn-sm ${brandDetailSort === 'titres' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setBrandDetailSort('titres')}>Trier par Titres</button>
+          </div>
+
+          <div className="card" style={{ padding:0,overflow:'hidden' }}>
+            {sorted.map((c, i) => (
+              <LeaderboardRow key={c.id}
+                rank={i + 1} rankDiff={null}
+                name={c.name} photo={getCarPhoto(c.id)}
+                badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
+                pts={brandDetailSort === 'titres' ? c.titles : c.total}
+                onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
+              />
+            ))}
           </div>
         </div>
       );
@@ -11988,36 +12066,24 @@ export default function App() {
       <div>
         <div className="section-title">Marques — Points Annexes</div>
         <div className="card" style={{ padding:8 }}>
-          {brandStats.map(b => {
-            const isOpen = openBrandPoints === b.brand;
-            return (
-              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
-                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
-                  onClick={() => setOpenBrandPoints(isOpen ? null : b.brand)}>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                  {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
-                  <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
-                  <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
-                </div>
-                <div style={{ height:3,background:'var(--dark2)' }}>
-                  <div style={{ height:'100%',width:`${Math.max(4, (b.totalPts / maxPts) * 100)}%`,background:'var(--gold)' }} />
-                </div>
-                {isOpen && (
-                  <div style={{ padding:'6px 12px 10px' }}>
-                    {b.cars.map(c => (
-                      <div key={c.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderTop:'1px solid var(--border)',cursor: c.league ? 'pointer' :'default' }}
-                        onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
-                        <span style={{ fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</span>
-                        {c.titles > 0 && <span style={{ fontSize:11,color:'var(--gold)' }}>🏆{c.titles}</span>}
-                        <span style={{ fontSize:13,color:'var(--text-dim)' }}>{c.total} pts</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          {brandStats.map(b => (
+            <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+              onClick={() => { setBrandDetail(b.brand); setBrandDetailSort('points'); }}>
+              <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                {getBrandLogo(b.brand) ? (
+                  <img src={getBrandLogo(b.brand)} alt="" style={{ width:26,height:26,borderRadius:'50%',objectFit:'cover',flexShrink:0 }} />
+                ) : null}
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
+                <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
+                <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
               </div>
-            );
-          })}
+              <div style={{ height:3,background:'var(--dark2)' }}>
+                <div style={{ height:'100%',width:`${Math.max(4, (b.totalPts / maxPts) * 100)}%`,background:'var(--gold)' }} />
+              </div>
+            </div>
+          ))}
         </div>
       </div>
     );
