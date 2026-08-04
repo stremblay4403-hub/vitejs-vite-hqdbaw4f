@@ -2897,6 +2897,30 @@ export default function App() {
   const [relegationModal, setRelegationModal] = useState(null);
   const [seasonTrophiesModal, setSeasonTrophiesModal] = useState(null);
   const [brandModal, setBrandModal] = useState(null);
+  const [brandQueue, setBrandQueue] = useState([]);
+
+  // Démarre une série : ouvre la 1ère voiture de la liste, garde le reste en file
+  function startBrandQueue(list) {
+    if (!list.length) return;
+    const [first, ...rest] = list;
+    setBrandModal({ carId: first.carId, carName: first.carName, photo: first.photo });
+    setBrandQueue(rest);
+  }
+  // Passe à la voiture suivante de la file (ou ferme s'il n'en reste plus)
+  function advanceBrandQueue() {
+    if (brandQueue.length > 0) {
+      const [next, ...rest] = brandQueue;
+      setBrandQueue(rest);
+      setBrandModal({ carId: next.carId, carName: next.carName, photo: next.photo });
+    } else {
+      setBrandModal(null);
+    }
+  }
+  // Arrête complètement la série en cours
+  function stopBrandQueue() {
+    setBrandModal(null);
+    setBrandQueue([]);
+  }
   const [histSubTab, setHistSubTab] = useState('historique');
   // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
   const [voituresSection, setVoituresSection] = useState('actifs');
@@ -3861,17 +3885,45 @@ export default function App() {
 
   function BrandModal() {
     const [brand, setBrand] = useState(brandModal ? getCarBrand(brandModal.carId) : '');
+
+    useEffect(() => {
+      setBrand(brandModal ? getCarBrand(brandModal.carId) : '');
+    }, [brandModal?.carId]);
+
     if (!brandModal) return null;
     const { carId, carName, photo, onConfirm } = brandModal;
+    const remaining = brandQueue.length;
+
+    function confirmAndAdvance() {
+      lockScroll();
+      if (brand.trim()) { setCarBrand(carId, brand.trim()); onConfirm && onConfirm(brand.trim()); }
+      advanceBrandQueue();
+      requestAnimationFrame(() => unlockScroll());
+    }
+    function skipToNext() {
+      lockScroll();
+      advanceBrandQueue();
+      requestAnimationFrame(() => unlockScroll());
+    }
+    function stop() {
+      lockScroll();
+      stopBrandQueue();
+      requestAnimationFrame(() => unlockScroll());
+    }
 
   return (
       <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.88)',zIndex:6000,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
-        onClick={() => setBrandModal(null)}>
+        onClick={stop}>
         <div style={{ background:'var(--dark2)',border:'1px solid var(--gold-dim)',borderRadius:8,width:'100%',maxWidth:340,padding:24,boxShadow:'0 0 40px rgba(201,168,76,0.15)' }}
           onClick={e => e.stopPropagation()}>
-          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,marginBottom:16,textAlign:'center' }}>
+          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,marginBottom:remaining > 0 ? 2 : 16,textAlign:'center' }}>
             MARQUE DE LA VOITURE
           </div>
+          {remaining > 0 && (
+            <div style={{ fontSize:12,color:'var(--text-dim)',textAlign:'center',marginBottom:14 }}>
+              {remaining} restante{remaining > 1 ? 's' : ''} après celle-ci
+            </div>
+          )}
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:10,marginBottom:20 }}>
             <CarThumb photo={photo} size={80} />
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,color:'var(--text)' }}>{carName}</div>
@@ -3882,16 +3934,16 @@ export default function App() {
             placeholder="Ex: Toyota, Ford, Porsche..."
             autoFocus
             style={{ width:'100%',marginBottom:16,fontSize:15,textAlign:'center' }}
-            onKeyDown={e => { if (e.key === 'Enter' && brand.trim()) { lockScroll(); setCarBrand(carId, brand.trim()); onConfirm && onConfirm(brand.trim()); setBrandModal(null); requestAnimationFrame(() => unlockScroll()); } }}
+            onKeyDown={e => { if (e.key === 'Enter' && brand.trim()) confirmAndAdvance(); }}
           />
+          {remaining > 0 && (
+            <button className="btn btn-dark btn-sm" style={{ width:'100%',marginBottom:10,opacity:0.8 }} onClick={skipToNext}>
+              ⏭ Passer cette voiture
+            </button>
+          )}
           <div style={{ display:'flex',gap:10 }}>
-            <button className="btn btn-dark" style={{ flex:1 }} onClick={() => { lockScroll(); setBrandModal(null); requestAnimationFrame(() => unlockScroll()); }}>Annuler</button>
-            <button className="btn btn-gold" style={{ flex:1 }} onClick={() => {
-              lockScroll();
-              if (brand.trim()) { setCarBrand(carId, brand.trim()); onConfirm && onConfirm(brand.trim()); }
-              setBrandModal(null);
-              requestAnimationFrame(() => unlockScroll());
-            }}>✓ Confirmer</button>
+            <button className="btn btn-dark" style={{ flex:1 }} onClick={stop}>{remaining > 0 ? 'Arrêter' : 'Annuler'}</button>
+            <button className="btn btn-gold" style={{ flex:1 }} onClick={confirmAndAdvance}>✓ {remaining > 0 ? 'Suivant' : 'Confirmer'}</button>
           </div>
         </div>
       </div>
@@ -11645,6 +11697,25 @@ export default function App() {
               <button className={`btn btn-xs ${noBrandOnly ? 'btn-gold' : 'btn-dark'}`}
                 onClick={() => setNoBrandOnly(v => !v)}>
                 🏷️ Sans marque
+              </button>
+            )}
+            {!isPublicMode && (
+              <button className="btn btn-xs btn-gold"
+                onClick={() => {
+                  const list = [];
+                  [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
+                    const leagueCars = currentSeason.leagues[league]?.cars || [];
+                    leagueCars.forEach(c => {
+                      if (c.id && !getCarBrand(c.id)) {
+                        list.push({ carId: c.id, carName: c.name, photo: getCarPhoto(c.id) });
+                      }
+                    });
+                  });
+                  list.sort((a, b) => a.carName.localeCompare(b.carName));
+                  if (!list.length) { alert('Toutes les voitures ont déjà une marque ! 🎉'); return; }
+                  startBrandQueue(list);
+                }}>
+                ▶️ Ajouter les marques
               </button>
             )}
             {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
