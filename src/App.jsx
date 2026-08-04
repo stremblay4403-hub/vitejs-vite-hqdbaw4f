@@ -5753,24 +5753,50 @@ export default function App() {
   }
 
   const brandStats = React.useMemo(() => {
-    const stats = {};
-    [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
-      computeAllSeasonsBonus(l).forEach(entry => {
-        const brand = getCarBrand(entry.id);
-        if (!brand) return;
-        if (!stats[brand]) stats[brand] = { brand, totalPts: 0, carCount: 0, titles: 0, cars: [] };
-        const titleCount = (entry.appChampions?.length || 0) + (entry.histChampions?.length || 0);
-        stats[brand].totalPts += entry.total;
-        stats[brand].carCount += 1;
-        stats[brand].titles += titleCount;
-        stats[brand].cars.push({ id: entry.id, name: entry.name, total: entry.total, titles: titleCount, league: l });
+    const perId = {};
+    const allAppLeagues = [...LEAGUES, ...AUXILIARY_LEAGUES];
+
+    // 1) Recense toutes les voitures actuellement actives (univers de comptage, ligue actuelle)
+    allAppLeagues.forEach(lName => {
+      const league = currentSeason.leagues[lName];
+      if (!league) return;
+      league.cars.forEach(car => {
+        if (!car.id) return;
+        perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, league: lName };
       });
+    });
+
+    // 2) Balaie toute la carrière (toutes saisons, toutes ligues) pour accumuler
+    //    les points annexes et titres de chaque voiture, peu importe où elle est rendue aujourd'hui
+    allAppLeagues.forEach(lName => {
+      db.seasons.forEach(s => {
+        const league = s.leagues[lName];
+        if (!league) return;
+        const bp = computeBonusPoints(s, lName);
+        const champId = s.champions?.[lName];
+        league.cars.forEach(car => {
+          if (!perId[car.id]) return;
+          perId[car.id].total += bp[car.id] || 0;
+          if (champId === car.id) perId[car.id].titles += 1;
+        });
+      });
+    });
+
+    const stats = {};
+    Object.values(perId).forEach(car => {
+      const brand = getCarBrand(car.id);
+      if (!brand) return;
+      if (!stats[brand]) stats[brand] = { brand, totalPts: 0, carCount: 0, titles: 0, cars: [] };
+      stats[brand].totalPts += car.total;
+      stats[brand].carCount += 1;
+      stats[brand].titles += car.titles;
+      stats[brand].cars.push(car);
     });
     return Object.values(stats)
       .map(s => ({ ...s, cars: s.cars.sort((a, b) => b.total - a.total) }))
       .sort((a, b) => b.totalPts - a.totalPts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [db.seasons, db.brands, db.nameMap, db.histOverrides, currentSeason]);
+  }, [db.seasons, db.brands, currentSeason]);
 
   function Dashboard() {
     return (
