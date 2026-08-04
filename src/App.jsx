@@ -2754,6 +2754,8 @@ export default function App() {
   const StableSuccesseursView = React.useRef((props) => successeursViewImplRef.current ? successeursViewImplRef.current(props) : null).current;
   const allCarsViewImplRef = React.useRef(null);
   const StableAllCarsView = React.useRef((props) => allCarsViewImplRef.current ? allCarsViewImplRef.current(props) : null).current;
+  const marquesViewImplRef = React.useRef(null);
+  const StableMarquesView = React.useRef((props) => marquesViewImplRef.current ? marquesViewImplRef.current(props) : null).current;
   const voituresViewImplRef = React.useRef(null);
   const StableVoituresView = React.useRef((props) => voituresViewImplRef.current ? voituresViewImplRef.current(props) : null).current;
   const comparaisonViewImplRef = React.useRef(null);
@@ -2922,6 +2924,10 @@ export default function App() {
     setBrandQueue([]);
   }
   const [histSubTab, setHistSubTab] = useState('historique');
+  const [marquesSubTab, setMarquesSubTab] = useState('titres');
+  const [openBrandTitres, setOpenBrandTitres] = useState(null);
+  const [openBrandPrincipales, setOpenBrandPrincipales] = useState(null);
+  const [openBrandPoints, setOpenBrandPoints] = useState(null);
   // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
   const [voituresSection, setVoituresSection] = useState('actifs');
   const [voituresSearch, setVoituresSearch] = useState('');
@@ -11578,8 +11584,6 @@ export default function App() {
     const [editName, setEditName] = useState('');
     const [ripSearch, setRipSearch] = useState('');
     const [noBrandOnly, setNoBrandOnly] = useState(false);
-    const [showBrandStats, setShowBrandStats] = useState(false);
-    const [openBrand, setOpenBrand] = useState(null);
 
     const rip = React.useMemo(() => {
       return [
@@ -11655,51 +11659,6 @@ export default function App() {
     const displayLetter = activeLetter;
 
     const displayCars = activeLetter === 'TOUS' ? filtered : (grouped[activeLetter] || []);
-
-    function BrandStatsPanel() {
-      if (!brandStats.length) {
-        return (
-          <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
-            Aucune marque taguée pour le moment.
-          </div>
-        );
-      }
-      const maxPts = brandStats[0].totalPts || 1;
-      return (
-        <div style={{ padding:8 }}>
-          {brandStats.map(b => {
-            const isOpen = openBrand === b.brand;
-            return (
-              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
-                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
-                  onClick={() => setOpenBrand(isOpen ? null : b.brand)}>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                  {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
-                  <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
-                  <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
-                </div>
-                <div style={{ height:3,background:'var(--dark2)' }}>
-                  <div style={{ height:'100%',width:`${Math.max(4, (b.totalPts / maxPts) * 100)}%`,background:'var(--gold)' }} />
-                </div>
-                {isOpen && (
-                  <div style={{ padding:'6px 12px 10px' }}>
-                    {b.cars.map(c => (
-                      <div key={c.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderTop:'1px solid var(--border)',cursor: c.league ? 'pointer' :'default' }}
-                        onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
-                        <span style={{ fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</span>
-                        {c.titles > 0 && <span style={{ fontSize:11,color:'var(--gold)' }}>🏆{c.titles}</span>}
-                        <span style={{ fontSize:13,color:'var(--text-dim)' }}>{c.total} pts</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
 
     return (
       <div>
@@ -11785,11 +11744,7 @@ export default function App() {
                 ▶️ Ajouter les marques
               </button>
             )}
-            <button className={`btn btn-xs ${showBrandStats ? 'btn-gold' : 'btn-dark'}`}
-              onClick={() => setShowBrandStats(v => !v)}>
-              📊 Stats par marque
-            </button>
-            {!showBrandStats && ['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
+            {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
               <button key={l} onClick={() => setLeagueFilter(l)}
                 className={`btn btn-xs ${leagueFilter === l ? 'btn-gold' : 'btn-dark'}`}
                 style={{ borderLeft:l !== 'Toutes' ? `3px solid ${leagueColors[l] || '#9b59b6'}` :undefined }}>
@@ -11798,9 +11753,6 @@ export default function App() {
             ))}
           </div>
 
-          {showBrandStats ? (
-          <BrandStatsPanel />
-          ) : (<>
           {/* Barre alphabet */}
           <div style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
             <button className="btn btn-xs"
@@ -11883,13 +11835,154 @@ export default function App() {
               })}
             </div>
           </div>
-          </>)}
         </div>
         )} {/* fin ternaire ripTab */}
       </div>
     );
   }
   allCarsViewImplRef.current = AllCarsView;
+
+  function MarquesView({ subTab }) {
+    if (!brandStats.length) {
+      return (
+        <div>
+          <div className="section-title">Marques</div>
+          <div className="card" style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
+            Aucune marque taguée pour le moment. Va dans l'onglet Voitures pour commencer.
+          </div>
+        </div>
+      );
+    }
+
+    if (subTab === 'titres') {
+      const brandsWithTitles = brandStats.filter(b => b.titles > 0).sort((a, b) => b.titles - a.titles);
+      return (
+        <div>
+          <div className="section-title">Marques — Titres</div>
+          <div className="card" style={{ padding:8 }}>
+            {brandsWithTitles.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun titre enregistré pour une marque taguée pour l'instant.</div>
+            )}
+            {brandsWithTitles.map(b => {
+              const isOpen = openBrandTitres === b.brand;
+              const champCars = b.cars.filter(c => c.titles > 0).sort((a, c) => c.titles - a.titles);
+              return (
+                <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
+                  <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
+                    onClick={() => setOpenBrandTitres(isOpen ? null : b.brand)}>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
+                    <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
+                  </div>
+                  {isOpen && (
+                    <div style={{ padding:'6px 12px 10px' }}>
+                      {champCars.map(c => (
+                        <div key={c.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderTop:'1px solid var(--border)',cursor: c.league ? 'pointer' :'default' }}
+                          onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
+                          <span style={{ fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</span>
+                          <span style={{ fontSize:11,color:'var(--text-dim)' }}>{c.league}</span>
+                          <span style={{ fontSize:13,color:'var(--gold)',flexShrink:0 }}>🏆 {c.titles}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (subTab === 'principales') {
+      const data = brandStats.map(b => {
+        const counts = {};
+        let total = 0;
+        b.cars.forEach(c => {
+          if (LEAGUES.includes(c.league)) { counts[c.league] = (counts[c.league] || 0) + 1; total++; }
+        });
+        return { brand: b.brand, counts, total };
+      }).filter(d => d.total > 0).sort((a, b) => b.total - a.total);
+
+      return (
+        <div>
+          <div className="section-title">Marques — Ligues Principales</div>
+          <div className="card" style={{ padding:'8px 4px' }}>
+            {data.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture taguée dans Voitures 1-2-3-4 pour l'instant.</div>
+            )}
+            {data.length > 0 && (
+              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th style={{ textAlign:'left' }}>Marque</th>
+                      {LEAGUES.map(l => (
+                        <th key={l} style={{ textAlign:'center',minWidth:36 }}>{l.replace('Voitures ', 'V')}</th>
+                      ))}
+                      <th style={{ textAlign:'center',minWidth:40 }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.map(d => (
+                      <tr key={d.brand}>
+                        <td style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--gold)' }}>{d.brand}</td>
+                        {LEAGUES.map(l => (
+                          <td key={l} style={{ textAlign:'center',color: d.counts[l] ? 'var(--text)' :'var(--text-dim)' }}>{d.counts[l] || '—'}</td>
+                        ))}
+                        <td style={{ textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'var(--text)' }}>{d.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    // Points annexes — liste complète
+    const maxPts = brandStats[0].totalPts || 1;
+    return (
+      <div>
+        <div className="section-title">Marques — Points Annexes</div>
+        <div className="card" style={{ padding:8 }}>
+          {brandStats.map(b => {
+            const isOpen = openBrandPoints === b.brand;
+            return (
+              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
+                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
+                  onClick={() => setOpenBrandPoints(isOpen ? null : b.brand)}>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                  {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
+                  <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
+                  <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
+                </div>
+                <div style={{ height:3,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (b.totalPts / maxPts) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+                {isOpen && (
+                  <div style={{ padding:'6px 12px 10px' }}>
+                    {b.cars.map(c => (
+                      <div key={c.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderTop:'1px solid var(--border)',cursor: c.league ? 'pointer' :'default' }}
+                        onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
+                        <span style={{ fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</span>
+                        {c.titles > 0 && <span style={{ fontSize:11,color:'var(--gold)' }}>🏆{c.titles}</span>}
+                        <span style={{ fontSize:13,color:'var(--text-dim)' }}>{c.total} pts</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+  marquesViewImplRef.current = MarquesView;
 
   function VoituresView() {
     const search = voituresSearch;
@@ -13799,6 +13892,7 @@ export default function App() {
             { key: 'ligues', label: 'Ligues' },
             { key: 'bonus', label: 'Points Annexes' },
             { key: 'voitures', label: 'Voitures' },
+            { key: 'marques', label: 'Marques' },
             { key: 'historique', label: 'Historique' },
           ].map(t => (
             <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
@@ -13939,6 +14033,20 @@ export default function App() {
           </div>
         )}
 
+        {mainTab === 'marques' && (
+          <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+            {[
+              { key: 'titres', label: '🏆 Titres' },
+              { key: 'principales', label: 'Ligues Principales' },
+              { key: 'points', label: 'Points Annexes' },
+            ].map(t => (
+              <button key={t.key} className={`tab ${marquesSubTab === t.key ? 'active' : ''}`} onClick={() => setMarquesSubTab(t.key)}>
+                {t.label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Content */}
         <div className="content tab-content" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
@@ -13967,6 +14075,7 @@ export default function App() {
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
           {mainTab === 'bonus' && <StableBonusView />}
           {mainTab === 'voitures' && <StableAllCarsView />}
+          {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
           {mainTab === 'historique' && histSubTab === 'historique' && <StableHistoriqueView />}
           {mainTab === 'historique' && histSubTab === 'mouvements' && <StableVoituresView />}
           {mainTab === 'historique' && histSubTab === 'records' && <StableRecordsView />}
