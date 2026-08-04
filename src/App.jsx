@@ -5746,6 +5746,26 @@ export default function App() {
     return Object.values(totalMap).sort((a, b) => b.total - a.total);
   }
 
+  const brandStats = React.useMemo(() => {
+    const stats = {};
+    [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
+      computeAllSeasonsBonus(l).forEach(entry => {
+        const brand = getCarBrand(entry.id);
+        if (!brand) return;
+        if (!stats[brand]) stats[brand] = { brand, totalPts: 0, carCount: 0, titles: 0, cars: [] };
+        const titleCount = (entry.appChampions?.length || 0) + (entry.histChampions?.length || 0);
+        stats[brand].totalPts += entry.total;
+        stats[brand].carCount += 1;
+        stats[brand].titles += titleCount;
+        stats[brand].cars.push({ id: entry.id, name: entry.name, total: entry.total, titles: titleCount, league: l });
+      });
+    });
+    return Object.values(stats)
+      .map(s => ({ ...s, cars: s.cars.sort((a, b) => b.total - a.total) }))
+      .sort((a, b) => b.totalPts - a.totalPts);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.seasons, db.brands, db.nameMap, db.histOverrides, currentSeason]);
+
   function Dashboard() {
     return (
       <div>
@@ -11558,6 +11578,8 @@ export default function App() {
     const [editName, setEditName] = useState('');
     const [ripSearch, setRipSearch] = useState('');
     const [noBrandOnly, setNoBrandOnly] = useState(false);
+    const [showBrandStats, setShowBrandStats] = useState(false);
+    const [openBrand, setOpenBrand] = useState(null);
 
     const rip = React.useMemo(() => {
       return [
@@ -11633,6 +11655,51 @@ export default function App() {
     const displayLetter = activeLetter;
 
     const displayCars = activeLetter === 'TOUS' ? filtered : (grouped[activeLetter] || []);
+
+    function BrandStatsPanel() {
+      if (!brandStats.length) {
+        return (
+          <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
+            Aucune marque taguée pour le moment.
+          </div>
+        );
+      }
+      const maxPts = brandStats[0].totalPts || 1;
+      return (
+        <div style={{ padding:8 }}>
+          {brandStats.map(b => {
+            const isOpen = openBrand === b.brand;
+            return (
+              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
+                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
+                  onClick={() => setOpenBrand(isOpen ? null : b.brand)}>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                  {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
+                  <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
+                  <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
+                </div>
+                <div style={{ height:3,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (b.totalPts / maxPts) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+                {isOpen && (
+                  <div style={{ padding:'6px 12px 10px' }}>
+                    {b.cars.map(c => (
+                      <div key={c.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderTop:'1px solid var(--border)',cursor: c.league ? 'pointer' :'default' }}
+                        onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
+                        <span style={{ fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</span>
+                        {c.titles > 0 && <span style={{ fontSize:11,color:'var(--gold)' }}>🏆{c.titles}</span>}
+                        <span style={{ fontSize:13,color:'var(--text-dim)' }}>{c.total} pts</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
 
     return (
       <div>
@@ -11718,7 +11785,11 @@ export default function App() {
                 ▶️ Ajouter les marques
               </button>
             )}
-            {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
+            <button className={`btn btn-xs ${showBrandStats ? 'btn-gold' : 'btn-dark'}`}
+              onClick={() => setShowBrandStats(v => !v)}>
+              📊 Stats par marque
+            </button>
+            {!showBrandStats && ['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
               <button key={l} onClick={() => setLeagueFilter(l)}
                 className={`btn btn-xs ${leagueFilter === l ? 'btn-gold' : 'btn-dark'}`}
                 style={{ borderLeft:l !== 'Toutes' ? `3px solid ${leagueColors[l] || '#9b59b6'}` :undefined }}>
@@ -11727,6 +11798,9 @@ export default function App() {
             ))}
           </div>
 
+          {showBrandStats ? (
+          <BrandStatsPanel />
+          ) : (<>
           {/* Barre alphabet */}
           <div style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
             <button className="btn btn-xs"
@@ -11809,6 +11883,7 @@ export default function App() {
               })}
             </div>
           </div>
+          </>)}
         </div>
         )} {/* fin ternaire ripTab */}
       </div>
