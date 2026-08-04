@@ -11503,6 +11503,7 @@ export default function App() {
     const [editKey, setEditKey] = useState(null);
     const [editName, setEditName] = useState('');
     const [ripSearch, setRipSearch] = useState('');
+    const [noBrandOnly, setNoBrandOnly] = useState(false);
 
     const rip = React.useMemo(() => {
       return [
@@ -11522,9 +11523,10 @@ export default function App() {
       return all.filter(c => {
         if (leagueFilter !== 'Toutes' && c.league !== leagueFilter) return false;
         if (search && !c.name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (noBrandOnly && getCarBrand(c.carId)) return false;
         return true;
       }).sort((a, b) => a.name.localeCompare(b.name));
-    }, [leagueFilter, search, currentSeason]);
+    }, [leagueFilter, search, currentSeason, noBrandOnly, db.brands]);
 
     const grouped = React.useMemo(() => {
       const g = {};
@@ -11637,6 +11639,12 @@ export default function App() {
             <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>
               {filtered.length} voitures
             </span>
+            {!isPublicMode && (
+              <button className={`btn btn-xs ${noBrandOnly ? 'btn-gold' : 'btn-dark'}`}
+                onClick={() => setNoBrandOnly(v => !v)}>
+                🏷️ Sans marque
+              </button>
+            )}
             {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
               <button key={l} onClick={() => setLeagueFilter(l)}
                 className={`btn btn-xs ${leagueFilter === l ? 'btn-gold' : 'btn-dark'}`}
@@ -11698,15 +11706,28 @@ export default function App() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ display:'flex',alignItems:'center',gap:3 }}>
-                          <span className="car-grid-name" style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
-                            onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
-                            {c.name}
-                          </span>
-                          {!isPublicMode && (
-                            <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
-                              onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
-                          )}
+                        <div style={{ display:'flex',flexDirection:'column',gap:2 }}>
+                          <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                            <span className="car-grid-name" style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor: c.carId ? 'pointer' :'default' }}
+                              onClick={() => c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
+                              {c.name}
+                            </span>
+                            {!isPublicMode && (
+                              <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:10,flexShrink:0 }}
+                                onClick={e => { e.stopPropagation(); startEdit(c); }}>✏️</button>
+                            )}
+                          </div>
+                          <div style={{ display:'flex',alignItems:'center',gap:3 }}>
+                            <span style={{ fontSize:10,color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
+                              {getCarBrand(c.carId)}
+                            </span>
+                            {!isPublicMode && (
+                              <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:9,flexShrink:0,opacity:0.85 }}
+                                onClick={e => { e.stopPropagation(); c.carId && setBrandModal({ carId: c.carId, carName: c.name, photo }); }}>
+                                🏷️ {getCarBrand(c.carId) ? '' : 'Marque'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       )}
                     </div>
