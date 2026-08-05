@@ -5,6 +5,7 @@ import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot, collec
 const PublicModeContext = React.createContext(false);
 
 const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
+const MAIN_LEAGUE_COLORS = { 'Voitures 1': '#e74c3c', 'Voitures 2': '#f1c40f', 'Voitures 3': '#2ecc71', 'Voitures 4': '#3498db' };
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
 const GROUPS = 8;
 const CARS_PER_GROUP = 18;
@@ -12083,30 +12084,32 @@ export default function App() {
             <div style={{ padding:'0 12px 12px' }}>
               {(() => {
                 const leagueCars = b.cars.filter(c => c.league === brandLeagueTab);
+                const borderColor = MAIN_LEAGUE_COLORS[brandLeagueTab] || 'var(--border)';
                 if (leagueCars.length === 0) {
                   return <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune {brand} dans {brandLeagueTab} pour l'instant.</div>;
                 }
                 return (
-                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
-                    {leagueCars.map(c => (
-                      <div key={c.id} style={{ borderRadius:8,overflow:'hidden',border:'1px solid var(--border)',background:'var(--dark3)',cursor:'pointer' }}
-                        onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
-                        <div style={{ width:'100%',aspectRatio:'4/3',background:'var(--dark2)' }}>
-                          {getCarPhoto(c.id) ? (
-                            <img src={getCarPhoto(c.id)} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
-                          ) : (
-                            <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-dim)',fontSize:12 }}>Pas de photo</div>
-                          )}
-                        </div>
-                        <div style={{ padding:'8px 10px' }}>
-                          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:0.5,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</div>
-                          <div style={{ display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--text-dim)',marginTop:2 }}>
-                            <span>{c.total} pts</span>
-                            {c.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {c.titles}</span>}
+                  <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
+                    {leagueCars.map(c => {
+                      const photo = getCarPhoto(c.id);
+                      return (
+                        <div key={c.id} style={{ borderRadius:8,border:`2px solid ${borderColor}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                          <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}
+                            onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
+                            {photo
+                              ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
+                              : <span style={{ fontSize:36 }}>🚗</span>}
+                          </div>
+                          <div style={{ padding:'6px 8px',borderTop:`1px solid ${borderColor}22` }}>
+                            <div className="car-grid-name" style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</div>
+                            <div style={{ display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--text-dim)',marginTop:2 }}>
+                              <span>{c.total} pts</span>
+                              {c.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {c.titles}</span>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 );
               })()}
