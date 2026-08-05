@@ -3023,6 +3023,7 @@ export default function App() {
   }
   const [histSubTab, setHistSubTab] = useState('historique');
   const [marquesSubTab, setMarquesSubTab] = useState('titres');
+  const [marquesSearch, setMarquesSearch] = useState('');
   const [openBrandTitres, setOpenBrandTitres] = useState(null);
   const [openBrandPrincipales, setOpenBrandPrincipales] = useState(null);
   const [brandDetail, setBrandDetail] = useState(null);
@@ -12173,14 +12174,26 @@ export default function App() {
       const maxTitles = brandsWithTitles[0]?.titles || 1;
       const totalMainTitles = brandsWithTitles.reduce((sum, b) => sum + (b.mainTitles || 0), 0);
       const rankedTitles = withRanks(brandsWithTitles, x => x.titles);
+      const displayedTitles = marquesSearch.trim()
+        ? rankedTitles.filter(b => b.brand.toLowerCase().includes(marquesSearch.trim().toLowerCase()))
+        : rankedTitles;
       return (
         <div>
           <div className="section-title">Marques — Titres</div>
+          <input
+            value={marquesSearch}
+            onChange={e => setMarquesSearch(e.target.value)}
+            placeholder="Rechercher une marque..."
+            style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
+          />
           <div className="card" style={{ padding:8 }}>
             {brandsWithTitles.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun titre enregistré pour une marque taguée pour l'instant.</div>
             )}
-            {rankedTitles.map(b => (
+            {brandsWithTitles.length > 0 && displayedTitles.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
+            )}
+            {displayedTitles.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
@@ -12225,15 +12238,27 @@ export default function App() {
       });
       const maxGrandTotal = TOTAL_CARS * LEAGUES.length;
       const rankedData = withRanks(data, x => x.total);
+      const displayedData = marquesSearch.trim()
+        ? rankedData.filter(d => d.brand.toLowerCase().includes(marquesSearch.trim().toLowerCase()))
+        : rankedData;
 
       return (
         <div>
           <div className="section-title">Marques — Ligues Principales</div>
+          <input
+            value={marquesSearch}
+            onChange={e => setMarquesSearch(e.target.value)}
+            placeholder="Rechercher une marque..."
+            style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
+          />
           <div className="card" style={{ padding:8 }}>
             {data.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture taguée dans Voitures 1-2-3-4 pour l'instant.</div>
             )}
-            {rankedData.map(d => (
+            {data.length > 0 && displayedData.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
+            )}
+            {displayedData.map(d => (
               <div key={d.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
@@ -12277,11 +12302,23 @@ export default function App() {
     // Points annexes — liste complète
     const maxPts = brandStats[0].totalPts || 1;
     const rankedPts = withRanks(brandStats, x => x.totalPts);
+    const displayedPts = marquesSearch.trim()
+      ? rankedPts.filter(b => b.brand.toLowerCase().includes(marquesSearch.trim().toLowerCase()))
+      : rankedPts;
     return (
       <div>
         <div className="section-title">Marques — Points Annexes</div>
+        <input
+          value={marquesSearch}
+          onChange={e => setMarquesSearch(e.target.value)}
+          placeholder="Rechercher une marque..."
+          style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
+        />
         <div className="card" style={{ padding:8 }}>
-          {rankedPts.map(b => (
+          {displayedPts.length === 0 && (
+            <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
+          )}
+          {displayedPts.map(b => (
             <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
