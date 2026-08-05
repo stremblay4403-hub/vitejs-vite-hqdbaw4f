@@ -7937,6 +7937,31 @@ export default function App() {
                 }
                 return foundLeague || leagueName;
               })()}</div>
+              <div style={{ marginTop:4,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' }}>
+                {getBrandCountry(getCarBrand(resolvedCarId)) && <CountryFlag code={getBrandCountry(getCarBrand(resolvedCarId))} size={16} />}
+                {getCarBrand(resolvedCarId) ? (
+                  <span
+                    style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:13,color:'var(--text-dim)',letterSpacing:0.5,cursor:'pointer' }}
+                    onClick={() => {
+                      const br = getCarBrand(resolvedCarId);
+                      setProfileCar(null);
+                      setMainTab('marques');
+                      setMarquesSubTab('points');
+                      setBrandDetailSort('points');
+                      setBrandLeagueTab('toutes');
+                      setBrandDetail(br);
+                    }}
+                  >{getCarBrand(resolvedCarId)}</span>
+                ) : (
+                  <span style={{ fontSize:12,color:'var(--text-dim)',fontStyle:'italic' }}>Aucune marque</span>
+                )}
+                {!isPublicMode && resolvedCarId && (
+                  <button className="btn btn-dark btn-xs" style={{ padding:'2px 6px',fontSize:10 }}
+                    onClick={() => setBrandModal({ carId: resolvedCarId, carName: effectiveName, photo })}>
+                    🏷️ {getCarBrand(resolvedCarId) ? 'Modifier' : 'Ajouter la marque'}
+                  </button>
+                )}
+              </div>
               <div className="car-profile-badges" style={{ marginTop:6,display:'flex',gap:6,flexWrap:'wrap',alignItems:'center' }}>
                 {(champCount + histChampions.length) > 0 && (
                   <span
