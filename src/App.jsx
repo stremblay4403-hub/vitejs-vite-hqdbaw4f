@@ -4025,7 +4025,7 @@ export default function App() {
             onChange={e => setBrand(e.target.value)}
             placeholder="Ex: Toyota, Ford, Porsche..."
             autoFocus
-            style={{ width:'100%',marginBottom:16,fontSize:15,textAlign:'center' }}
+            style={{ width:'100%',marginBottom:16,fontSize:16,textAlign:'center' }}
             onKeyDown={e => { if (e.key === 'Enter' && brand.trim()) confirmAndAdvance(); }}
           />
           {remaining > 0 && (
@@ -11991,7 +11991,7 @@ export default function App() {
       if (!b) {
         return (
           <div>
-            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => setBrandDetail(null)}>← Retour</button>
+            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour</button>
             <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Marque introuvable.</div>
           </div>
         );
@@ -12008,7 +12008,7 @@ export default function App() {
       return (
         <div>
           <div style={{ padding:'10px 12px' }}>
-            <button className="btn btn-dark btn-sm" onClick={() => setBrandDetail(null)}>← Retour aux marques</button>
+            <button className="btn btn-dark btn-sm" onClick={() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour aux marques</button>
           </div>
 
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
@@ -12028,7 +12028,7 @@ export default function App() {
                   onChange={e => setCountrySearch(e.target.value)}
                   placeholder="Rechercher un pays..."
                   autoFocus
-                  style={{ width:'100%',marginBottom:8,fontSize:14,textAlign:'center' }}
+                  style={{ width:'100%',marginBottom:8,fontSize:16,textAlign:'center' }}
                 />
                 <div style={{ display:'flex',flexWrap:'wrap',gap:6,justifyContent:'center',maxHeight:220,overflowY:'auto',WebkitOverflowScrolling:'touch' }}>
                   {filteredCountries.map(c => (
@@ -12167,7 +12167,7 @@ export default function App() {
         <div className="card" style={{ padding:8 }}>
           {brandStats.map(b => (
             <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-              onClick={() => { setBrandDetail(b.brand); setBrandDetailSort('points'); }}>
+              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                 {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
                 <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
