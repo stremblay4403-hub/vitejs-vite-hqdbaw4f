@@ -7937,11 +7937,11 @@ export default function App() {
                 }
                 return foundLeague || leagueName;
               })()}</div>
-              <div style={{ marginTop:4,display:'flex',alignItems:'center',justifyContent:'center',gap:6,flexWrap:'wrap' }}>
-                {getBrandCountry(getCarBrand(resolvedCarId)) && <CountryFlag code={getBrandCountry(getCarBrand(resolvedCarId))} size={16} />}
+              <div style={{ marginTop:4,display:'flex',alignItems:'center',justifyContent:'center',gap:8,flexWrap:'wrap' }}>
+                {getBrandCountry(getCarBrand(resolvedCarId)) && <CountryFlag code={getBrandCountry(getCarBrand(resolvedCarId))} size={22} />}
                 {getCarBrand(resolvedCarId) ? (
                   <span
-                    style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:13,color:'var(--text-dim)',letterSpacing:0.5,cursor:'pointer' }}
+                    style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,color:'var(--text-dim)',letterSpacing:0.5,cursor:'pointer' }}
                     onClick={() => {
                       const br = getCarBrand(resolvedCarId);
                       setProfileCar(null);
@@ -7953,10 +7953,10 @@ export default function App() {
                     }}
                   >{getCarBrand(resolvedCarId)}</span>
                 ) : (
-                  <span style={{ fontSize:12,color:'var(--text-dim)',fontStyle:'italic' }}>Aucune marque</span>
+                  <span style={{ fontSize:15,color:'var(--text-dim)',fontStyle:'italic' }}>Aucune marque</span>
                 )}
                 {!isPublicMode && resolvedCarId && (
-                  <button className="btn btn-dark btn-xs" style={{ padding:'2px 6px',fontSize:10 }}
+                  <button className="btn btn-dark btn-xs" style={{ padding:'3px 8px',fontSize:12 }}
                     onClick={() => setBrandModal({ carId: resolvedCarId, carName: effectiveName, photo })}>
                     🏷️ {getCarBrand(resolvedCarId) ? 'Modifier' : 'Ajouter la marque'}
                   </button>
