@@ -12052,7 +12052,6 @@ export default function App() {
           </div>
 
           <div style={{ display:'flex',gap:6,padding:'0 12px 10px',flexWrap:'wrap' }}>
-            <button className={`btn btn-xs ${brandLeagueTab === 'toutes' ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab('toutes')}>Toutes</button>
             {LEAGUES.map(l => (
               <button key={l} className={`btn btn-xs ${brandLeagueTab === l ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab(l)}>
                 {l.replace('Voitures ', 'V')}
@@ -12092,7 +12091,7 @@ export default function App() {
                     {leagueCars.map(c => (
                       <div key={c.id} style={{ borderRadius:8,overflow:'hidden',border:'1px solid var(--border)',background:'var(--dark3)',cursor:'pointer' }}
                         onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
-                        <div style={{ width:'100%',aspectRatio:'1/1',background:'var(--dark2)' }}>
+                        <div style={{ width:'100%',aspectRatio:'4/3',background:'var(--dark2)' }}>
                           {getCarPhoto(c.id) ? (
                             <img src={getCarPhoto(c.id)} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
                           ) : (
@@ -12185,7 +12184,7 @@ export default function App() {
             )}
             {data.map(d => (
               <div key={d.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('Voitures 1'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   {getBrandCountry(d.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(d.brand))}</span>}
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
