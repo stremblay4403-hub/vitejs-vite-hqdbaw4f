@@ -7937,7 +7937,7 @@ export default function App() {
                 }
                 return foundLeague || leagueName;
               })()}</div>
-              <div style={{ marginTop:4,display:'flex',alignItems:'center',gap:6,flexWrap:'wrap' }}>
+              <div style={{ marginTop:4,display:'flex',alignItems:'center',justifyContent:'center',gap:6,flexWrap:'wrap' }}>
                 {getBrandCountry(getCarBrand(resolvedCarId)) && <CountryFlag code={getBrandCountry(getCarBrand(resolvedCarId))} size={16} />}
                 {getCarBrand(resolvedCarId) ? (
                   <span
