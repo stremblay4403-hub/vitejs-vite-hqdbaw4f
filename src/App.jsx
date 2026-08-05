@@ -12081,6 +12081,9 @@ export default function App() {
 
           {brandLeagueTab !== 'titres' && (
             <div style={{ display:'flex',gap:6,padding:'0 12px 10px',flexWrap:'wrap' }}>
+              <button className={`btn btn-xs ${brandLeagueTab === 'principales' ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab('principales')}>
+                Toutes les ligues principales
+              </button>
               {LEAGUES.map(l => (
                 <button key={l} className={`btn btn-xs ${brandLeagueTab === l ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab(l)}>
                   {l.replace('Voitures ', 'V')}
@@ -12127,15 +12130,17 @@ export default function App() {
           ) : (
             <div style={{ padding:'0 12px 12px' }}>
               {(() => {
-                const leagueCars = b.cars.filter(c => c.league === brandLeagueTab);
-                const borderColor = MAIN_LEAGUE_COLORS[brandLeagueTab] || 'var(--border)';
+                const leagueCars = brandLeagueTab === 'principales'
+                  ? b.cars.filter(c => LEAGUES.includes(c.league))
+                  : b.cars.filter(c => c.league === brandLeagueTab);
                 if (leagueCars.length === 0) {
-                  return <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune {brand} dans {brandLeagueTab} pour l'instant.</div>;
+                  return <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune {brand} dans {brandLeagueTab === 'principales' ? 'les ligues principales' : brandLeagueTab} pour l'instant.</div>;
                 }
                 return (
                   <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
                     {leagueCars.map(c => {
                       const photo = getCarPhoto(c.id);
+                      const borderColor = MAIN_LEAGUE_COLORS[c.league] || 'var(--border)';
                       return (
                         <div key={c.id} style={{ borderRadius:8,border:`2px solid ${borderColor}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
                           <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}
@@ -12230,7 +12235,7 @@ export default function App() {
             )}
             {rankedData.map(d => (
               <div key={d.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('Voitures 1'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={d.rank} />
                   {getBrandCountry(d.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(d.brand))}</span>}
