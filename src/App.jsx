@@ -12059,13 +12059,15 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display:'flex',gap:6,padding:'0 12px 10px',flexWrap:'wrap' }}>
-            {LEAGUES.map(l => (
-              <button key={l} className={`btn btn-xs ${brandLeagueTab === l ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab(l)}>
-                {l.replace('Voitures ', 'V')}
-              </button>
-            ))}
-          </div>
+          {brandLeagueTab !== 'titres' && (
+            <div style={{ display:'flex',gap:6,padding:'0 12px 10px',flexWrap:'wrap' }}>
+              {LEAGUES.map(l => (
+                <button key={l} className={`btn btn-xs ${brandLeagueTab === l ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab(l)}>
+                  {l.replace('Voitures ', 'V')}
+                </button>
+              ))}
+            </div>
+          )}
 
           {brandLeagueTab === 'toutes' ? (
             <>
