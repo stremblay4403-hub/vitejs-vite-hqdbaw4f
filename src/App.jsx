@@ -5923,7 +5923,7 @@ export default function App() {
     });
     return Object.values(stats)
       .map(s => ({ ...s, cars: s.cars.sort((a, b) => b.total - a.total) }))
-      .sort((a, b) => b.totalPts - a.totalPts);
+      .sort((a, b) => b.totalPts - a.totalPts || a.brand.localeCompare(b.brand));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db.seasons, db.brands, db.nameMap, db.histOverrides, currentSeason]);
 
@@ -12164,7 +12164,7 @@ export default function App() {
     }
 
     if (subTab === 'titres') {
-      const brandsWithTitles = brandStats.filter(b => b.titles > 0).sort((a, b) => b.titles - a.titles);
+      const brandsWithTitles = brandStats.filter(b => b.titles > 0).sort((a, b) => b.titles - a.titles || a.brand.localeCompare(b.brand));
       const maxTitles = brandsWithTitles[0]?.titles || 1;
       const totalMainTitles = brandsWithTitles.reduce((sum, b) => sum + (b.mainTitles || 0), 0);
       const rankedTitles = withRanks(brandsWithTitles, x => x.titles);
@@ -12209,7 +12209,7 @@ export default function App() {
           if (LEAGUES.includes(c.league)) { counts[c.league] = (counts[c.league] || 0) + 1; total++; }
         });
         return { brand: b.brand, counts, total };
-      }).filter(d => d.total > 0).sort((a, b) => b.total - a.total);
+      }).filter(d => d.total > 0).sort((a, b) => b.total - a.total || a.brand.localeCompare(b.brand));
       const maxTotal = data[0]?.total || 1;
       const perLeagueTotals = {};
       let grandTotal = 0;
