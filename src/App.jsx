@@ -12167,6 +12167,14 @@ export default function App() {
         return { brand: b.brand, counts, total };
       }).filter(d => d.total > 0).sort((a, b) => b.total - a.total);
       const maxTotal = data[0]?.total || 1;
+      const perLeagueTotals = {};
+      let grandTotal = 0;
+      LEAGUES.forEach(l => { perLeagueTotals[l] = 0; });
+      data.forEach(d => {
+        LEAGUES.forEach(l => { perLeagueTotals[l] += d.counts[l] || 0; });
+        grandTotal += d.total;
+      });
+      const maxGrandTotal = TOTAL_CARS * LEAGUES.length;
 
       return (
         <div>
@@ -12194,6 +12202,22 @@ export default function App() {
                 </div>
               </div>
             ))}
+            {data.length > 0 && (
+              <div style={{ borderRadius:8,border:'1px solid var(--gold-dim)',background:'var(--dark2)',marginTop:10,padding:'10px 12px' }}>
+                <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:6 }}>
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:14,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>Total taguées</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>{grandTotal} <span style={{ fontSize:12,color:'var(--text-dim)' }}>/ {maxGrandTotal}</span></span>
+                </div>
+                <div style={{ display:'flex',gap:12,flexWrap:'wrap',fontSize:11,color:'var(--text-dim)' }}>
+                  {LEAGUES.map(l => (
+                    <span key={l}>{l.replace('Voitures ', 'V')}: {perLeagueTotals[l]}/{TOTAL_CARS}</span>
+                  ))}
+                </div>
+                <div style={{ height:4,background:'var(--dark3)',borderRadius:2,marginTop:8,overflow:'hidden' }}>
+                  <div style={{ height:'100%',width:`${Math.min(100, (grandTotal / maxGrandTotal) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       );
