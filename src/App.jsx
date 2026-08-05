@@ -36,6 +36,18 @@ function flagEmoji(countryCode) {
   const A = 0x1F1E6;
   return String.fromCodePoint(...countryCode.toUpperCase().split('').map(c => A + (c.charCodeAt(0) - 65)));
 }
+// Image de drapeau via CDN — contrairement à l'emoji unicode, s'affiche correctement
+// sur toutes les plateformes (Windows/Segoe UI Emoji ne rend pas bien les drapeaux, et exclut Taïwan).
+function CountryFlag({ code, size = 18 }) {
+  if (!code) return null;
+  return (
+    <img
+      src={`https://flagcdn.com/${code.toLowerCase()}.svg`}
+      alt=""
+      style={{ width:size, height: size * 0.75, objectFit:'cover', borderRadius:2, display:'inline-block', verticalAlign:'middle', flexShrink:0 }}
+    />
+  );
+}
 const COUNTRY_LIST = [
   { code:'AF', name:'Afghanistan' }, { code:'ZA', name:'Afrique du Sud' }, { code:'AL', name:'Albanie' },
   { code:'DZ', name:'Algérie' }, { code:'DE', name:'Allemagne' }, { code:'AD', name:'Andorre' },
@@ -12043,7 +12055,7 @@ export default function App() {
 
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
             <div style={{ display:'flex',alignItems:'center',gap:10,justifyContent:'center' }}>
-              {countryCode && <span style={{ fontSize:30,lineHeight:1 }}>{flagEmoji(countryCode)}</span>}
+              {countryCode && <CountryFlag code={countryCode} size={30} />}
               <div style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:24,letterSpacing:1,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
             </div>
             {!isPublicMode && (
@@ -12064,7 +12076,7 @@ export default function App() {
                   {filteredCountries.map(c => (
                     <button key={c.code} className={`btn btn-xs ${countryCode === c.code ? 'btn-gold' : 'btn-dark'}`}
                       onClick={() => { setBrandCountry(brand, c.code); setShowCountryPicker(false); setCountrySearch(''); }}>
-                      {flagEmoji(c.code)} {c.name}
+                      <CountryFlag code={c.code} size={16} /> {c.name}
                     </button>
                   ))}
                   {filteredCountries.length === 0 && (
@@ -12198,7 +12210,7 @@ export default function App() {
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={b.rank} />
-                  {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
+                  {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={16} />}
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                   <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
                   <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
@@ -12263,7 +12275,7 @@ export default function App() {
                 onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={d.rank} />
-                  {getBrandCountry(d.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(d.brand))}</span>}
+                  {getBrandCountry(d.brand) && <CountryFlag code={getBrandCountry(d.brand)} size={16} />}
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
                   <span style={{ display:'flex',gap:6,fontSize:11,color:'var(--text-dim)' }}>
                     {LEAGUES.map(l => d.counts[l] ? (
@@ -12323,7 +12335,7 @@ export default function App() {
               onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                 <RankBadge rank={b.rank} />
-                {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
+                {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={16} />}
                 <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                 {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
