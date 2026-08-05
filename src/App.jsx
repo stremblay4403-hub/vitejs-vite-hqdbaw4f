@@ -5850,7 +5850,7 @@ export default function App() {
       if (!league) return;
       league.cars.forEach(car => {
         if (!car.id) return;
-        perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, league: lName };
+        perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, mainTitles: 0, league: lName };
       });
     });
 
@@ -5865,12 +5865,16 @@ export default function App() {
         league.cars.forEach(car => {
           if (!perId[car.id]) return;
           perId[car.id].total += bp[car.id] || 0;
-          if (champId === car.id) perId[car.id].titles += 1;
+          if (champId === car.id) {
+            perId[car.id].titles += 1;
+            if (LEAGUES.includes(lName)) perId[car.id].mainTitles += 1;
+          }
         });
       });
     });
 
     // 3) Ajoute le bonus historique pré-app (l'ère d'avant S33, rattaché par nom)
+    //    Ces titres proviennent tous des 4 ligues principales (seule ère couverte par l'historique)
     LEAGUES.forEach(l => {
       const histLeagueData = getHistLeague(l);
       const nameMap = db.nameMap?.[l] || {};
@@ -5879,7 +5883,9 @@ export default function App() {
         const found = histLeagueData.find(c => namesMatch(c.name, histLookupName) || namesMatch(c.name, car.name));
         if (found) {
           car.total += found.total || 0;
-          car.titles += (found.champions || []).length;
+          const histTitles = (found.champions || []).length;
+          car.titles += histTitles;
+          car.mainTitles += histTitles;
         }
       });
     });
@@ -5888,10 +5894,11 @@ export default function App() {
     Object.values(perId).forEach(car => {
       const brand = getCarBrand(car.id);
       if (!brand) return;
-      if (!stats[brand]) stats[brand] = { brand, totalPts: 0, carCount: 0, titles: 0, cars: [] };
+      if (!stats[brand]) stats[brand] = { brand, totalPts: 0, carCount: 0, titles: 0, mainTitles: 0, cars: [] };
       stats[brand].totalPts += car.total;
       stats[brand].carCount += 1;
       stats[brand].titles += car.titles;
+      stats[brand].mainTitles += car.mainTitles;
       stats[brand].cars.push(car);
     });
     return Object.values(stats)
@@ -12080,6 +12087,21 @@ export default function App() {
                 ))}
               </div>
             </>
+          ) : brandLeagueTab === 'titres' ? (
+            <div className="card" style={{ padding:0,overflow:'hidden' }}>
+              {b.cars.filter(c => c.titles > 0).length === 0 && (
+                <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture titrée pour l'instant.</div>
+              )}
+              {b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles).map((c, i) => (
+                <LeaderboardRow key={c.id}
+                  rank={i + 1} rankDiff={null}
+                  name={c.name} photo={getCarPhoto(c.id)}
+                  badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                  pts={c.titles}
+                  onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
+                />
+              ))}
+            </div>
           ) : (
             <div style={{ padding:'0 12px 12px' }}>
               {(() => {
@@ -12121,6 +12143,8 @@ export default function App() {
 
     if (subTab === 'titres') {
       const brandsWithTitles = brandStats.filter(b => b.titles > 0).sort((a, b) => b.titles - a.titles);
+      const maxTitles = brandsWithTitles[0]?.titles || 1;
+      const totalMainTitles = brandsWithTitles.reduce((sum, b) => sum + (b.mainTitles || 0), 0);
       return (
         <div>
           <div className="section-title">Marques — Titres</div>
@@ -12128,32 +12152,26 @@ export default function App() {
             {brandsWithTitles.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun titre enregistré pour une marque taguée pour l'instant.</div>
             )}
-            {brandsWithTitles.map(b => {
-              const isOpen = openBrandTitres === b.brand;
-              const champCars = b.cars.filter(c => c.titles > 0).sort((a, c) => c.titles - a.titles);
-              return (
-                <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
-                  <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
-                    onClick={() => setOpenBrandTitres(isOpen ? null : b.brand)}>
-                    <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
-                    <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
-                  </div>
-                  {isOpen && (
-                    <div style={{ padding:'6px 12px 10px' }}>
-                      {champCars.map(c => (
-                        <div key={c.id} style={{ display:'flex',alignItems:'center',gap:8,padding:'5px 0',borderTop:'1px solid var(--border)',cursor: c.league ? 'pointer' :'default' }}
-                          onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
-                          <span style={{ fontSize:13,color:'var(--text)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</span>
-                          <span style={{ fontSize:11,color:'var(--text-dim)' }}>{c.league}</span>
-                          <span style={{ fontSize:13,color:'var(--gold)',flexShrink:0 }}>🏆 {c.titles}</span>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+            {brandsWithTitles.map(b => (
+              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); }}>
+                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                  {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
+                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
                 </div>
-              );
-            })}
+                <div style={{ height:3,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (b.titles / maxTitles) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+              </div>
+            ))}
+            {brandsWithTitles.length > 0 && (
+              <div style={{ borderRadius:8,border:'1px solid var(--gold-dim)',background:'var(--dark2)',marginTop:10,padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:14,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>Total titres (Voitures 1-4)</span>
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {totalMainTitles}</span>
+              </div>
+            )}
           </div>
         </div>
       );
