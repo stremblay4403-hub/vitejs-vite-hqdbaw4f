@@ -3006,6 +3006,7 @@ export default function App() {
   const [openBrandPrincipales, setOpenBrandPrincipales] = useState(null);
   const [brandDetail, setBrandDetail] = useState(null);
   const [brandDetailSort, setBrandDetailSort] = useState('points');
+  const [brandLeagueTab, setBrandLeagueTab] = useState('toutes');
   // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
   const [voituresSection, setVoituresSection] = useState('actifs');
   const [voituresSearch, setVoituresSearch] = useState('');
@@ -3075,7 +3076,7 @@ export default function App() {
             </div>
           )}
           {brand && (
-            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:20, color:'var(--text-dim)', letterSpacing:3, marginBottom:4 }}>{brand}</div>
+            <div style={{ fontFamily:"'Rajdhani',sans-serif", fontWeight:700, fontSize:18, color:'var(--text-dim)', letterSpacing:1, marginBottom:4 }}>{brand}</div>
           )}
           <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:42, color:'var(--gold)', letterSpacing:3, marginBottom:24 }}>{name}</div>
           <button className="btn btn-gold" style={{ width:'100%', padding:'14px', fontSize:16, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}
@@ -3195,7 +3196,7 @@ export default function App() {
                     </div>
                     <div style={{ padding:'10px 12px', display:'flex', alignItems:'flex-end', justifyContent:'space-between', gap:10 }}>
                       <div style={{ minWidth:0 }}>
-                        {brand && <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:13, color:'var(--text-dim)', letterSpacing:2 }}>{brand}</div>}
+                        {brand && <div style={{ fontFamily:"'Rajdhani',sans-serif", fontWeight:700, fontSize:12, color:'var(--text-dim)', letterSpacing:1 }}>{brand}</div>}
                         <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:26, color:'var(--text)', letterSpacing:2, lineHeight:1, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{t.name}</div>
                       </div>
                       <div style={{ textAlign:'right', flexShrink:0 }}>
@@ -12014,7 +12015,7 @@ export default function App() {
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
             <div style={{ display:'flex',alignItems:'center',gap:10,justifyContent:'center' }}>
               {countryCode && <span style={{ fontSize:30,lineHeight:1 }}>{flagEmoji(countryCode)}</span>}
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:26,letterSpacing:2,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
+              <div style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:24,letterSpacing:1,color:'var(--gold)',textAlign:'center' }}>{brand}</div>
             </div>
             {!isPublicMode && (
               <button className="btn btn-dark btn-sm" style={{ fontSize:11 }} onClick={() => setShowCountryPicker(v => !v)}>
@@ -12050,23 +12051,68 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ display:'flex',gap:8,padding:'0 12px 10px' }}>
-            <button className={`btn btn-sm ${brandDetailSort === 'points' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setBrandDetailSort('points')}>Trier par Points</button>
-            <button className={`btn btn-sm ${brandDetailSort === 'titres' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setBrandDetailSort('titres')}>Trier par Titres</button>
-          </div>
-
-          <div className="card" style={{ padding:0,overflow:'hidden' }}>
-            {sorted.map((c, i) => (
-              <LeaderboardRow key={c.id}
-                rank={i + 1} rankDiff={null}
-                name={c.name} photo={getCarPhoto(c.id)}
-                badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
-                streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
-                pts={brandDetailSort === 'titres' ? c.titles : c.total}
-                onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
-              />
+          <div style={{ display:'flex',gap:6,padding:'0 12px 10px',flexWrap:'wrap' }}>
+            <button className={`btn btn-xs ${brandLeagueTab === 'toutes' ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab('toutes')}>Toutes</button>
+            {LEAGUES.map(l => (
+              <button key={l} className={`btn btn-xs ${brandLeagueTab === l ? 'btn-gold' : 'btn-dark'}`} onClick={() => setBrandLeagueTab(l)}>
+                {l.replace('Voitures ', 'V')}
+              </button>
             ))}
           </div>
+
+          {brandLeagueTab === 'toutes' ? (
+            <>
+              <div style={{ display:'flex',gap:8,padding:'0 12px 10px' }}>
+                <button className={`btn btn-sm ${brandDetailSort === 'points' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setBrandDetailSort('points')}>Trier par Points</button>
+                <button className={`btn btn-sm ${brandDetailSort === 'titres' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setBrandDetailSort('titres')}>Trier par Titres</button>
+              </div>
+
+              <div className="card" style={{ padding:0,overflow:'hidden' }}>
+                {sorted.map((c, i) => (
+                  <LeaderboardRow key={c.id}
+                    rank={i + 1} rankDiff={null}
+                    name={c.name} photo={getCarPhoto(c.id)}
+                    badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                    streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
+                    pts={brandDetailSort === 'titres' ? c.titles : c.total}
+                    onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
+                  />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div style={{ padding:'0 12px 12px' }}>
+              {(() => {
+                const leagueCars = b.cars.filter(c => c.league === brandLeagueTab);
+                if (leagueCars.length === 0) {
+                  return <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune {brand} dans {brandLeagueTab} pour l'instant.</div>;
+                }
+                return (
+                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:10 }}>
+                    {leagueCars.map(c => (
+                      <div key={c.id} style={{ borderRadius:8,overflow:'hidden',border:'1px solid var(--border)',background:'var(--dark3)',cursor:'pointer' }}
+                        onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
+                        <div style={{ width:'100%',aspectRatio:'1/1',background:'var(--dark2)' }}>
+                          {getCarPhoto(c.id) ? (
+                            <img src={getCarPhoto(c.id)} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
+                          ) : (
+                            <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-dim)',fontSize:12 }}>Pas de photo</div>
+                          )}
+                        </div>
+                        <div style={{ padding:'8px 10px' }}>
+                          <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:0.5,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</div>
+                          <div style={{ display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--text-dim)',marginTop:2 }}>
+                            <span>{c.total} pts</span>
+                            {c.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {c.titles}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       );
     }
@@ -12087,7 +12133,7 @@ export default function App() {
                 <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
                   <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10,cursor:'pointer' }}
                     onClick={() => setOpenBrandTitres(isOpen ? null : b.brand)}>
-                    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                    <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                     <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
                     <span style={{ color:'var(--text-dim)',fontSize:12 }}>{isOpen ? '▲' : '▼'}</span>
                   </div>
@@ -12120,40 +12166,34 @@ export default function App() {
         });
         return { brand: b.brand, counts, total };
       }).filter(d => d.total > 0).sort((a, b) => b.total - a.total);
+      const maxTotal = data[0]?.total || 1;
 
       return (
         <div>
           <div className="section-title">Marques — Ligues Principales</div>
-          <div className="card" style={{ padding:'8px 4px' }}>
+          <div className="card" style={{ padding:8 }}>
             {data.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture taguée dans Voitures 1-2-3-4 pour l'instant.</div>
             )}
-            {data.length > 0 && (
-              <div style={{ overflowX:'auto',WebkitOverflowScrolling:'touch' }}>
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th style={{ textAlign:'left' }}>Marque</th>
-                      {LEAGUES.map(l => (
-                        <th key={l} style={{ textAlign:'center',minWidth:36 }}>{l.replace('Voitures ', 'V')}</th>
-                      ))}
-                      <th style={{ textAlign:'center',minWidth:40 }}>Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.map(d => (
-                      <tr key={d.brand}>
-                        <td style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--gold)' }}>{d.brand}</td>
-                        {LEAGUES.map(l => (
-                          <td key={l} style={{ textAlign:'center',color: d.counts[l] ? 'var(--text)' :'var(--text-dim)' }}>{d.counts[l] || '—'}</td>
-                        ))}
-                        <td style={{ textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,color:'var(--text)' }}>{d.total}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            {data.map(d => (
+              <div key={d.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
+                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                  {getBrandCountry(d.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(d.brand))}</span>}
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
+                  <span style={{ display:'flex',gap:6,fontSize:11,color:'var(--text-dim)' }}>
+                    {LEAGUES.map(l => d.counts[l] ? (
+                      <span key={l}>{l.replace('Voitures ', 'V')}:{d.counts[l]}</span>
+                    ) : null)}
+                  </span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:36,textAlign:'right' }}>{d.total}</span>
+                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
+                </div>
+                <div style={{ height:3,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (d.total / maxTotal) * 100)}%`,background:'var(--gold)' }} />
+                </div>
               </div>
-            )}
+            ))}
           </div>
         </div>
       );
@@ -12167,10 +12207,10 @@ export default function App() {
         <div className="card" style={{ padding:8 }}>
           {brandStats.map(b => (
             <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); }}>
+              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                 {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
-                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                 {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
                 <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
