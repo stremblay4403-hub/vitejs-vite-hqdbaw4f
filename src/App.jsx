@@ -7361,6 +7361,14 @@ export default function App() {
       const isSafe = others.some(o => s.pts > o.pts + remainingFor(o.id) * 3);
       if (isSafe) safeIds.add(s.id);
     });
+    // Filet de sécurité : une fois TOUS les matchs joués, le classement final est déjà tranché
+    // (égalités départagées par la différence de buts etc.) — le calcul mathématique ci-dessus
+    // se base uniquement sur les points et peut donc rater des voitures du top en cas d'égalité.
+    // Dans ce cas, tout le monde sauf la dernière place est automatiquement SAFE.
+    const relAllPlayed = relMatches.length > 0 && relMatches.every(m => m.homeGoals !== null && m.homeGoals !== undefined);
+    if (relAllPlayed && standings.length > 0) {
+      standings.slice(0, standings.length - 1).forEach(s => safeIds.add(s.id));
+    }
 
     // Bannière temporaire quand une voiture VIENT de devenir safe (transition détectée)
     const [safeBanner, setSafeBanner] = useState(null);
