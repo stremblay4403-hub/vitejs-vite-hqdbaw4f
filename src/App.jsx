@@ -112,6 +112,26 @@ function namesMatch(a, b) {
 function genId() {
   return Math.random().toString(36).slice(2, 9);
 }
+// Attribue un rang à une liste déjà triée (desc), avec égalité = même rang (style compétition: 1,1,3)
+function withRanks(list, valueFn) {
+  let lastValue = null, lastRank = 0;
+  return list.map((item, i) => {
+    const v = valueFn(item);
+    if (v !== lastValue) {
+      lastRank = i + 1;
+      lastValue = v;
+    }
+    return { ...item, rank: lastRank };
+  });
+}
+function RankBadge({ rank }) {
+  return (
+    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,minWidth:22,textAlign:'center',flexShrink:0,
+      color: rank === 1 ? '#f1c40f' : rank === 2 ? '#bdc3c7' : rank === 3 ? '#cd7f32' : 'var(--text-dim)' }}>
+      {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
+    </span>
+  );
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -12147,6 +12167,7 @@ export default function App() {
       const brandsWithTitles = brandStats.filter(b => b.titles > 0).sort((a, b) => b.titles - a.titles);
       const maxTitles = brandsWithTitles[0]?.titles || 1;
       const totalMainTitles = brandsWithTitles.reduce((sum, b) => sum + (b.mainTitles || 0), 0);
+      const rankedTitles = withRanks(brandsWithTitles, x => x.titles);
       return (
         <div>
           <div className="section-title">Marques — Titres</div>
@@ -12154,10 +12175,11 @@ export default function App() {
             {brandsWithTitles.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun titre enregistré pour une marque taguée pour l'instant.</div>
             )}
-            {brandsWithTitles.map(b => (
+            {rankedTitles.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                  <RankBadge rank={b.rank} />
                   {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                   <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
@@ -12197,6 +12219,7 @@ export default function App() {
         grandTotal += d.total;
       });
       const maxGrandTotal = TOTAL_CARS * LEAGUES.length;
+      const rankedData = withRanks(data, x => x.total);
 
       return (
         <div>
@@ -12205,10 +12228,11 @@ export default function App() {
             {data.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture taguée dans Voitures 1-2-3-4 pour l'instant.</div>
             )}
-            {data.map(d => (
+            {rankedData.map(d => (
               <div key={d.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('Voitures 1'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                  <RankBadge rank={d.rank} />
                   {getBrandCountry(d.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(d.brand))}</span>}
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
                   <span style={{ display:'flex',gap:6,fontSize:11,color:'var(--text-dim)' }}>
@@ -12247,14 +12271,16 @@ export default function App() {
 
     // Points annexes — liste complète
     const maxPts = brandStats[0].totalPts || 1;
+    const rankedPts = withRanks(brandStats, x => x.totalPts);
     return (
       <div>
         <div className="section-title">Marques — Points Annexes</div>
         <div className="card" style={{ padding:8 }}>
-          {brandStats.map(b => (
+          {rankedPts.map(b => (
             <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
               <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                <RankBadge rank={b.rank} />
                 {getBrandCountry(b.brand) && <span style={{ fontSize:16 }}>{flagEmoji(getBrandCountry(b.brand))}</span>}
                 <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                 {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
