@@ -3036,6 +3036,8 @@ export default function App() {
   const [histSubTab, setHistSubTab] = useState('historique');
   const [marquesSubTab, setMarquesSubTab] = useState('titres');
   const [marquesSearch, setMarquesSearch] = useState('');
+  const [paysSubTab, setPaysSubTab] = useState('points');
+  const [paysSearch, setPaysSearch] = useState('');
   const [openBrandTitres, setOpenBrandTitres] = useState(null);
   const [openBrandPrincipales, setOpenBrandPrincipales] = useState(null);
   const [brandDetail, setBrandDetail] = useState(null);
@@ -5939,6 +5941,22 @@ export default function App() {
       .sort((a, b) => b.totalPts - a.totalPts || a.brand.localeCompare(b.brand));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [db.seasons, db.brands, db.nameMap, db.histOverrides, currentSeason]);
+
+  const countryStats = React.useMemo(() => {
+    const stats = {};
+    brandStats.forEach(b => {
+      const code = getBrandCountry(b.brand);
+      if (!code) return;
+      if (!stats[code]) stats[code] = { code, totalPts: 0, titles: 0, mainTitles: 0, carCount: 0, brandCount: 0 };
+      stats[code].totalPts += b.totalPts;
+      stats[code].titles += b.titles;
+      stats[code].mainTitles += b.mainTitles || 0;
+      stats[code].carCount += b.carCount;
+      stats[code].brandCount += 1;
+    });
+    return Object.values(stats).map(s => ({ ...s, name: COUNTRY_LIST.find(c => c.code === s.code)?.name || s.code }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [brandStats, db.brandCountries]);
 
   function Dashboard() {
     return (
@@ -12264,6 +12282,57 @@ export default function App() {
       );
     }
 
+    if (subTab === 'pays') {
+      const valueFn = paysSubTab === 'titres' ? (c => c.titles) : (c => c.totalPts);
+      const withValue = countryStats.filter(c => valueFn(c) > 0);
+      const sortedCountries = [...withValue].sort((a, b) => valueFn(b) - valueFn(a) || a.name.localeCompare(b.name));
+      const rankedCountries = withRanks(sortedCountries, valueFn);
+      const displayedCountries = paysSearch.trim()
+        ? rankedCountries.filter(c => c.name.toLowerCase().includes(paysSearch.trim().toLowerCase()))
+        : rankedCountries;
+      const maxValue = sortedCountries[0] ? valueFn(sortedCountries[0]) : 1;
+
+      return (
+        <div>
+          <div className="section-title">Marques — Pays</div>
+          <div className="tabs" style={{ marginBottom:10 }}>
+            <button className={`tab ${paysSubTab === 'points' ? 'active' : ''}`} onClick={() => setPaysSubTab('points')}>Points Annexes</button>
+            <button className={`tab ${paysSubTab === 'titres' ? 'active' : ''}`} onClick={() => setPaysSubTab('titres')}>🏆 Titres</button>
+          </div>
+          <input
+            value={paysSearch}
+            onChange={e => setPaysSearch(e.target.value)}
+            placeholder="Rechercher un pays..."
+            style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
+          />
+          <div className="card" style={{ padding:8 }}>
+            {sortedCountries.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays assigné pour l'instant. Ajoute des drapeaux depuis la fiche d'une marque.</div>
+            )}
+            {sortedCountries.length > 0 && displayedCountries.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
+            )}
+            {displayedCountries.map(c => (
+              <div key={c.code} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
+                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                  <RankBadge rank={c.rank} />
+                  <CountryFlag code={c.code} size={20} />
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{c.name}</span>
+                  <span style={{ fontSize:12,color:'var(--text-dim)' }}>{c.brandCount} marque{c.brandCount > 1 ? 's' : ''}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:44,textAlign:'right' }}>
+                    {paysSubTab === 'titres' ? <>🏆 {c.titles}</> : <>{c.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></>}
+                  </span>
+                </div>
+                <div style={{ height:3,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (valueFn(c) / maxValue) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (subTab === 'principales') {
       const data = brandStats.map(b => {
         const counts = {};
@@ -14441,6 +14510,7 @@ export default function App() {
               { key: 'titres', label: '🏆 Titres' },
               { key: 'principales', label: 'Ligues Principales' },
               { key: 'points', label: 'Points Annexes' },
+              { key: 'pays', label: '🌍 Pays' },
             ].map(t => (
               <button key={t.key} className={`tab ${marquesSubTab === t.key ? 'active' : ''}`} onClick={() => setMarquesSubTab(t.key)}>
                 {t.label}
