@@ -12442,21 +12442,21 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
             )}
             {displayedData.map(d => (
-              <div key={d.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+              <div key={d.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); }}>
-                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
-                  <RankBadge rank={d.rank} />
-                  {getBrandCountry(d.brand) && <CountryFlag code={getBrandCountry(d.brand)} size={16} />}
-                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
-                  <span style={{ display:'flex',gap:6,fontSize:11,color:'var(--text-dim)' }}>
-                    {LEAGUES.map(l => d.counts[l] ? (
-                      <span key={l}>{l.replace('Voitures ', 'V')}:{d.counts[l]}</span>
-                    ) : null)}
-                  </span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:36,textAlign:'right' }}>{d.total}</span>
-                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
+                <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <RankBadge rank={d.rank} size={22} />
+                  {getBrandCountry(d.brand) && <CountryFlag code={getBrandCountry(d.brand)} size={28} />}
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{d.total}</span>
+                  <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
                 </div>
-                <div style={{ height:3,background:'var(--dark2)' }}>
+                <div style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,flexWrap:'wrap',fontSize:13,color:'var(--text-dim)' }}>
+                  {LEAGUES.map(l => d.counts[l] ? (
+                    <span key={l}>{l.replace('Voitures ', 'V')}: {d.counts[l]}</span>
+                  ) : null)}
+                </div>
+                <div style={{ height:4,background:'var(--dark2)' }}>
                   <div style={{ height:'100%',width:`${Math.max(4, (d.total / maxTotal) * 100)}%`,background:'var(--gold)' }} />
                 </div>
               </div>
@@ -12502,18 +12502,20 @@ export default function App() {
             <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
           )}
           {displayedPts.map(b => (
-            <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+            <div key={b.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
-              <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
-                <RankBadge rank={b.rank} />
-                {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={16} />}
-                <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
-                <span style={{ fontSize:12,color:'var(--text-dim)' }}>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
-                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:50,textAlign:'right' }}>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></span>
-                <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
+              <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                <RankBadge rank={b.rank} size={22} />
+                {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={28} />}
+                <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{b.totalPts} <span style={{ fontSize:14,color:'var(--text-dim)' }}>pts</span></span>
+                <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
               </div>
-              <div style={{ height:3,background:'var(--dark2)' }}>
+              <div style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,fontSize:13,color:'var(--text-dim)' }}>
+                <span>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
+                {b.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {b.titles} titre{b.titles > 1 ? 's' : ''}</span>}
+              </div>
+              <div style={{ height:4,background:'var(--dark2)' }}>
                 <div style={{ height:'100%',width:`${Math.max(4, (b.totalPts / maxPts) * 100)}%`,background:'var(--gold)' }} />
               </div>
             </div>
