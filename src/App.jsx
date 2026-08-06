@@ -2617,7 +2617,7 @@ function isMathematicallySecured(standings, carIndex, threshold, allMatches, isT
   }
 }
 
-function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor }) {
+function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor, noStatsToggle }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
@@ -2708,7 +2708,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
 
       {/* Points — clic pour toggle stats */}
       <div style={{ width:58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background: showStats ? 'rgba(201,168,76,0.1)' : 'var(--dark2)', cursor:'pointer' }}
-        onClick={() => setShowStats(s => !s)}>
+        onClick={() => noStatsToggle ? (onClick && onClick()) : setShowStats(s => !s)}>
         <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:40, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
       </div>
     </div>
@@ -12237,6 +12237,7 @@ export default function App() {
                     badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
                     streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
                     pts={brandDetailSort === 'titres' ? c.titles : c.total}
+                    noStatsToggle
                     onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
                   />
                 ))}
@@ -12253,6 +12254,7 @@ export default function App() {
                   name={c.name} photo={getCarPhoto(c.id)}
                   badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
                   pts={c.titles}
+                  noStatsToggle
                   onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
                 />
               ))}
