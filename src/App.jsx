@@ -12350,13 +12350,12 @@ export default function App() {
 
     if (subTab === 'pays') {
       const valueFn = paysSubTab === 'titres' ? (c => c.titles) : (c => c.totalPts);
-      const withValue = countryStats.filter(c => valueFn(c) > 0);
-      const sortedCountries = [...withValue].sort((a, b) => valueFn(b) - valueFn(a) || a.name.localeCompare(b.name));
+      const sortedCountries = [...countryStats].sort((a, b) => valueFn(b) - valueFn(a) || a.name.localeCompare(b.name));
       const rankedCountries = withRanks(sortedCountries, valueFn);
       const displayedCountries = paysSearch.trim()
         ? rankedCountries.filter(c => c.name.toLowerCase().includes(paysSearch.trim().toLowerCase()))
         : rankedCountries;
-      const maxValue = sortedCountries[0] ? valueFn(sortedCountries[0]) : 1;
+      const maxValue = (sortedCountries[0] ? valueFn(sortedCountries[0]) : 0) || 1;
 
       return (
         <div>
