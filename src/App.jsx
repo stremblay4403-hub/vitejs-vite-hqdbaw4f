@@ -12123,7 +12123,7 @@ export default function App() {
           <div className="card" style={{ padding:8 }}>
             {ranked.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab('__marques_detail__'); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={b.rank} />
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:16,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
@@ -12324,7 +12324,7 @@ export default function App() {
             )}
             {displayedTitles.map(b => (
               <div key={b.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab('__marques_detail__'); }}>
                 <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <RankBadge rank={b.rank} size={22} />
                   {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={28} />}
@@ -12381,7 +12381,7 @@ export default function App() {
             )}
             {displayedCountries.map(c => (
               <div key={c.code} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); }}>
+                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab('__marques_detail__'); }}>
                 <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <RankBadge rank={c.rank} size={22} />
                   <CountryFlag code={c.code} size={28} />
@@ -12448,7 +12448,7 @@ export default function App() {
             )}
             {displayedData.map(d => (
               <div key={d.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab('__marques_detail__'); }}>
                 <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <RankBadge rank={d.rank} size={22} />
                   {getBrandCountry(d.brand) && <CountryFlag code={getBrandCountry(d.brand)} size={28} />}
@@ -12508,7 +12508,7 @@ export default function App() {
           )}
           {displayedPts.map(b => (
             <div key={b.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
+              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab('__marques_detail__'); }}>
               <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                 <RankBadge rank={b.rank} size={22} />
                 {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={28} />}
