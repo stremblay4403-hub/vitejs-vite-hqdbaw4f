@@ -136,9 +136,9 @@ function withRanks(list, valueFn) {
     return { ...item, rank: lastRank };
   });
 }
-function RankBadge({ rank }) {
+function RankBadge({ rank, size = 16 }) {
   return (
-    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:16,minWidth:22,textAlign:'center',flexShrink:0,
+    <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:size,minWidth:size + 6,textAlign:'center',flexShrink:0,
       color: rank === 1 ? '#f1c40f' : rank === 2 ? '#bdc3c7' : rank === 3 ? '#cd7f32' : 'var(--text-dim)' }}>
       {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}
     </span>
@@ -12323,16 +12323,18 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
             )}
             {displayedTitles.map(b => (
-              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+              <div key={b.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); }}>
-                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
-                  <RankBadge rank={b.rank} />
-                  {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={16} />}
-                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>🏆 {b.titles}</span>
-                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
+                <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <RankBadge rank={b.rank} size={22} />
+                  {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={28} />}
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
+                    <span style={{ fontSize:24 }}>🏆</span>{b.titles}
+                  </span>
+                  <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
                 </div>
-                <div style={{ height:3,background:'var(--dark2)' }}>
+                <div style={{ height:4,background:'var(--dark2)' }}>
                   <div style={{ height:'100%',width:`${Math.max(4, (b.titles / maxTitles) * 100)}%`,background:'var(--gold)' }} />
                 </div>
               </div>
