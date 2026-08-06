@@ -12380,19 +12380,24 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
             )}
             {displayedCountries.map(c => (
-              <div key={c.code} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+              <div key={c.code} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setCountryDetail(c.code); }}>
-                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
-                  <RankBadge rank={c.rank} />
-                  <CountryFlag code={c.code} size={20} />
-                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{c.name}</span>
-                  <span style={{ fontSize:12,color:'var(--text-dim)' }}>{c.brandCount} marque{c.brandCount > 1 ? 's' : ''}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:44,textAlign:'right' }}>
-                    {paysSubTab === 'titres' ? <>🏆 {c.titles}</> : <>{c.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></>}
+                <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <RankBadge rank={c.rank} size={22} />
+                  <CountryFlag code={c.code} size={28} />
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{c.name}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
+                    {paysSubTab === 'titres' ? <><span style={{ fontSize:24 }}>🏆</span>{c.titles}</> : <>{c.totalPts} <span style={{ fontSize:14,color:'var(--text-dim)' }}>pts</span></>}
                   </span>
-                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
+                  <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
                 </div>
-                <div style={{ height:3,background:'var(--dark2)' }}>
+                <div style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,fontSize:13,color:'var(--text-dim)' }}>
+                  <span>{c.brandCount} marque{c.brandCount > 1 ? 's' : ''}</span>
+                  {paysSubTab === 'titres'
+                    ? <span>{c.totalPts} pts annexes</span>
+                    : (c.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {c.titles} titre{c.titles > 1 ? 's' : ''}</span>)}
+                </div>
+                <div style={{ height:4,background:'var(--dark2)' }}>
                   <div style={{ height:'100%',width:`${Math.max(4, (valueFn(c) / maxValue) * 100)}%`,background:'var(--gold)' }} />
                 </div>
               </div>
