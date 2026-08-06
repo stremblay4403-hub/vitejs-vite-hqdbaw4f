@@ -1574,6 +1574,19 @@ const css = `
   .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
   @media (max-width: 900px) { .grid-4 { grid-template-columns: 1fr 1fr; } .grid-2, .grid-3 { grid-template-columns: 1fr; } }
 
+  /* Design "carte" pour Marques/Pays sur ordinateur — drapeau + nom empilés, infos en bas */
+  @media (min-width: 900px) {
+    .mq-list { display:grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap:14px; }
+    .mq-list > .mq-card { margin-bottom:0 !important; height:100%; display:flex; flex-direction:column; }
+    .mq-toprow { flex-direction:column !important; text-align:center; gap:10px !important; padding:26px 16px 14px !important; position:relative; flex:1; }
+    .mq-rank { position:absolute; top:12px; left:12px; }
+    .mq-chevron { position:absolute; top:12px; right:12px; }
+    .mq-flag img { width:64px !important; height:48px !important; border-radius:4px !important; }
+    .mq-name { font-size:26px !important; white-space:normal !important; }
+    .mq-value { font-size:40px !important; }
+    .mq-subrow { justify-content:center !important; flex-wrap:wrap; }
+  }
+
   /* Buttons — relief "bouton de tableau de bord" + retour tactile */
   .btn {
     font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 13px;
@@ -12317,7 +12330,7 @@ export default function App() {
             placeholder="Rechercher une marque..."
             style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
           />
-          <div className="card" style={{ padding:8 }}>
+          <div className="card mq-list" style={{ padding:8 }}>
             {brandsWithTitles.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun titre enregistré pour une marque taguée pour l'instant.</div>
             )}
@@ -12325,16 +12338,16 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
             )}
             {displayedTitles.map(b => (
-              <div key={b.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
+              <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab('__marques_detail__'); }}>
-                <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                  <RankBadge rank={b.rank} size={22} />
-                  {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={28} />}
-                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
+                <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
+                  {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
+                  <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                  <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
                     <span style={{ fontSize:24 }}>🏆</span>{b.titles}
                   </span>
-                  <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
+                  <span className="mq-chevron" style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
                 </div>
                 <div style={{ height:4,background:'var(--dark2)' }}>
                   <div style={{ height:'100%',width:`${Math.max(4, (b.titles / maxTitles) * 100)}%`,background:'var(--gold)' }} />
@@ -12374,7 +12387,7 @@ export default function App() {
             placeholder="Rechercher un pays..."
             style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
           />
-          <div className="card" style={{ padding:8 }}>
+          <div className="card mq-list" style={{ padding:8 }}>
             {sortedCountries.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays assigné pour l'instant. Ajoute des drapeaux depuis la fiche d'une marque.</div>
             )}
@@ -12382,18 +12395,18 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
             )}
             {displayedCountries.map(c => (
-              <div key={c.code} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
+              <div key={c.code} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab('__marques_detail__'); }}>
-                <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                  <RankBadge rank={c.rank} size={22} />
-                  <CountryFlag code={c.code} size={28} />
-                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{c.name}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
+                <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <span className="mq-rank"><RankBadge rank={c.rank} size={22} /></span>
+                  <span className="mq-flag"><CountryFlag code={c.code} size={28} /></span>
+                  <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{c.name}</span>
+                  <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
                     {paysSubTab === 'titres' ? <><span style={{ fontSize:24 }}>🏆</span>{c.titles}</> : <>{c.totalPts} <span style={{ fontSize:14,color:'var(--text-dim)' }}>pts</span></>}
                   </span>
-                  <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
+                  <span className="mq-chevron" style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
                 </div>
-                <div style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,fontSize:13,color:'var(--text-dim)' }}>
+                <div className="mq-subrow" style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,fontSize:13,color:'var(--text-dim)' }}>
                   <span>{c.brandCount} marque{c.brandCount > 1 ? 's' : ''}</span>
                   {paysSubTab === 'titres'
                     ? <span>{c.totalPts} pts annexes</span>
@@ -12441,7 +12454,7 @@ export default function App() {
             placeholder="Rechercher une marque..."
             style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
           />
-          <div className="card" style={{ padding:8 }}>
+          <div className="card mq-list" style={{ padding:8 }}>
             {data.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture taguée dans Voitures 1-2-3-4 pour l'instant.</div>
             )}
@@ -12449,16 +12462,16 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
             )}
             {displayedData.map(d => (
-              <div key={d.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
+              <div key={d.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab('__marques_detail__'); }}>
-                <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                  <RankBadge rank={d.rank} size={22} />
-                  {getBrandCountry(d.brand) && <CountryFlag code={getBrandCountry(d.brand)} size={28} />}
-                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{d.total}</span>
-                  <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
+                <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <span className="mq-rank"><RankBadge rank={d.rank} size={22} /></span>
+                  {getBrandCountry(d.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(d.brand)} size={28} /></span>}
+                  <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{d.brand}</span>
+                  <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{d.total}</span>
+                  <span className="mq-chevron" style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
                 </div>
-                <div style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,flexWrap:'wrap',fontSize:13,color:'var(--text-dim)' }}>
+                <div className="mq-subrow" style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,flexWrap:'wrap',fontSize:13,color:'var(--text-dim)' }}>
                   {LEAGUES.map(l => d.counts[l] ? (
                     <span key={l}>{l.replace('Voitures ', 'V')}: {d.counts[l]}</span>
                   ) : null)}
@@ -12504,21 +12517,21 @@ export default function App() {
           placeholder="Rechercher une marque..."
           style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
         />
-        <div className="card" style={{ padding:8 }}>
+        <div className="card mq-list" style={{ padding:8 }}>
           {displayedPts.length === 0 && (
             <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
           )}
           {displayedPts.map(b => (
-            <div key={b.brand} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
+            <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab('__marques_detail__'); }}>
-              <div style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                <RankBadge rank={b.rank} size={22} />
-                {getBrandCountry(b.brand) && <CountryFlag code={getBrandCountry(b.brand)} size={28} />}
-                <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
-                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{b.totalPts} <span style={{ fontSize:14,color:'var(--text-dim)' }}>pts</span></span>
-                <span style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
+              <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
+                {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
+                <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{b.totalPts} <span style={{ fontSize:14,color:'var(--text-dim)' }}>pts</span></span>
+                <span className="mq-chevron" style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
               </div>
-              <div style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,fontSize:13,color:'var(--text-dim)' }}>
+              <div className="mq-subrow" style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,fontSize:13,color:'var(--text-dim)' }}>
                 <span>{b.carCount} voiture{b.carCount > 1 ? 's' : ''}</span>
                 {b.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {b.titles} titre{b.titles > 1 ? 's' : ''}</span>}
               </div>
