@@ -3041,6 +3041,7 @@ export default function App() {
   const [openBrandTitres, setOpenBrandTitres] = useState(null);
   const [openBrandPrincipales, setOpenBrandPrincipales] = useState(null);
   const [brandDetail, setBrandDetail] = useState(null);
+  const [countryDetail, setCountryDetail] = useState(null);
   const [brandDetailSort, setBrandDetailSort] = useState('points');
   const [brandLeagueTab, setBrandLeagueTab] = useState('toutes');
   // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
@@ -12066,12 +12067,77 @@ export default function App() {
       return <BrandDetailPage key={brandDetail} brand={brandDetail} />;
     }
 
+    if (countryDetail) {
+      return <CountryDetailPage key={countryDetail} code={countryDetail} />;
+    }
+
     if (!brandStats.length) {
       return (
         <div>
           <div className="section-title">Marques</div>
           <div className="card" style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
             Aucune marque taguée pour le moment. Va dans l'onglet Voitures pour commencer.
+          </div>
+        </div>
+      );
+    }
+
+    function CountryDetailPage({ code }) {
+      const [detailSort, setDetailSort] = useState(paysSubTab);
+      const stats = countryStats.find(c => c.code === code);
+      const name = COUNTRY_LIST.find(c => c.code === code)?.name || code;
+      if (!stats) {
+        return (
+          <div>
+            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => setCountryDetail(null)}>← Retour</button>
+            <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Pays introuvable.</div>
+          </div>
+        );
+      }
+      const brandsHere = brandStats.filter(b => getBrandCountry(b.brand) === code);
+      const valueFn = detailSort === 'titres' ? (b => b.titles) : (b => b.totalPts);
+      const sorted = [...brandsHere].sort((a, b) => valueFn(b) - valueFn(a) || a.brand.localeCompare(b.brand));
+      const ranked = withRanks(sorted, valueFn);
+      const maxValue = ranked[0] ? valueFn(ranked[0]) : 1;
+
+      return (
+        <div>
+          <div style={{ padding:'10px 12px' }}>
+            <button className="btn btn-dark btn-sm" onClick={() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour aux pays</button>
+          </div>
+          <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
+            <div style={{ display:'flex',alignItems:'center',gap:10,justifyContent:'center' }}>
+              <CountryFlag code={code} size={28} />
+              <div style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:24,letterSpacing:1,color:'var(--gold)',textAlign:'center' }}>{name}</div>
+            </div>
+            <div style={{ display:'flex',gap:14,fontSize:12,color:'var(--text-dim)',flexWrap:'wrap',justifyContent:'center' }}>
+              <span>{stats.brandCount} marque{stats.brandCount > 1 ? 's' : ''}</span>
+              <span>{stats.totalPts} pts annexes</span>
+              {stats.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {stats.titles} titre{stats.titles > 1 ? 's' : ''}</span>}
+            </div>
+          </div>
+          <div style={{ display:'flex',gap:8,padding:'0 12px 10px' }}>
+            <button className={`btn btn-sm ${detailSort === 'points' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setDetailSort('points')}>Trier par Points</button>
+            <button className={`btn btn-sm ${detailSort === 'titres' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setDetailSort('titres')}>Trier par Titres</button>
+          </div>
+          <div className="card" style={{ padding:8 }}>
+            {ranked.map(b => (
+              <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); }}>
+                <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
+                  <RankBadge rank={b.rank} />
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:16,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
+                  {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--text)',minWidth:44,textAlign:'right' }}>
+                    {detailSort === 'titres' ? b.titles : <>{b.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></>}
+                  </span>
+                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
+                </div>
+                <div style={{ height:3,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (valueFn(b) / maxValue) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       );
@@ -12313,7 +12379,8 @@ export default function App() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
             )}
             {displayedCountries.map(c => (
-              <div key={c.code} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden' }}>
+              <div key={c.code} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
+                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={c.rank} />
                   <CountryFlag code={c.code} size={20} />
@@ -12322,6 +12389,7 @@ export default function App() {
                   <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)',minWidth:44,textAlign:'right' }}>
                     {paysSubTab === 'titres' ? <>🏆 {c.titles}</> : <>{c.totalPts} <span style={{ fontSize:11,color:'var(--text-dim)' }}>pts</span></>}
                   </span>
+                  <span style={{ color:'var(--text-dim)',fontSize:14 }}>›</span>
                 </div>
                 <div style={{ height:3,background:'var(--dark2)' }}>
                   <div style={{ height:'100%',width:`${Math.max(4, (valueFn(c) / maxValue) * 100)}%`,background:'var(--gold)' }} />
