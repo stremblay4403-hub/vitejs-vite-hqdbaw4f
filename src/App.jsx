@@ -3066,6 +3066,13 @@ export default function App() {
   const [copyToast, setCopyToast] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    function onScroll() { setShowScrollTop(window.scrollY > 600); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [matchModal, setMatchModal] = useState(null);
   const [matchHg, setMatchHg] = useState(null);
   const [matchAg, setMatchAg] = useState(null);
@@ -3739,6 +3746,20 @@ export default function App() {
     }
     return out.slice(0, 20);
   }, [globalSearchQuery, currentSeason]);
+
+  // Voiture aléatoire — pioche une voiture au hasard parmi toutes les ligues et ouvre son profil.
+  // Fonction déclarée ici (après currentSeason) pour éviter tout accès avant initialisation.
+  function openRandomCar() {
+    const pool = [];
+    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+      const cars = currentSeason.leagues[l]?.cars || [];
+      for (const c of cars) pool.push({ leagueName: l, carId: c.id });
+    }
+    if (pool.length === 0) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    openProfileCar(pick);
+  }
+
   const prevSeason = db.currentSeasonIdx > 0 ? db.seasons[db.currentSeasonIdx - 1] : null;
 
   function getCarMovement(carId, leagueName) {
@@ -12069,7 +12090,12 @@ export default function App() {
                   </div>
                 );
               })}
-              {filteredRip.length === 0 && <div className="text-dim" style={{ gridColumn:'1/-1',padding:24,textAlign:'center' }}>Aucune voiture retraitée</div>}
+              {filteredRip.length === 0 && (
+                <div className="empty-state" style={{ gridColumn:'1/-1' }}>
+                  <div className="empty-icon">🏁</div>
+                  <div className="empty-sub">Aucune voiture retraitée pour l'instant.</div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -14477,6 +14503,16 @@ export default function App() {
         {/* Car profile modal */}
         <CarProfileModal />
 
+        {showScrollTop && (
+          <button
+            className="btn btn-gold btn-sm"
+            style={{ position:'fixed', bottom:20, right:16, zIndex:90, borderRadius:'50%', width:44, height:44, padding:0, fontSize:18, boxShadow:'var(--shadow-lg), var(--glow-gold)' }}
+            onClick={() => window.scrollTo({ top:0, behavior:'smooth' })}
+            title="Retour en haut">
+            ↑
+          </button>
+        )}
+
         {/* Recherche rapide globale — trouver une voiture par nom peu importe sa ligue */}
         {globalSearchOpen && (
           <div className="car-profile-modal" style={{ alignItems:'flex-start', paddingTop:'10vh' }} onClick={closeGlobalSearch}>
@@ -14535,6 +14571,9 @@ export default function App() {
           <div className="header-divider" />
           <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
             🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
+          </button>
+          <button className="btn btn-sm btn-dark" style={{ flexShrink:0 }} onClick={openRandomCar} title="Voiture au hasard">
+            🎲
           </button>
           <div className="header-actions">
             {isPublicMode ? (
