@@ -3044,7 +3044,29 @@ export default function App() {
       });
     });
   }
+
+  // Recherche rapide — cherche une voiture par nom dans TOUTES les ligues (principales + auxiliaires)
+  // et permet d'ouvrir son profil directement, sans naviguer dans la hiérarchie des onglets.
+  const globalSearchResults = React.useMemo(() => {
+    const q = globalSearchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out = [];
+    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+      const cars = currentSeason.leagues[l]?.cars || [];
+      for (const c of cars) {
+        if (c.name && c.name.toLowerCase().includes(q)) {
+          out.push({ id: c.id, name: c.name, league: l, photo: getCarPhoto ? getCarPhoto(c.id) : null });
+        }
+      }
+      if (out.length >= 30) break;
+    }
+    return out.slice(0, 20);
+  }, [globalSearchQuery, currentSeason]);
+
+  function closeGlobalSearch() { setGlobalSearchOpen(false); setGlobalSearchQuery(''); }
   const [notifications, setNotifications] = useState([]);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [matchModal, setMatchModal] = useState(null);
   const [matchHg, setMatchHg] = useState(null);
   const [matchAg, setMatchAg] = useState(null);
@@ -14384,6 +14406,55 @@ export default function App() {
         {/* Car profile modal */}
         <CarProfileModal />
 
+        {/* Recherche rapide globale — trouver une voiture par nom peu importe sa ligue */}
+        {globalSearchOpen && (
+          <div className="car-profile-modal" style={{ alignItems:'flex-start', paddingTop:'10vh' }} onClick={closeGlobalSearch}>
+            <div className="car-profile-card" style={{ maxWidth:440, animation:'cardSettleIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding:16, borderBottom:'1px solid var(--gold-dim)' }}>
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Rechercher une voiture..."
+                  value={globalSearchQuery}
+                  onChange={e => setGlobalSearchQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') closeGlobalSearch(); }}
+                  style={{ width:'100%', fontSize:16, padding:'10px 12px' }}
+                />
+              </div>
+              <div style={{ maxHeight:'50vh', overflowY:'auto' }}>
+                {globalSearchQuery.trim().length < 2 && (
+                  <div className="empty-state" style={{ padding:28 }}>
+                    <div className="empty-icon">🔍</div>
+                    <div className="empty-sub">Tape au moins 2 lettres pour chercher parmi toutes les ligues.</div>
+                  </div>
+                )}
+                {globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && (
+                  <div className="empty-state" style={{ padding:28 }}>
+                    <div className="empty-icon">🚫</div>
+                    <div className="empty-sub">Aucune voiture ne correspond à "{globalSearchQuery}".</div>
+                  </div>
+                )}
+                {globalSearchResults.map(r => (
+                  <div key={`${r.league}-${r.id}`}
+                    style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 16px', cursor:'pointer', borderBottom:'1px solid #1a1a1a' }}
+                    onClick={() => { closeGlobalSearch(); openProfileCar({ leagueName: r.league, carId: r.id }); }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(212,175,55,0.06)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                    <div style={{ width:36, height:36, borderRadius:4, overflow:'hidden', flexShrink:0, background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      {r.photo ? <img src={r.photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '🚗'}
+                    </div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontSize:15, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.name}</div>
+                      <div style={{ fontSize:11, color:'var(--text-dim)' }}>{r.league}</div>
+                    </div>
+                    <span style={{ color:'var(--text-dim)' }}>›</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="header">
           <div className="header-logo">
@@ -14391,6 +14462,9 @@ export default function App() {
             <span>Gestionnaire de Saisons</span>
           </div>
           <div className="header-divider" />
+          <button className="btn btn-sm btn-dark" style={{ flexShrink:0 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture">
+            🔍
+          </button>
           <div className="header-actions">
             {isPublicMode ? (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
