@@ -1604,6 +1604,7 @@ const css = `
     text-transform: uppercase;
   }
   .btn:active { transform: scale(0.96); }
+  .btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .btn-gold {
     background: linear-gradient(180deg, var(--gold2), var(--gold));
     color: #1a1305;
@@ -1659,10 +1660,29 @@ const css = `
     display: inline-block; padding: 2px 8px; border-radius: 3px;
     font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   }
-  .badge-gold { background: linear-gradient(180deg, var(--gold2), var(--gold-dim)); color: var(--black); }
+  .badge-gold { background: linear-gradient(180deg, var(--gold2), var(--gold-dim)); color: var(--black); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35); }
   .badge-green { background: rgba(39,174,96,0.2); color: var(--green); border: 1px solid rgba(39,174,96,0.3); }
   .badge-red { background: rgba(192,57,43,0.2); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
   .badge-blue { background: rgba(41,128,185,0.2); color: #5dade2; border: 1px solid rgba(41,128,185,0.3); }
+
+  /* Cartes cliquables (Marques/Pays) — léger relief au survol/tap */
+  .mq-card { transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+  .mq-card:hover { border-color: var(--gold-dim) !important; box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+  .mq-card:active { transform: translateY(0) scale(0.985); }
+
+  /* État vide — invite à agir plutôt qu'une simple ligne de texte */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 40px 20px; text-align: center; color: var(--text-dim);
+  }
+  .empty-state .empty-icon { font-size: 28px; opacity: 0.5; filter: grayscale(0.4); }
+  .empty-state .empty-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 16px; color: var(--text); }
+  .empty-state .empty-sub { font-size: 13px; max-width: 320px; }
+
+  /* Respect des préférences de mouvement réduit */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
 
   /* Match row */
   .match-row {
@@ -12107,8 +12127,12 @@ export default function App() {
       return (
         <div>
           <div className="section-title">Marques</div>
-          <div className="card" style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
-            Aucune marque taguée pour le moment. Va dans l'onglet Voitures pour commencer.
+          <div className="card">
+            <div className="empty-state">
+              <div className="empty-icon">🏷️</div>
+              <div className="empty-title">Aucune marque taguée</div>
+              <div className="empty-sub">Va dans l'onglet Voitures pour associer une marque à tes voitures.</div>
+            </div>
           </div>
         </div>
       );
@@ -12278,7 +12302,11 @@ export default function App() {
           ) : brandLeagueTab === 'titres' ? (
             <div className="card" style={{ padding:0,overflow:'hidden' }}>
               {b.cars.filter(c => c.titles > 0).length === 0 && (
-                <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture titrée pour l'instant.</div>
+                <div className="empty-state">
+                  <div className="empty-icon">🏆</div>
+                  <div className="empty-title">Aucune voiture titrée pour l'instant</div>
+                </div>
+
               )}
               {b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles).map((c, i) => (
                 <LeaderboardRow key={c.id}
@@ -12408,7 +12436,11 @@ export default function App() {
           />
           <div className="card mq-list" style={{ padding:8 }}>
             {sortedCountries.length === 0 && (
-              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays assigné pour l'instant. Ajoute des drapeaux depuis la fiche d'une marque.</div>
+              <div className="empty-state">
+                <div className="empty-icon">🌍</div>
+                <div className="empty-title">Aucun pays assigné pour l'instant</div>
+                <div className="empty-sub">Ajoute des drapeaux depuis la fiche d'une marque.</div>
+              </div>
             )}
             {sortedCountries.length > 0 && displayedCountries.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
