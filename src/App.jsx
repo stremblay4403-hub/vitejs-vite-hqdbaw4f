@@ -1644,7 +1644,7 @@ const css = `
     border-bottom: 2px solid var(--border); background: var(--dark3);
   }
   .tbl td { padding: 9px 10px; border-bottom: 1px solid #1a1a1a; transition: background 0.12s ease; }
-  .tbl tbody tr:nth-child(even) td { background: rgba(255,255,255,0.014); }
+  .tbl tbody tr:nth-child(even) td:not(.sticky-right) { background: rgba(255,255,255,0.014); }
   .tbl tr:hover td { background: rgba(212,175,55,0.06) !important; }
   .tbl .rank { color: var(--gold-dim); font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
   .tbl .car-name { font-weight: 600; font-size: 16px; }
@@ -3746,18 +3746,6 @@ export default function App() {
     return out.slice(0, 20);
   }, [globalSearchQuery, currentSeason]);
 
-  // Voiture aléatoire — pioche une voiture au hasard parmi toutes les ligues et ouvre son profil.
-  // Fonction déclarée ici (après currentSeason) pour éviter tout accès avant initialisation.
-  function openRandomCar() {
-    const pool = [];
-    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
-      const cars = currentSeason.leagues[l]?.cars || [];
-      for (const c of cars) pool.push({ leagueName: l, carId: c.id });
-    }
-    if (pool.length === 0) return;
-    const pick = pool[Math.floor(Math.random() * pool.length)];
-    openProfileCar(pick);
-  }
 
   const prevSeason = db.currentSeasonIdx > 0 ? db.seasons[db.currentSeasonIdx - 1] : null;
 
@@ -6071,42 +6059,9 @@ export default function App() {
   }, [brandStats, db.brandCountries]);
 
   function Dashboard() {
-    // Voiture en forme — scan les 4 ligues principales pour trouver la meilleure série en cours
-    const hotCar = (() => {
-      let best = null;
-      for (const l of LEAGUES) {
-        const league = getLeague(l);
-        if (!league) continue;
-        for (const c of league.cars) {
-          const sb = getStreakBadge(c.id, l);
-          if (!sb || sb.color === '#5dade2') continue; // ignore les séries froides ici
-          const rank = sb.label === 'INARRÊTABLE' ? 2 : 1;
-          if (!best || rank > best.rank) best = { rank, car: c, league: l, badge: sb };
-        }
-      }
-      return best;
-    })();
-
     return (
       <div>
         <div className="section-title">Tableau de Bord — Saison {currentSeason.season}</div>
-
-        {hotCar && (
-          <div className="card" style={{ marginBottom:16, cursor:'pointer', borderColor:'rgba(230,126,34,0.4)' }}
-            onClick={() => openProfileCar({ leagueName: hotCar.league, carId: hotCar.car.id })}>
-            <div style={{ display:'flex', alignItems:'center', gap:14, padding:14 }}>
-              <div style={{ width:56, height:56, borderRadius:8, overflow:'hidden', flexShrink:0, background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, border:'2px solid #e67e22' }}>
-                {getCarPhoto(hotCar.car.id) ? <img src={getCarPhoto(hotCar.car.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '🚗'}
-              </div>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ fontSize:11, color:'#e67e22', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}>{hotCar.badge.icon} VOITURE EN FORME</div>
-                <div style={{ fontWeight:700, fontSize:18, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{hotCar.car.name}</div>
-                <div style={{ fontSize:12, color:'var(--text-dim)' }}>{hotCar.league} · {hotCar.badge.label}</div>
-              </div>
-              <span style={{ color:'var(--text-dim)' }}>›</span>
-            </div>
-          </div>
-        )}
 
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {LEAGUES.map(l => {
@@ -14558,9 +14513,6 @@ export default function App() {
           <div className="header-divider" />
           <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
             🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
-          </button>
-          <button className="btn btn-sm btn-dark" style={{ flexShrink:0 }} onClick={openRandomCar} title="Voiture au hasard">
-            🎲
           </button>
           <div className="header-actions">
             {isPublicMode ? (
