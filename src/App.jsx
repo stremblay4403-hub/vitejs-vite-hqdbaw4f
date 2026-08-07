@@ -1723,7 +1723,9 @@ const css = `
   .bracket-match {
     margin: 6px; border: 1px solid var(--border); border-radius: 4px;
     background: var(--dark3); overflow: hidden; box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   }
+  .bracket-match:hover { border-color: var(--gold-dim); transform: translateY(-1px); box-shadow: var(--shadow-md); }
   .bracket-team {
     padding: 5px 10px; font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;
     border-bottom: 1px solid #1a1a1a;
@@ -1733,7 +1735,8 @@ const css = `
   .bracket-score { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: var(--gold); margin-left: 8px; }
 
   /* Stats */
-  .stat-box { text-align: center; padding: 12px; }
+  .stat-box { text-align: center; padding: 12px; border-radius: 4px; transition: background 0.15s ease; }
+  .stat-box:hover { background: rgba(212,175,55,0.04); }
   .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); line-height: 1; text-shadow: 0 0 14px rgba(212,175,55,0.25); }
   .stat-lbl { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
 
@@ -3046,24 +3049,6 @@ export default function App() {
     });
   }
 
-  // Recherche rapide — cherche une voiture par nom dans TOUTES les ligues (principales + auxiliaires)
-  // et permet d'ouvrir son profil directement, sans naviguer dans la hiérarchie des onglets.
-  const globalSearchResults = React.useMemo(() => {
-    const q = globalSearchQuery.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const out = [];
-    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
-      const cars = currentSeason.leagues[l]?.cars || [];
-      for (const c of cars) {
-        if (c.name && c.name.toLowerCase().includes(q)) {
-          out.push({ id: c.id, name: c.name, league: l, photo: getCarPhoto ? getCarPhoto(c.id) : null });
-        }
-      }
-      if (out.length >= 30) break;
-    }
-    return out.slice(0, 20);
-  }, [globalSearchQuery, currentSeason]);
-
   function closeGlobalSearch() { setGlobalSearchOpen(false); setGlobalSearchQuery(''); }
 
   // Raccourci clavier — Cmd/Ctrl+K ouvre la recherche rapide (pratique sur desktop/iPad avec clavier)
@@ -3078,6 +3063,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
   const [notifications, setNotifications] = useState([]);
+  const [copyToast, setCopyToast] = useState(false);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [matchModal, setMatchModal] = useState(null);
@@ -3735,6 +3721,24 @@ export default function App() {
   }, [db, loaded]);
 
   const currentSeason = db.seasons[db.currentSeasonIdx];
+
+  // Recherche rapide — cherche une voiture par nom dans TOUTES les ligues (principales + auxiliaires)
+  // et permet d'ouvrir son profil directement, sans naviguer dans la hiérarchie des onglets.
+  const globalSearchResults = React.useMemo(() => {
+    const q = globalSearchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out = [];
+    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+      const cars = currentSeason.leagues[l]?.cars || [];
+      for (const c of cars) {
+        if (c.name && c.name.toLowerCase().includes(q)) {
+          out.push({ id: c.id, name: c.name, league: l, photo: getCarPhoto ? getCarPhoto(c.id) : null });
+        }
+      }
+      if (out.length >= 30) break;
+    }
+    return out.slice(0, 20);
+  }, [globalSearchQuery, currentSeason]);
   const prevSeason = db.currentSeasonIdx > 0 ? db.seasons[db.currentSeasonIdx - 1] : null;
 
   function getCarMovement(carId, leagueName) {
@@ -8156,8 +8160,28 @@ export default function App() {
               </div>
             </div>
             <div className="car-profile-actions" style={{ display:'flex', gap:6 }}>
+              <button className="btn btn-dark btn-sm" title="Copier la fiche de la voiture"
+                onClick={() => {
+                  const lines = [
+                    `🏎️ ${effectiveName}`,
+                    getCarBrand(resolvedCarId) ? getCarBrand(resolvedCarId) : null,
+                    `${totalGP} matchs — ${totalW}V ${totalD}N ${totalL}D`,
+                    `${totalGF}-${totalGA} (diff ${diff >= 0 ? '+' : ''}${diff})`,
+                    `${(ptsRatio * 100).toFixed(1)}% de points`,
+                    (champCount + histChampions.length) > 0 ? `🏆 ${champCount + histChampions.length} titre(s)` : null,
+                  ].filter(Boolean).join('\n');
+                  navigator.clipboard?.writeText(lines).then(() => {
+                    setCopyToast(true);
+                    setTimeout(() => setCopyToast(false), 1800);
+                  }).catch(() => alert(lines));
+                }}>📋</button>
               <button className="btn btn-dark btn-sm" onClick={() => { setProfileCar(null); setCompareMode(false); setCompareCarId(null); }}>✕</button>
             </div>
+            {copyToast && (
+              <div style={{ position:'absolute', top:56, right:12, zIndex:3, background:'var(--dark3)', border:'1px solid var(--gold-dim)', color:'var(--gold)', fontSize:12, padding:'6px 12px', borderRadius:4, boxShadow:'var(--shadow-sm)', animation:'champChipPop 0.25s ease both' }}>
+                ✓ Fiche copiée
+              </div>
+            )}
           </div>
 
           {/* App stats note */}
