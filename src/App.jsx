@@ -1520,6 +1520,7 @@ const css = `
   @media (min-width: 768px) {
     .header-logo { font-size: 42px; letter-spacing: 6px; }
     .header-logo span { font-size: 16px; letter-spacing: 4px; }
+    .search-kbd-hint { display: inline-block !important; }
     .header { padding: 4px 24px; }
   }
   .header-logo span { color: var(--text-dim); font-size: 14px; letter-spacing: 2px; display: block; -webkit-text-fill-color: var(--text-dim); }
@@ -3064,6 +3065,18 @@ export default function App() {
   }, [globalSearchQuery, currentSeason]);
 
   function closeGlobalSearch() { setGlobalSearchOpen(false); setGlobalSearchQuery(''); }
+
+  // Raccourci clavier — Cmd/Ctrl+K ouvre la recherche rapide (pratique sur desktop/iPad avec clavier)
+  useEffect(() => {
+    function onKeyDown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const [notifications, setNotifications] = useState([]);
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
@@ -6034,9 +6047,43 @@ export default function App() {
   }, [brandStats, db.brandCountries]);
 
   function Dashboard() {
+    // Voiture en forme — scan les 4 ligues principales pour trouver la meilleure série en cours
+    const hotCar = (() => {
+      let best = null;
+      for (const l of LEAGUES) {
+        const league = getLeague(l);
+        if (!league) continue;
+        for (const c of league.cars) {
+          const sb = getStreakBadge(c.id, l);
+          if (!sb || sb.color === '#5dade2') continue; // ignore les séries froides ici
+          const rank = sb.label === 'INARRÊTABLE' ? 2 : 1;
+          if (!best || rank > best.rank) best = { rank, car: c, league: l, badge: sb };
+        }
+      }
+      return best;
+    })();
+
     return (
       <div>
         <div className="section-title">Tableau de Bord — Saison {currentSeason.season}</div>
+
+        {hotCar && (
+          <div className="card" style={{ marginBottom:16, cursor:'pointer', borderColor:'rgba(230,126,34,0.4)' }}
+            onClick={() => openProfileCar({ leagueName: hotCar.league, carId: hotCar.car.id })}>
+            <div style={{ display:'flex', alignItems:'center', gap:14, padding:14 }}>
+              <div style={{ width:56, height:56, borderRadius:8, overflow:'hidden', flexShrink:0, background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, border:'2px solid #e67e22' }}>
+                {getCarPhoto(hotCar.car.id) ? <img src={getCarPhoto(hotCar.car.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '🚗'}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:11, color:'#e67e22', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}>{hotCar.badge.icon} VOITURE EN FORME</div>
+                <div style={{ fontWeight:700, fontSize:18, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{hotCar.car.name}</div>
+                <div style={{ fontSize:12, color:'var(--text-dim)' }}>{hotCar.league} · {hotCar.badge.label}</div>
+              </div>
+              <span style={{ color:'var(--text-dim)' }}>›</span>
+            </div>
+          </div>
+        )}
+
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {LEAGUES.map(l => {
             const champId = currentSeason.champions[l];
@@ -14462,8 +14509,8 @@ export default function App() {
             <span>Gestionnaire de Saisons</span>
           </div>
           <div className="header-divider" />
-          <button className="btn btn-sm btn-dark" style={{ flexShrink:0 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture">
-            🔍
+          <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
+            🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
           </button>
           <div className="header-actions">
             {isPublicMode ? (
