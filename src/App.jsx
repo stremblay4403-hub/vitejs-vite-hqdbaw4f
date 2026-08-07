@@ -1520,22 +1520,32 @@ const css = `
   @media (min-width: 768px) {
     .header-logo { font-size: 42px; letter-spacing: 6px; }
     .header-logo span { font-size: 16px; letter-spacing: 4px; }
+    .search-kbd-hint { display: inline-block !important; }
     .header { padding: 4px 24px; }
   }
   .header-logo span { color: var(--text-dim); font-size: 14px; letter-spacing: 2px; display: block; -webkit-text-fill-color: var(--text-dim); }
   .header-divider { flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold-dim), transparent); }
   .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
-  /* Tabs */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; }
+  /* Tabs — hiérarchie de profondeur : niveau 1 = nav héros soulignée, niveaux 2+ = pilules compactes */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; position: relative; }
   .tab {
-    font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
-    padding: 14px 20px; cursor: pointer; border: none; background: none;
-    color: var(--text-dim); border-bottom: 3px solid transparent;
-    transition: all 0.2s; white-space: nowrap;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.5px; font-size: 13px;
+    padding: 8px 14px; cursor: pointer; border: none; background: none;
+    color: var(--text-dim); border-radius: 20px; margin: 6px 0;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; white-space: nowrap;
   }
-  .tab:hover { color: var(--gold); }
-  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab:hover { color: var(--gold); background: rgba(212,175,55,0.07); }
+  .tab.active { color: #1a1305; background: linear-gradient(180deg, var(--gold2), var(--gold)); box-shadow: 0 2px 8px rgba(212,175,55,0.3); }
+
+  /* Niveau 1 — nav principale : traitement héros conservé (Bebas Neue + soulignement) */
+  #tabs-main .tab {
+    font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
+    padding: 14px 20px; border-radius: 0; margin: 0;
+    border-bottom: 3px solid transparent;
+  }
+  #tabs-main .tab:hover { color: var(--gold); background: none; }
+  #tabs-main .tab.active { color: var(--gold); background: none; box-shadow: none; border-bottom-color: var(--gold); }
 
   /* Content */
   .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
@@ -1595,6 +1605,7 @@ const css = `
     text-transform: uppercase;
   }
   .btn:active { transform: scale(0.96); }
+  .btn:focus-visible, .tab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   .btn-gold {
     background: linear-gradient(180deg, var(--gold2), var(--gold));
     color: #1a1305;
@@ -1633,7 +1644,8 @@ const css = `
     border-bottom: 2px solid var(--border); background: var(--dark3);
   }
   .tbl td { padding: 9px 10px; border-bottom: 1px solid #1a1a1a; transition: background 0.12s ease; }
-  .tbl tr:hover td { background: rgba(212,175,55,0.05); }
+  .tbl tbody tr:nth-child(even) td { background: rgba(255,255,255,0.014); }
+  .tbl tr:hover td { background: rgba(212,175,55,0.06) !important; }
   .tbl .rank { color: var(--gold-dim); font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
   .tbl .car-name { font-weight: 600; font-size: 16px; }
   .tbl .pts-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,0.25); }
@@ -1649,10 +1661,29 @@ const css = `
     display: inline-block; padding: 2px 8px; border-radius: 3px;
     font-size: 11px; font-weight: 700; letter-spacing: 1px; text-transform: uppercase;
   }
-  .badge-gold { background: linear-gradient(180deg, var(--gold2), var(--gold-dim)); color: var(--black); }
+  .badge-gold { background: linear-gradient(180deg, var(--gold2), var(--gold-dim)); color: var(--black); box-shadow: inset 0 1px 0 rgba(255,255,255,0.35); }
   .badge-green { background: rgba(39,174,96,0.2); color: var(--green); border: 1px solid rgba(39,174,96,0.3); }
   .badge-red { background: rgba(192,57,43,0.2); color: #e74c3c; border: 1px solid rgba(192,57,43,0.3); }
   .badge-blue { background: rgba(41,128,185,0.2); color: #5dade2; border: 1px solid rgba(41,128,185,0.3); }
+
+  /* Cartes cliquables (Marques/Pays) — léger relief au survol/tap */
+  .mq-card { transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease; }
+  .mq-card:hover { border-color: var(--gold-dim) !important; box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+  .mq-card:active { transform: translateY(0) scale(0.985); }
+
+  /* État vide — invite à agir plutôt qu'une simple ligne de texte */
+  .empty-state {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px; padding: 40px 20px; text-align: center; color: var(--text-dim);
+  }
+  .empty-state .empty-icon { font-size: 28px; opacity: 0.5; filter: grayscale(0.4); }
+  .empty-state .empty-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 16px; color: var(--text); }
+  .empty-state .empty-sub { font-size: 13px; max-width: 320px; }
+
+  /* Respect des préférences de mouvement réduit */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+  }
 
   /* Match row */
   .match-row {
@@ -1692,7 +1723,9 @@ const css = `
   .bracket-match {
     margin: 6px; border: 1px solid var(--border); border-radius: 4px;
     background: var(--dark3); overflow: hidden; box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
   }
+  .bracket-match:hover { border-color: var(--gold-dim); transform: translateY(-1px); box-shadow: var(--shadow-md); }
   .bracket-team {
     padding: 5px 10px; font-size: 12px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;
     border-bottom: 1px solid #1a1a1a;
@@ -1702,7 +1735,8 @@ const css = `
   .bracket-score { font-family: 'Bebas Neue', sans-serif; font-size: 15px; color: var(--gold); margin-left: 8px; }
 
   /* Stats */
-  .stat-box { text-align: center; padding: 12px; }
+  .stat-box { text-align: center; padding: 12px; border-radius: 4px; transition: background 0.15s ease; }
+  .stat-box:hover { background: rgba(212,175,55,0.04); }
   .stat-val { font-family: 'Bebas Neue', sans-serif; font-size: 32px; color: var(--gold); line-height: 1; text-shadow: 0 0 14px rgba(212,175,55,0.25); }
   .stat-lbl { font-size: 11px; color: var(--text-dim); letter-spacing: 1px; text-transform: uppercase; margin-top: 4px; }
 
@@ -1843,6 +1877,7 @@ const css = `
   }
   .car-photo-box:hover { border-color: var(--gold-dim); }
   .car-photo-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+  .car-photo-box::after { content:''; position:absolute; inset:0; box-shadow: inset 0 0 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(212,175,55,0.12); pointer-events:none; }
   .car-photo-overlay {
     position: absolute; inset: 0; background: rgba(0,0,0,0.6);
     display: flex; align-items: center; justify-content: center;
@@ -1867,6 +1902,14 @@ const css = `
   .car-stat-item:nth-child(9) { animation-delay: 1.75s; }
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  /* Stat vedette — "% de points" au centre de la grille, mise en avant */
+  .car-stat-item:nth-child(5) {
+    background: linear-gradient(180deg, rgba(212,175,55,0.16), rgba(212,175,55,0.03));
+    border: 1px solid var(--gold-dim);
+    box-shadow: var(--shadow-sm), 0 0 18px rgba(212,175,55,0.14);
+  }
+  .car-stat-item:nth-child(5) .val { font-size: 30px; text-shadow: 0 0 14px rgba(212,175,55,0.4); }
+  .car-stat-item:nth-child(5) .lbl { color: var(--gold-dim); font-weight: 600; }
 
   /* Trophée cliquable → révèle les saisons remportées */
   .trophy-badge { cursor: pointer; transition: transform 0.12s ease; }
@@ -3005,7 +3048,30 @@ export default function App() {
       });
     });
   }
+
+  function closeGlobalSearch() { setGlobalSearchOpen(false); setGlobalSearchQuery(''); }
+
+  // Raccourci clavier — Cmd/Ctrl+K ouvre la recherche rapide (pratique sur desktop/iPad avec clavier)
+  useEffect(() => {
+    function onKeyDown(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setGlobalSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const [notifications, setNotifications] = useState([]);
+  const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+  const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    function onScroll() { setShowScrollTop(window.scrollY > 600); }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
   const [matchModal, setMatchModal] = useState(null);
   const [matchHg, setMatchHg] = useState(null);
   const [matchAg, setMatchAg] = useState(null);
@@ -3661,6 +3727,38 @@ export default function App() {
   }, [db, loaded]);
 
   const currentSeason = db.seasons[db.currentSeasonIdx];
+
+  // Recherche rapide — cherche une voiture par nom dans TOUTES les ligues (principales + auxiliaires)
+  // et permet d'ouvrir son profil directement, sans naviguer dans la hiérarchie des onglets.
+  const globalSearchResults = React.useMemo(() => {
+    const q = globalSearchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out = [];
+    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+      const cars = currentSeason.leagues[l]?.cars || [];
+      for (const c of cars) {
+        if (c.name && c.name.toLowerCase().includes(q)) {
+          out.push({ id: c.id, name: c.name, league: l, photo: getCarPhoto ? getCarPhoto(c.id) : null });
+        }
+      }
+      if (out.length >= 30) break;
+    }
+    return out.slice(0, 20);
+  }, [globalSearchQuery, currentSeason]);
+
+  // Voiture aléatoire — pioche une voiture au hasard parmi toutes les ligues et ouvre son profil.
+  // Fonction déclarée ici (après currentSeason) pour éviter tout accès avant initialisation.
+  function openRandomCar() {
+    const pool = [];
+    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+      const cars = currentSeason.leagues[l]?.cars || [];
+      for (const c of cars) pool.push({ leagueName: l, carId: c.id });
+    }
+    if (pool.length === 0) return;
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    openProfileCar(pick);
+  }
+
   const prevSeason = db.currentSeasonIdx > 0 ? db.seasons[db.currentSeasonIdx - 1] : null;
 
   function getCarMovement(carId, leagueName) {
@@ -5973,9 +6071,43 @@ export default function App() {
   }, [brandStats, db.brandCountries]);
 
   function Dashboard() {
+    // Voiture en forme — scan les 4 ligues principales pour trouver la meilleure série en cours
+    const hotCar = (() => {
+      let best = null;
+      for (const l of LEAGUES) {
+        const league = getLeague(l);
+        if (!league) continue;
+        for (const c of league.cars) {
+          const sb = getStreakBadge(c.id, l);
+          if (!sb || sb.color === '#5dade2') continue; // ignore les séries froides ici
+          const rank = sb.label === 'INARRÊTABLE' ? 2 : 1;
+          if (!best || rank > best.rank) best = { rank, car: c, league: l, badge: sb };
+        }
+      }
+      return best;
+    })();
+
     return (
       <div>
         <div className="section-title">Tableau de Bord — Saison {currentSeason.season}</div>
+
+        {hotCar && (
+          <div className="card" style={{ marginBottom:16, cursor:'pointer', borderColor:'rgba(230,126,34,0.4)' }}
+            onClick={() => openProfileCar({ leagueName: hotCar.league, carId: hotCar.car.id })}>
+            <div style={{ display:'flex', alignItems:'center', gap:14, padding:14 }}>
+              <div style={{ width:56, height:56, borderRadius:8, overflow:'hidden', flexShrink:0, background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28, border:'2px solid #e67e22' }}>
+                {getCarPhoto(hotCar.car.id) ? <img src={getCarPhoto(hotCar.car.id)} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '🚗'}
+              </div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ fontSize:11, color:'#e67e22', fontFamily:"'Bebas Neue',sans-serif", letterSpacing:2 }}>{hotCar.badge.icon} VOITURE EN FORME</div>
+                <div style={{ fontWeight:700, fontSize:18, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{hotCar.car.name}</div>
+                <div style={{ fontSize:12, color:'var(--text-dim)' }}>{hotCar.league} · {hotCar.badge.label}</div>
+              </div>
+              <span style={{ color:'var(--text-dim)' }}>›</span>
+            </div>
+          </div>
+        )}
+
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {LEAGUES.map(l => {
             const champId = currentSeason.champions[l];
@@ -11937,7 +12069,12 @@ export default function App() {
                   </div>
                 );
               })}
-              {filteredRip.length === 0 && <div className="text-dim" style={{ gridColumn:'1/-1',padding:24,textAlign:'center' }}>Aucune voiture retraitée</div>}
+              {filteredRip.length === 0 && (
+                <div className="empty-state" style={{ gridColumn:'1/-1' }}>
+                  <div className="empty-icon">🏁</div>
+                  <div className="empty-sub">Aucune voiture retraitée pour l'instant.</div>
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -12088,8 +12225,12 @@ export default function App() {
       return (
         <div>
           <div className="section-title">Marques</div>
-          <div className="card" style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
-            Aucune marque taguée pour le moment. Va dans l'onglet Voitures pour commencer.
+          <div className="card">
+            <div className="empty-state">
+              <div className="empty-icon">🏷️</div>
+              <div className="empty-title">Aucune marque taguée</div>
+              <div className="empty-sub">Va dans l'onglet Voitures pour associer une marque à tes voitures.</div>
+            </div>
           </div>
         </div>
       );
@@ -12259,7 +12400,11 @@ export default function App() {
           ) : brandLeagueTab === 'titres' ? (
             <div className="card" style={{ padding:0,overflow:'hidden' }}>
               {b.cars.filter(c => c.titles > 0).length === 0 && (
-                <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune voiture titrée pour l'instant.</div>
+                <div className="empty-state">
+                  <div className="empty-icon">🏆</div>
+                  <div className="empty-title">Aucune voiture titrée pour l'instant</div>
+                </div>
+
               )}
               {b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles).map((c, i) => (
                 <LeaderboardRow key={c.id}
@@ -12389,7 +12534,11 @@ export default function App() {
           />
           <div className="card mq-list" style={{ padding:8 }}>
             {sortedCountries.length === 0 && (
-              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays assigné pour l'instant. Ajoute des drapeaux depuis la fiche d'une marque.</div>
+              <div className="empty-state">
+                <div className="empty-icon">🌍</div>
+                <div className="empty-title">Aucun pays assigné pour l'instant</div>
+                <div className="empty-sub">Ajoute des drapeaux depuis la fiche d'une marque.</div>
+              </div>
             )}
             {sortedCountries.length > 0 && displayedCountries.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
@@ -14333,6 +14482,73 @@ export default function App() {
         {/* Car profile modal */}
         <CarProfileModal />
 
+        {showScrollTop && (
+          <button
+            className="btn btn-gold btn-sm"
+            style={{ position:'fixed', bottom:20, right:16, zIndex:90, borderRadius:'50%', width:44, height:44, padding:0, fontSize:18, boxShadow:'var(--shadow-lg), var(--glow-gold)' }}
+            onClick={() => window.scrollTo({ top:0, behavior:'smooth' })}
+            title="Retour en haut">
+            ↑
+          </button>
+        )}
+
+        {/* Recherche rapide globale — trouver une voiture par nom peu importe sa ligue */}
+        {globalSearchOpen && (
+          <div className="car-profile-modal" style={{ alignItems:'flex-start', paddingTop:'10vh' }} onClick={closeGlobalSearch}>
+            <div className="car-profile-card" style={{ maxWidth:480, animation:'cardSettleIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }} onClick={e => e.stopPropagation()}>
+              <div style={{ padding:16, borderBottom:'1px solid var(--gold-dim)' }}>
+                <input
+                  autoFocus
+                  type="text"
+                  placeholder="Rechercher une voiture..."
+                  value={globalSearchQuery}
+                  onChange={e => setGlobalSearchQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Escape') closeGlobalSearch(); }}
+                  style={{ width:'100%', fontSize:16, padding:'10px 12px' }}
+                />
+              </div>
+              <div style={{ maxHeight:'60vh', overflowY:'auto', padding: globalSearchResults.length ? 8 : 0 }}>
+                {globalSearchQuery.trim().length < 2 && (
+                  <div className="empty-state" style={{ padding:28 }}>
+                    <div className="empty-icon">🔍</div>
+                    <div className="empty-sub">Tape au moins 2 lettres pour chercher parmi toutes les ligues.</div>
+                  </div>
+                )}
+                {globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && (
+                  <div className="empty-state" style={{ padding:28 }}>
+                    <div className="empty-icon">🚫</div>
+                    <div className="empty-sub">Aucune voiture ne correspond à "{globalSearchQuery}".</div>
+                  </div>
+                )}
+                {globalSearchResults.length > 0 && (
+                  <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:8 }}>
+                    {globalSearchResults.map(r => {
+                      const borderColor = MAIN_LEAGUE_COLORS[r.league] || 'var(--border)';
+                      return (
+                        <div key={`${r.league}-${r.id}`}
+                          style={{ borderRadius:8, border:`2px solid ${borderColor}`, background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
+                          onClick={() => { closeGlobalSearch(); openProfileCar({ leagueName: r.league, carId: r.id }); }}>
+                          <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                            {r.photo
+                              ? <img src={r.photo} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                              : <span style={{ fontSize:36 }}>🚗</span>}
+                          </div>
+                          <div style={{ padding:'6px 8px', borderTop:`1px solid ${borderColor}22` }}>
+                            <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                              {r.name}
+                            </div>
+                            <div style={{ fontSize:10, color:'var(--text-dim)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.league}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="header">
           <div className="header-logo">
@@ -14340,6 +14556,12 @@ export default function App() {
             <span>Gestionnaire de Saisons</span>
           </div>
           <div className="header-divider" />
+          <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
+            🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
+          </button>
+          <button className="btn btn-sm btn-dark" style={{ flexShrink:0 }} onClick={openRandomCar} title="Voiture au hasard">
+            🎲
+          </button>
           <div className="header-actions">
             {isPublicMode ? (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
