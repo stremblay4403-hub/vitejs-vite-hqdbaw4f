@@ -1526,16 +1526,25 @@ const css = `
   .header-divider { flex: 1; height: 1px; background: linear-gradient(90deg, var(--gold-dim), transparent); }
   .header-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
 
-  /* Tabs */
-  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; }
+  /* Tabs — hiérarchie de profondeur : niveau 1 = nav héros soulignée, niveaux 2+ = pilules compactes */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; position: relative; }
   .tab {
-    font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
-    padding: 14px 20px; cursor: pointer; border: none; background: none;
-    color: var(--text-dim); border-bottom: 3px solid transparent;
-    transition: all 0.2s; white-space: nowrap;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.5px; font-size: 13px;
+    padding: 8px 14px; cursor: pointer; border: none; background: none;
+    color: var(--text-dim); border-radius: 20px; margin: 6px 0;
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease; white-space: nowrap;
   }
-  .tab:hover { color: var(--gold); }
-  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+  .tab:hover { color: var(--gold); background: rgba(212,175,55,0.07); }
+  .tab.active { color: #1a1305; background: linear-gradient(180deg, var(--gold2), var(--gold)); box-shadow: 0 2px 8px rgba(212,175,55,0.3); }
+
+  /* Niveau 1 — nav principale : traitement héros conservé (Bebas Neue + soulignement) */
+  #tabs-main .tab {
+    font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px;
+    padding: 14px 20px; border-radius: 0; margin: 0;
+    border-bottom: 3px solid transparent;
+  }
+  #tabs-main .tab:hover { color: var(--gold); background: none; }
+  #tabs-main .tab.active { color: var(--gold); background: none; box-shadow: none; border-bottom-color: var(--gold); }
 
   /* Content */
   .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
@@ -1633,7 +1642,8 @@ const css = `
     border-bottom: 2px solid var(--border); background: var(--dark3);
   }
   .tbl td { padding: 9px 10px; border-bottom: 1px solid #1a1a1a; transition: background 0.12s ease; }
-  .tbl tr:hover td { background: rgba(212,175,55,0.05); }
+  .tbl tbody tr:nth-child(even) td { background: rgba(255,255,255,0.014); }
+  .tbl tr:hover td { background: rgba(212,175,55,0.06) !important; }
   .tbl .rank { color: var(--gold-dim); font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
   .tbl .car-name { font-weight: 600; font-size: 16px; }
   .tbl .pts-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,0.25); }
@@ -1843,6 +1853,7 @@ const css = `
   }
   .car-photo-box:hover { border-color: var(--gold-dim); }
   .car-photo-box img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; object-position: center; }
+  .car-photo-box::after { content:''; position:absolute; inset:0; box-shadow: inset 0 0 30px rgba(0,0,0,0.45), inset 0 0 0 1px rgba(212,175,55,0.12); pointer-events:none; }
   .car-photo-overlay {
     position: absolute; inset: 0; background: rgba(0,0,0,0.6);
     display: flex; align-items: center; justify-content: center;
@@ -1867,6 +1878,14 @@ const css = `
   .car-stat-item:nth-child(9) { animation-delay: 1.75s; }
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+  /* Stat vedette — "% de points" au centre de la grille, mise en avant */
+  .car-stat-item:nth-child(5) {
+    background: linear-gradient(180deg, rgba(212,175,55,0.16), rgba(212,175,55,0.03));
+    border: 1px solid var(--gold-dim);
+    box-shadow: var(--shadow-sm), 0 0 18px rgba(212,175,55,0.14);
+  }
+  .car-stat-item:nth-child(5) .val { font-size: 30px; text-shadow: 0 0 14px rgba(212,175,55,0.4); }
+  .car-stat-item:nth-child(5) .lbl { color: var(--gold-dim); font-weight: 600; }
 
   /* Trophée cliquable → révèle les saisons remportées */
   .trophy-badge { cursor: pointer; transition: transform 0.12s ease; }
