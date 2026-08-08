@@ -9072,49 +9072,90 @@ export default function App() {
   function AddCarButton({ leagueName }) {
     const [adding, setAdding] = React.useState(false);
     const [newName, setNewName] = React.useState('');
+    const [newBrand, setNewBrand] = React.useState('');
+    const [newPhotoFile, setNewPhotoFile] = React.useState(null);
+    const [newPhotoPreview, setNewPhotoPreview] = React.useState('');
+    const [savingNew, setSavingNew] = React.useState(false);
+
     const [addingQueue, setAddingQueue] = React.useState(false);
     const [queueName, setQueueName] = React.useState('');
+    const [queueBrand, setQueueBrand] = React.useState('');
+    const [queuePhotoFile, setQueuePhotoFile] = React.useState(null);
+    const [queuePhotoPreview, setQueuePhotoPreview] = React.useState('');
+    const [savingQueue, setSavingQueue] = React.useState(false);
+
     const [queueOpen, setQueueOpen] = React.useState(false);
 
     const league = currentSeason.leagues[leagueName];
     const hasStarted = (league?.matches || []).length > 0;
     const queue = league?.queue || [];
 
-    function handleAdd() {
+    function pickPhoto(file, setFile, setPreview) {
+      if (!file) return;
+      setFile(file);
+      const reader = new FileReader();
+      reader.onload = e => setPreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+
+    async function handleAdd() {
       const name = newName.trim();
       if (!name) return;
+      if (league.cars.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        alert(`"${name}" existe déjà dans ${leagueName} !`);
+        return;
+      }
+      setSavingNew(true);
+      const id = genId();
+      let photoUrl = null;
+      if (newPhotoFile) {
+        try { photoUrl = await uploadToCloudinary(newPhotoFile); }
+        catch (e) { console.warn('Upload photo échoué:', e); }
+      }
       setDb(prev => {
         const next = JSON.parse(JSON.stringify(prev));
         const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
         if (!league) return prev;
-        if (league.cars.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-          alert(`"${name}" existe déjà dans ${leagueName} !`);
-          return prev;
-        }
-        league.cars.push({ id: genId(), name });
+        if (league.cars.some(c => c.name.toLowerCase() === name.toLowerCase())) return prev;
+        league.cars.push({ id, name });
         return next;
       });
-      setNewName('');
+      if (photoUrl) setCarPhoto(id, photoUrl);
+      if (newBrand.trim()) setCarBrand(id, newBrand.trim());
+      setNewName(''); setNewBrand(''); setNewPhotoFile(null); setNewPhotoPreview('');
+      setSavingNew(false);
       setAdding(false);
     }
 
     // Ajoute une voiture à la file d'attente — elle rejoindra la ligue à la création de la saison suivante
-    function handleAddQueue() {
+    async function handleAddQueue() {
       const name = queueName.trim();
       if (!name) return;
+      const existingQueue = league.queue || [];
+      if (existingQueue.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+        alert(`"${name}" est déjà dans la file d'attente !`);
+        return;
+      }
+      setSavingQueue(true);
+      const id = genId();
+      let photoUrl = null;
+      if (queuePhotoFile) {
+        try { photoUrl = await uploadToCloudinary(queuePhotoFile); }
+        catch (e) { console.warn('Upload photo échoué:', e); }
+      }
       setDb(prev => {
         const next = JSON.parse(JSON.stringify(prev));
         const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
         if (!league) return prev;
-        const existingQueue = league.queue || [];
-        if (existingQueue.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-          alert(`"${name}" est déjà dans la file d'attente !`);
-          return prev;
-        }
-        league.queue = [...existingQueue, { id: genId(), name }];
+        const q = league.queue || [];
+        if (q.some(c => c.name.toLowerCase() === name.toLowerCase())) return prev;
+        league.queue = [...q, { id, name }];
         return next;
       });
-      setQueueName('');
+      if (photoUrl) setCarPhoto(id, photoUrl);
+      if (queueBrand.trim()) setCarBrand(id, queueBrand.trim());
+      setQueueName(''); setQueueBrand(''); setQueuePhotoFile(null); setQueuePhotoPreview('');
+      setSavingQueue(false);
       setAddingQueue(false);
     }
 
@@ -9128,6 +9169,8 @@ export default function App() {
       });
     }
 
+    const photoBtnStyle = { width:30, height:30, borderRadius:5, flexShrink:0, border:'1px dashed var(--border)', background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden', cursor:'pointer', fontSize:14 };
+
     return (
       <div style={{ display:'flex', gap:8, alignItems:'center', marginLeft:'auto', flexWrap:'wrap', position:'relative' }}>
         {/* File d'attente — toujours consultable, même avant qu'un match soit joué */}
@@ -9138,32 +9181,54 @@ export default function App() {
           {queueOpen && (
             <>
               <div style={{ position:'fixed', inset:0, zIndex:19 }} onClick={() => setQueueOpen(false)} />
-              <div style={{ position:'absolute', top:'110%', right:0, zIndex:20, background:'var(--dark2)', border:'1px solid var(--gold-dim)', borderRadius:6, minWidth:220, boxShadow:'var(--shadow-lg)', padding:8 }}
+              <div style={{ position:'absolute', top:'110%', right:0, zIndex:20, background:'var(--dark2)', border:'1px solid var(--gold-dim)', borderRadius:6, minWidth:240, boxShadow:'var(--shadow-lg)', padding:8 }}
                 onClick={e => e.stopPropagation()}>
               <div style={{ fontSize:10, color:'var(--gold-dim)', letterSpacing:1, padding:'2px 4px 6px', fontFamily:"'Bebas Neue',sans-serif" }}>ARRIVE LA SAISON PROCHAINE</div>
               {queue.length === 0 && (
                 <div style={{ fontSize:12, color:'var(--text-dim)', padding:'6px 4px 8px', textAlign:'center' }}>Aucune voiture en attente.</div>
               )}
-              {queue.map(c => (
-                <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'5px 6px', fontSize:13, borderTop:'1px solid #1a1a1a' }}>
-                  <span>{c.name}</span>
-                  {!isPublicMode && (
-                    <button className="btn btn-dark btn-xs" style={{ fontSize:10, padding:'1px 5px' }} onClick={() => removeFromQueue(c.id)}>✕</button>
-                  )}
-                </div>
-              ))}
+              {queue.map(c => {
+                const qPhoto = getCarPhoto(c.id);
+                return (
+                  <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'5px 6px', fontSize:13, borderTop:'1px solid #1a1a1a' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6, minWidth:0 }}>
+                      <div style={{ width:22, height:22, borderRadius:4, overflow:'hidden', flexShrink:0, background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11 }}>
+                        {qPhoto ? <img src={qPhoto} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '🚗'}
+                      </div>
+                      <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
+                    </div>
+                    {!isPublicMode && (
+                      <button className="btn btn-dark btn-xs" style={{ fontSize:10, padding:'1px 5px', flexShrink:0 }} onClick={() => removeFromQueue(c.id)}>✕</button>
+                    )}
+                  </div>
+                );
+              })}
               {!isPublicMode && hasStarted && (
                 addingQueue ? (
-                  <div style={{ display:'flex', gap:6, marginTop:8 }}>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6, marginTop:8 }}>
                     <input
                       autoFocus
                       placeholder="Nom de la voiture..."
                       value={queueName}
                       onChange={e => setQueueName(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') handleAddQueue(); if (e.key === 'Escape') setAddingQueue(false); }}
-                      style={{ flex:1, fontSize:12 }}
+                      onKeyDown={e => { if (e.key === 'Escape') setAddingQueue(false); }}
+                      style={{ fontSize:12 }}
                     />
-                    <button className="btn btn-sm btn-green" style={{ fontSize:11 }} onClick={handleAddQueue}>✓</button>
+                    <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                      <input
+                        placeholder="Marque (optionnel)"
+                        value={queueBrand}
+                        onChange={e => setQueueBrand(e.target.value)}
+                        style={{ fontSize:12, flex:1 }}
+                      />
+                      <label style={photoBtnStyle} title="Choisir une photo">
+                        {queuePhotoPreview ? <img src={queuePhotoPreview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '📷'}
+                        <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => pickPhoto(e.target.files[0], setQueuePhotoFile, setQueuePhotoPreview)} />
+                      </label>
+                    </div>
+                    <button className="btn btn-sm btn-green" style={{ fontSize:11 }} onClick={handleAddQueue} disabled={savingQueue}>
+                      {savingQueue ? '⏳ Ajout...' : '✓ Ajouter à la file'}
+                    </button>
                   </div>
                 ) : (
                   <button className="btn btn-sm btn-gold" style={{ width:'100%', marginTop:8, fontSize:12 }} onClick={() => setAddingQueue(true)}>
@@ -9186,17 +9251,27 @@ export default function App() {
             ➕ Ajouter une voiture
           </button>
         ) : (
-          <div style={{ display:'flex',gap:6,alignItems:'center' }}>
+          <div style={{ display:'flex', gap:6, alignItems:'center' }}>
             <input
               autoFocus
               placeholder="Nom de la voiture..."
               value={newName}
               onChange={e => setNewName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
-              style={{ width:180,fontSize:13 }}
+              onKeyDown={e => { if (e.key === 'Escape') setAdding(false); }}
+              style={{ width:150,fontSize:13 }}
             />
-            <button className="btn btn-sm btn-green" onClick={handleAdd} style={{ fontSize:12 }}>✓</button>
-            <button className="btn btn-sm" onClick={() => { setAdding(false); setNewName(''); }} style={{ fontSize:12 }}>✕</button>
+            <input
+              placeholder="Marque"
+              value={newBrand}
+              onChange={e => setNewBrand(e.target.value)}
+              style={{ width:100,fontSize:13 }}
+            />
+            <label style={photoBtnStyle} title="Choisir une photo">
+              {newPhotoPreview ? <img src={newPhotoPreview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '📷'}
+              <input type="file" accept="image/*" style={{ display:'none' }} onChange={e => pickPhoto(e.target.files[0], setNewPhotoFile, setNewPhotoPreview)} />
+            </label>
+            <button className="btn btn-sm btn-green" onClick={handleAdd} style={{ fontSize:12 }} disabled={savingNew}>{savingNew ? '⏳' : '✓'}</button>
+            <button className="btn btn-sm" onClick={() => { setAdding(false); setNewName(''); setNewBrand(''); setNewPhotoFile(null); setNewPhotoPreview(''); }} style={{ fontSize:12 }}>✕</button>
           </div>
         )}
       </div>
