@@ -9183,7 +9183,7 @@ export default function App() {
               <div style={{ position:'fixed', inset:0, zIndex:19 }} onClick={() => setQueueOpen(false)} />
               <div style={{ position:'absolute', top:'110%', right:0, zIndex:20, background:'var(--dark2)', border:'1px solid var(--gold-dim)', borderRadius:6, minWidth:240, boxShadow:'var(--shadow-lg)', padding:8 }}
                 onClick={e => e.stopPropagation()}>
-              <div style={{ fontSize:10, color:'var(--gold-dim)', letterSpacing:1, padding:'2px 4px 6px', fontFamily:"'Bebas Neue',sans-serif" }}>ARRIVE LA SAISON PROCHAINE</div>
+              <div style={{ fontSize:10, color:'var(--gold-dim)', letterSpacing:1, padding:'2px 4px 6px', fontFamily:"'Bebas Neue',sans-serif" }}>ARRIVE DANS {leagueName.toUpperCase()} LA SAISON PROCHAINE</div>
               {queue.length === 0 && (
                 <div style={{ fontSize:12, color:'var(--text-dim)', padding:'6px 4px 8px', textAlign:'center' }}>Aucune voiture en attente.</div>
               )}
@@ -9196,6 +9196,7 @@ export default function App() {
                         {qPhoto ? <img src={qPhoto} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '🚗'}
                       </div>
                       <span style={{ overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{c.name}</span>
+                      <span style={{ fontSize:9, color:'#e67e22', background:'rgba(230,126,34,0.15)', border:'1px solid rgba(230,126,34,0.3)', borderRadius:3, padding:'1px 4px', flexShrink:0, letterSpacing:0.5 }}>{leagueName}</span>
                     </div>
                     {!isPublicMode && (
                       <button className="btn btn-dark btn-xs" style={{ fontSize:10, padding:'1px 5px', flexShrink:0 }} onClick={() => removeFromQueue(c.id)}>✕</button>
