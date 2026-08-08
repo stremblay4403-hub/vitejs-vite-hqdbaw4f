@@ -1484,12 +1484,18 @@ const css = `
     overflow-x: clip;
     background-image:
       radial-gradient(ellipse 900px 500px at 50% -10%, rgba(212,175,55,0.06), transparent 60%),
-      repeating-linear-gradient(-45deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 10px);
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 10px),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='90' height='90'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.02'/%3E%3C/svg%3E");
   }
 
   ::selection { background: rgba(212,175,55,0.35); color: #fff; }
 
-  .app { display: flex; flex-direction: column; max-width: 100vw; overflow-x: clip; background: transparent; }
+  .app { display: flex; flex-direction: column; max-width: 100vw; overflow-x: clip; background: transparent; position: relative; }
+  /* Teinte saisonnière — discrète, varie selon la saison en cours */
+  .app::before {
+    content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background: radial-gradient(ellipse 1100px 650px at 50% -5%, var(--season-tint, transparent), transparent 65%);
+  }
 
   /* Header — livrée "carbone + or", filigrane damier discret, logo chromé */
   .header {
@@ -1546,6 +1552,13 @@ const css = `
   }
   #tabs-main .tab:hover { color: var(--gold); background: none; }
   #tabs-main .tab.active { color: var(--gold); background: none; box-shadow: none; border-bottom-color: var(--gold); }
+
+  /* Accent de couleur par section — chaque onglet principal a sa propre identité au repos actif */
+  #tabs-main .tab:nth-child(2).active { color: #e67e22; border-bottom-color: #e67e22; }
+  #tabs-main .tab:nth-child(3).active { color: #16a085; border-bottom-color: #16a085; }
+  #tabs-main .tab:nth-child(4).active { color: #c0392b; border-bottom-color: #c0392b; }
+  #tabs-main .tab:nth-child(5).active { color: #8e44ad; border-bottom-color: #8e44ad; }
+  #tabs-main .tab:nth-child(6).active { color: #2980b9; border-bottom-color: #2980b9; }
 
   /* Content */
   .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
@@ -1838,6 +1851,11 @@ const css = `
     0%   { opacity: 0; transform: scale(0.92) translateY(10px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
   }
+  @keyframes fadeInContent {
+    0%   { opacity: 0; transform: translateY(6px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+  .tab-content-fade { animation: fadeInContent 0.22s ease both; }
   @keyframes headerRiseIn {
     0%   { opacity: 0; transform: translateY(420px) scale(0.98); pointer-events: none; }
     22%  { opacity: 1; transform: translateY(420px) scale(1); pointer-events: none; }
@@ -1860,6 +1878,20 @@ const css = `
     width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto;
     box-shadow: var(--shadow-lg), var(--glow-gold);
     animation: cardSettleIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
+    position: relative;
+  }
+  /* Effet holographique — réservé aux voitures titrées, léger reflet arc-en-ciel discret */
+  .car-profile-card.is-champion::before {
+    content: '';
+    position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: 10px;
+    background: linear-gradient(115deg, transparent 20%, rgba(255,180,255,0.05) 32%, rgba(180,220,255,0.06) 40%, rgba(255,240,180,0.06) 48%, transparent 60%);
+    background-size: 250% 250%;
+    animation: holoSheen 5s ease-in-out infinite;
+    mix-blend-mode: screen;
+  }
+  @keyframes holoSheen {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
   }
   .car-profile-header {
     background: linear-gradient(135deg, var(--dark3), var(--dark2));
@@ -2671,6 +2703,28 @@ function isMathematicallySecured(standings, carIndex, threshold, allMatches, isT
     const saviorMax = savior.pts + saviorRemaining * 3;
     return car.pts + (allMatches.filter(m => (m.homeId === car.id || m.awayId === car.id) && m.homeGoals === null).length) * 3 < saviorMax - (saviorMax - savior.pts);
   }
+}
+
+// Compteur animé — anime un nombre de 0 vers sa valeur finale à l'apparition (respecte le mouvement réduit)
+function CountUp({ value, duration = 700, decimals = 0, suffix = '' }) {
+  const [display, setDisplay] = React.useState(0);
+  React.useEffect(() => {
+    const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const target = typeof value === 'number' && isFinite(value) ? value : 0;
+    if (reduceMotion) { setDisplay(target); return; }
+    let raf;
+    const start = performance.now();
+    function tick(now) {
+      const t = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - t, 3);
+      setDisplay(target * eased);
+      if (t < 1) raf = requestAnimationFrame(tick);
+      else setDisplay(target);
+    }
+    raf = requestAnimationFrame(tick);
+    return () => raf && cancelAnimationFrame(raf);
+  }, [value, duration]);
+  return <>{display.toFixed(decimals)}{suffix}</>;
 }
 
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor, noStatsToggle }) {
@@ -8041,7 +8095,7 @@ export default function App() {
 
     return (
       <div className="car-profile-modal" onClick={() => setProfileCar(null)}>
-        <div className="car-profile-card" onClick={e => e.stopPropagation()}>
+        <div className={`car-profile-card${(champCount + histChampions.length) > 0 ? ' is-champion' : ''}`} onClick={e => e.stopPropagation()}>
           {/* Header */}
           <div className="car-profile-header">
             <label className="car-photo-box" title={isPublicMode ? '' : "Cliquer pour changer la photo"} style={{ cursor: isPublicMode ? 'default' : 'pointer' }}
@@ -8147,18 +8201,20 @@ export default function App() {
           {/* Stats grid */}
           <div className="car-stat-grid">
             {[
-              { val: totalGP, lbl: 'Matchs joués' },
-              { val: totalW, lbl: 'Victoires' },
-              { val: totalD, lbl: 'Nuls' },
-              { val: totalL, lbl: 'Défaites' },
-              { val: ptsRatio.toFixed(3), lbl: '% de points' },
-              { val: totalGF, lbl: 'Buts pour' },
-              { val: totalGA, lbl: 'Buts contre' },
-              { val: diff >= 0 ? `+${diff}` : `${diff}`, lbl: 'Différence' },
-              { val: playoffsCount, lbl: 'Participations playoffs' },
+              { val: totalGP, lbl: 'Matchs joués', raw: totalGP },
+              { val: totalW, lbl: 'Victoires', raw: totalW },
+              { val: totalD, lbl: 'Nuls', raw: totalD },
+              { val: totalL, lbl: 'Défaites', raw: totalL },
+              { val: ptsRatio.toFixed(3), lbl: '% de points', raw: ptsRatio, decimals: 3 },
+              { val: totalGF, lbl: 'Buts pour', raw: totalGF },
+              { val: totalGA, lbl: 'Buts contre', raw: totalGA },
+              { val: diff >= 0 ? `+${diff}` : `${diff}`, lbl: 'Différence', raw: diff, signed: true },
+              { val: playoffsCount, lbl: 'Participations playoffs', raw: playoffsCount },
             ].map((st, i) => (
               <div key={i} className="car-stat-item">
-                <div className="val" style={st.val?.toString().startsWith('+') ? { color: 'var(--green)' } : st.val?.toString().startsWith('-') ? { color: '#e74c3c' } : {}}>{st.val}</div>
+                <div className="val" style={st.val?.toString().startsWith('+') ? { color: 'var(--green)' } : st.val?.toString().startsWith('-') ? { color: '#e74c3c' } : {}}>
+                  {st.signed && st.raw >= 0 ? '+' : ''}<CountUp value={st.raw} decimals={st.decimals || 0} />
+                </div>
                 <div className="lbl">{st.lbl}</div>
               </div>
             ))}
@@ -8285,7 +8341,7 @@ export default function App() {
             </div>
             <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
             <table className="tbl">
-              <thead><tr><th>S.</th><th>Ligue</th><th>Rang</th><th>Pts</th><th>%</th><th>V</th><th>N</th><th>D</th><th>BP</th><th>BC</th><th className="sticky-right">Pts Ann.</th></tr></thead>
+              <thead><tr><th title="Saison">S.</th><th>Ligue</th><th title="Classement">Rang</th><th title="Points">Pts</th><th title="Pourcentage de points">%</th><th title="Victoires">V</th><th title="Nuls">N</th><th title="Défaites">D</th><th title="Buts pour">BP</th><th title="Buts contre">BC</th><th className="sticky-right" title="Points annexes">Pts Ann.</th></tr></thead>
               <tbody>
                 {db.seasons.slice().reverse().map(s => {
                   let foundLn = null, lid = null, carInSeason = null;
@@ -8328,7 +8384,7 @@ export default function App() {
                   const isChamp = s.champions[foundLn] === lid;
                   const isRel = s.relegated[foundLn] === lid;
                   return (
-                    <tr key={s.season}>
+                    <tr key={s.season} className={rank === 1 ? 'row-gold' : rank === 2 ? 'row-silver' : rank === 3 ? 'row-bronze' : ''}>
                       <td className="rank">{s.season}</td>
                       <td><span className="badge badge-blue" style={{ fontSize:9, whiteSpace:'nowrap' }}>{foundLn.replace('Voitures ', 'V')}</span></td>
                       <td>{rank ? `#${rank}` : '—'}</td>
@@ -14366,7 +14422,7 @@ export default function App() {
           </div>
         </div>
       )}
-      <div className={`app${isPublicMode ? ' public-mode' : ''}`}>
+      <div className={`app${isPublicMode ? ' public-mode' : ''}`} style={{ '--season-tint': ['rgba(212,175,55,0.05)','rgba(41,128,185,0.05)','rgba(230,126,34,0.05)','rgba(46,204,113,0.04)'][currentSeason.season % 4] }}>
         {/* Avertissement navigation privée */}
         {isPrivate && (
           <div style={{ position:'fixed',top:0,left:0,right:0,zIndex:99999,background:'#c0392b',color:'#fff',padding:'12px 16px',display:'flex',alignItems:'center',gap:12,fontSize:14,fontWeight:600 }}>
@@ -14785,7 +14841,7 @@ export default function App() {
         )}
 
         {/* Content */}
-        <div className="content tab-content" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
+        <div className="content tab-content tab-content-fade" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <StableGroupesView />}
           {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <StablePlayoffsView />}
