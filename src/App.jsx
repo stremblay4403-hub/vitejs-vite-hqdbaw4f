@@ -6,6 +6,23 @@ const PublicModeContext = React.createContext(false);
 
 const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
 const MAIN_LEAGUE_COLORS = { 'Voitures 1': '#e74c3c', 'Voitures 2': '#f1c40f', 'Voitures 3': '#2ecc71', 'Voitures 4': '#3498db' };
+// Couleurs des sous-onglets de ligues — reprend le système de couleurs utilisé dans l'onglet Voitures
+const LIGUE_SUBTAB_COLORS = {
+  successeurs: '#9b59b6',
+  sucsucc: '#7f8c8d',
+  remplac: '#16a085',
+  actuelles: '#e67e22',
+  avantdern: '#d35400',
+  derniere: '#c0392b',
+  persev: '#8e44ad',
+  deter: '#1a8a6e',
+  acharn: '#2471a3',
+  obstin: '#b7950b',
+  insist: '#6c3483',
+  comeback: '#117a65',
+  import: '#784212',
+  oubl: '#424949',
+};
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
 const GROUPS = 8;
 const CARS_PER_GROUP = 18;
@@ -1553,13 +1570,6 @@ const css = `
   #tabs-main .tab:hover { color: var(--gold); background: none; }
   #tabs-main .tab.active { color: var(--gold); background: none; box-shadow: none; border-bottom-color: var(--gold); }
 
-  /* Accent de couleur par section — chaque onglet principal a sa propre identité au repos actif */
-  #tabs-main .tab:nth-child(2).active { color: #e67e22; border-bottom-color: #e67e22; }
-  #tabs-main .tab:nth-child(3).active { color: #16a085; border-bottom-color: #16a085; }
-  #tabs-main .tab:nth-child(4).active { color: #c0392b; border-bottom-color: #c0392b; }
-  #tabs-main .tab:nth-child(5).active { color: #8e44ad; border-bottom-color: #8e44ad; }
-  #tabs-main .tab:nth-child(6).active { color: #2980b9; border-bottom-color: #2980b9; }
-
   /* Content */
   .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
 
@@ -2705,25 +2715,28 @@ function isMathematicallySecured(standings, carIndex, threshold, allMatches, isT
   }
 }
 
-// Compteur animé — anime un nombre de 0 vers sa valeur finale à l'apparition (respecte le mouvement réduit)
-function CountUp({ value, duration = 700, decimals = 0, suffix = '' }) {
+// Compteur animé — anime un nombre de 0 vers sa valeur finale, décalé pour démarrer une fois la case révélée
+function CountUp({ value, duration = 700, decimals = 0, suffix = '', delay = 0 }) {
   const [display, setDisplay] = React.useState(0);
   React.useEffect(() => {
     const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const target = typeof value === 'number' && isFinite(value) ? value : 0;
     if (reduceMotion) { setDisplay(target); return; }
-    let raf;
-    const start = performance.now();
-    function tick(now) {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setDisplay(target * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else setDisplay(target);
-    }
-    raf = requestAnimationFrame(tick);
-    return () => raf && cancelAnimationFrame(raf);
-  }, [value, duration]);
+    let raf; let cancelled = false;
+    const timer = setTimeout(() => {
+      if (cancelled) return;
+      const start = performance.now();
+      function tick(now) {
+        const t = Math.min(1, (now - start) / duration);
+        const eased = 1 - Math.pow(1 - t, 3);
+        setDisplay(target * eased);
+        if (t < 1) raf = requestAnimationFrame(tick);
+        else setDisplay(target);
+      }
+      raf = requestAnimationFrame(tick);
+    }, delay);
+    return () => { cancelled = true; clearTimeout(timer); if (raf) cancelAnimationFrame(raf); };
+  }, [value, duration, delay]);
   return <>{display.toFixed(decimals)}{suffix}</>;
 }
 
@@ -8213,7 +8226,7 @@ export default function App() {
             ].map((st, i) => (
               <div key={i} className="car-stat-item">
                 <div className="val" style={st.val?.toString().startsWith('+') ? { color: 'var(--green)' } : st.val?.toString().startsWith('-') ? { color: '#e74c3c' } : {}}>
-                  {st.signed && st.raw >= 0 ? '+' : ''}<CountUp value={st.raw} decimals={st.decimals || 0} />
+                  {st.signed && st.raw >= 0 ? '+' : ''}<CountUp value={st.raw} decimals={st.decimals || 0} delay={1700 + i * 50} />
                 </div>
                 <div className="lbl">{st.lbl}</div>
               </div>
@@ -14747,7 +14760,7 @@ export default function App() {
                     if (mainBar) mainBar.scrollLeft = mainSl;
                   });
                 });
-              }}>
+              }} style={ligueSubTab === t.key && LIGUE_SUBTAB_COLORS[t.key] ? { background: LIGUE_SUBTAB_COLORS[t.key], color: '#fff', boxShadow: `0 2px 8px ${LIGUE_SUBTAB_COLORS[t.key]}55` } : undefined}>
                 {t.label}
               </button>
             ))}
@@ -14765,7 +14778,7 @@ export default function App() {
                 setLeagueTab(l);
                 restoreScrollForTab(`${mainTab}|${ligueSubTab}|${l}|${sectionTab}|${histSubTab}`);
                 requestAnimationFrame(() => { bar.scrollLeft = sl; });
-              }}>
+              }} style={leagueTab === l && MAIN_LEAGUE_COLORS[l] ? { background: MAIN_LEAGUE_COLORS[l], color: l === 'Voitures 2' ? '#1a1305' : '#fff', boxShadow: `0 2px 8px ${MAIN_LEAGUE_COLORS[l]}55` } : undefined}>
                 {l}
               </button>
             ))}
