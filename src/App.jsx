@@ -5356,7 +5356,10 @@ export default function App() {
         let newCars = sorted.slice(4).map(c => ({ id: c.id, name: c.name }));
         const block = succToActuelles.slice((i - 1) * 4, i * 4);
         block.forEach(c => newCars.push({ id: c.id, name: c.name }));
-        ns.leagues[lName] = { cars: newCars, matches: [], completed: false };
+        // File d'attente — les voitures ajoutées en cours de saison rejoignent la ligue maintenant
+        const queued = prev.leagues[lName]?.queue || [];
+        queued.forEach(c => newCars.push({ id: c.id, name: c.name }));
+        ns.leagues[lName] = { cars: newCars, matches: [], completed: false, queue: [] };
       }
 
       let newSucSuccCars = sucSuccStandings.slice(12, 16).map(c => ({ id: c.id, name: c.name }));
@@ -9069,9 +9072,13 @@ export default function App() {
   function AddCarButton({ leagueName }) {
     const [adding, setAdding] = React.useState(false);
     const [newName, setNewName] = React.useState('');
+    const [addingQueue, setAddingQueue] = React.useState(false);
+    const [queueName, setQueueName] = React.useState('');
+    const [queueOpen, setQueueOpen] = React.useState(false);
 
     const league = currentSeason.leagues[leagueName];
     const hasStarted = (league?.matches || []).length > 0;
+    const queue = league?.queue || [];
 
     function handleAdd() {
       const name = newName.trim();
@@ -9091,33 +9098,107 @@ export default function App() {
       setAdding(false);
     }
 
-    if (hasStarted) {
-      return (
-        <button className="btn btn-sm" disabled style={{ marginLeft:'auto',fontSize:12,opacity:0.4,cursor:'not-allowed' }} title="Impossible d'ajouter une voiture en cours de saison">
-          🔒 Ajouter une voiture
-        </button>
-      );
+    // Ajoute une voiture à la file d'attente — elle rejoindra la ligue à la création de la saison suivante
+    function handleAddQueue() {
+      const name = queueName.trim();
+      if (!name) return;
+      setDb(prev => {
+        const next = JSON.parse(JSON.stringify(prev));
+        const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
+        if (!league) return prev;
+        const existingQueue = league.queue || [];
+        if (existingQueue.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+          alert(`"${name}" est déjà dans la file d'attente !`);
+          return prev;
+        }
+        league.queue = [...existingQueue, { id: genId(), name }];
+        return next;
+      });
+      setQueueName('');
+      setAddingQueue(false);
     }
 
-    if (!adding) {
-      return (
-        <button className="btn btn-sm" onClick={() => { if(!isPublicMode) setAdding(true); }} style={{ marginLeft:'auto',fontSize:12, display: isPublicMode ? 'none' : 'inline-flex' }}>
-          ➕ Ajouter une voiture
-        </button>
-      );
+    function removeFromQueue(id) {
+      setDb(prev => {
+        const next = JSON.parse(JSON.stringify(prev));
+        const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
+        if (!league) return prev;
+        league.queue = (league.queue || []).filter(c => c.id !== id);
+        return next;
+      });
     }
+
     return (
-      <div style={{ display:'flex',gap:6,alignItems:'center',marginLeft:'auto' }}>
-        <input
-          autoFocus
-          placeholder="Nom de la voiture..."
-          value={newName}
-          onChange={e => setNewName(e.target.value)}
-          onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
-          style={{ width:180,fontSize:13 }}
-        />
-        <button className="btn btn-sm btn-green" onClick={handleAdd} style={{ fontSize:12 }}>✓</button>
-        <button className="btn btn-sm" onClick={() => { setAdding(false); setNewName(''); }} style={{ fontSize:12 }}>✕</button>
+      <div style={{ display:'flex', gap:8, alignItems:'center', marginLeft:'auto', flexWrap:'wrap', position:'relative' }}>
+        {/* File d'attente — toujours consultable, même avant qu'un match soit joué */}
+        <div style={{ position:'relative' }}>
+          <button className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => setQueueOpen(o => !o)}>
+            🕐 File d'attente{queue.length > 0 ? ` (${queue.length})` : ''}
+          </button>
+          {queueOpen && (
+            <>
+              <div style={{ position:'fixed', inset:0, zIndex:19 }} onClick={() => setQueueOpen(false)} />
+              <div style={{ position:'absolute', top:'110%', right:0, zIndex:20, background:'var(--dark2)', border:'1px solid var(--gold-dim)', borderRadius:6, minWidth:220, boxShadow:'var(--shadow-lg)', padding:8 }}
+                onClick={e => e.stopPropagation()}>
+              <div style={{ fontSize:10, color:'var(--gold-dim)', letterSpacing:1, padding:'2px 4px 6px', fontFamily:"'Bebas Neue',sans-serif" }}>ARRIVE LA SAISON PROCHAINE</div>
+              {queue.length === 0 && (
+                <div style={{ fontSize:12, color:'var(--text-dim)', padding:'6px 4px 8px', textAlign:'center' }}>Aucune voiture en attente.</div>
+              )}
+              {queue.map(c => (
+                <div key={c.id} style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap:8, padding:'5px 6px', fontSize:13, borderTop:'1px solid #1a1a1a' }}>
+                  <span>{c.name}</span>
+                  {!isPublicMode && (
+                    <button className="btn btn-dark btn-xs" style={{ fontSize:10, padding:'1px 5px' }} onClick={() => removeFromQueue(c.id)}>✕</button>
+                  )}
+                </div>
+              ))}
+              {!isPublicMode && hasStarted && (
+                addingQueue ? (
+                  <div style={{ display:'flex', gap:6, marginTop:8 }}>
+                    <input
+                      autoFocus
+                      placeholder="Nom de la voiture..."
+                      value={queueName}
+                      onChange={e => setQueueName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleAddQueue(); if (e.key === 'Escape') setAddingQueue(false); }}
+                      style={{ flex:1, fontSize:12 }}
+                    />
+                    <button className="btn btn-sm btn-green" style={{ fontSize:11 }} onClick={handleAddQueue}>✓</button>
+                  </div>
+                ) : (
+                  <button className="btn btn-sm btn-gold" style={{ width:'100%', marginTop:8, fontSize:12 }} onClick={() => setAddingQueue(true)}>
+                    ➕ Ajouter à la saison suivante
+                  </button>
+                )
+              )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Ajout pour cette saison — bloqué dès qu'un match est joué */}
+        {hasStarted ? (
+          <button className="btn btn-sm" disabled style={{ fontSize:12,opacity:0.4,cursor:'not-allowed' }} title="Impossible d'ajouter une voiture en cours de saison — utilise la file d'attente pour la saison suivante">
+            🔒 Ajouter une voiture
+          </button>
+        ) : !adding ? (
+          <button className="btn btn-sm" onClick={() => { if(!isPublicMode) setAdding(true); }} style={{ fontSize:12, display: isPublicMode ? 'none' : 'inline-flex' }}>
+            ➕ Ajouter une voiture
+          </button>
+        ) : (
+          <div style={{ display:'flex',gap:6,alignItems:'center' }}>
+            <input
+              autoFocus
+              placeholder="Nom de la voiture..."
+              value={newName}
+              onChange={e => setNewName(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setAdding(false); }}
+              style={{ width:180,fontSize:13 }}
+            />
+            <button className="btn btn-sm btn-green" onClick={handleAdd} style={{ fontSize:12 }}>✓</button>
+            <button className="btn btn-sm" onClick={() => { setAdding(false); setNewName(''); }} style={{ fontSize:12 }}>✕</button>
+          </div>
+        )}
       </div>
     );
   }
