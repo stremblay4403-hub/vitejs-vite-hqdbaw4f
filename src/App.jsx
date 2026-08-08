@@ -11880,7 +11880,7 @@ export default function App() {
 
         {subTab === 'classement' && (
           <div>
-            <div className="card" style={{ marginBottom:10 }}>
+            <div className="card" style={{ marginBottom:10, overflow:'visible' }}>
               <div style={{ padding:'8px 12px',display:'flex',gap:12,alignItems:'center',flexWrap:'wrap' }}>
                 <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ width:220 }} />
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{cars.length} voitures · {playedCount}/{totalCount} matchs</span>
