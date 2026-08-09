@@ -6067,13 +6067,13 @@ export default function App() {
       // Voitures en file d'attente — pas encore actives, mais déjà comptées dans les stats de marque
       (league.queue || []).forEach(car => {
         if (!car.id) return;
-        perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, mainTitles: 0, league: `${lName} (file d'attente)` };
+        perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, mainTitles: 0, league: lName, pending: true };
       });
     });
 
     // Voitures retraitées (RIP) — comptabilisées dans les stats de marque via leur identifiant synthétique
     RIP_CARS.forEach(c => {
-      perId[c.photoKey] = { id: c.photoKey, name: c.name, total: 0, titles: 0, mainTitles: 0, league: 'RIP' };
+      perId[c.photoKey] = { id: c.photoKey, name: c.name, total: 0, titles: 0, mainTitles: 0, league: null, retired: true };
     });
 
     // 2) Balaie toute la carrière (toutes saisons, toutes ligues) pour accumuler
@@ -7927,7 +7927,7 @@ export default function App() {
       }
       return null;
     }
-    const photo = car ? getCarPhoto(carId) : getCarPhotoByName(effectiveName);
+    const photo = getCarPhoto(carId) || (car ? null : getCarPhotoByName(effectiveName));
 
     // Pour les voitures inactives, trouver leur carId dans les anciennes saisons
     const resolvedCarId = carId || (() => {
@@ -12257,11 +12257,13 @@ export default function App() {
                 const photo = getCarPhoto(c.id);
                 return (
                   <div key={c.id} style={{ borderRadius:8,border:'1px solid #e67e2255',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
-                    <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                    <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer' }}
+                      onClick={() => openProfileCar({ leagueName: c.league, carId: c.id, histName: c.name })}>
                       {photo ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <span style={{ fontSize:36 }}>🚗</span>}
                     </div>
                     <div style={{ padding:'6px 8px' }}>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',cursor:'pointer' }}
+                        onClick={() => openProfileCar({ leagueName: c.league, carId: c.id, histName: c.name })}>{c.name}</div>
                       <span style={{ fontSize:9,color:'#e67e22',background:'rgba(230,126,34,0.15)',border:'1px solid rgba(230,126,34,0.3)',borderRadius:3,padding:'1px 4px',display:'inline-block',marginTop:2 }}>→ {c.league}</span>
                       <div style={{ display:'flex',alignItems:'center',gap:3,marginTop:4 }}>
                         <span style={{ fontSize:10,color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
@@ -12647,11 +12649,14 @@ export default function App() {
                   <LeaderboardRow key={c.id}
                     rank={i + 1} rankDiff={null}
                     name={c.name} photo={getCarPhoto(c.id)}
-                    badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                    badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
                     streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
                     pts={brandDetailSort === 'titres' ? c.titles : c.total}
                     noStatsToggle
-                    onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
+                    onClick={() => {
+                      if (String(c.id).startsWith('hist-')) return;
+                      openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
+                    }}
                   />
                 ))}
               </div>
@@ -12669,10 +12674,13 @@ export default function App() {
                 <LeaderboardRow key={c.id}
                   rank={i + 1} rankDiff={null}
                   name={c.name} photo={getCarPhoto(c.id)}
-                  badge={c.league ? { label: c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                  badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
                   pts={c.titles}
                   noStatsToggle
-                  onClick={() => c.league && !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}
+                  onClick={() => {
+                    if (String(c.id).startsWith('hist-')) return;
+                    openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
+                  }}
                 />
               ))}
             </div>
@@ -12693,7 +12701,7 @@ export default function App() {
                       return (
                         <div key={c.id} style={{ borderRadius:8,border:`2px solid ${borderColor}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
                           <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}
-                            onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id })}>
+                            onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id, histName: c.name })}>
                             {photo
                               ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
                               : <span style={{ fontSize:36 }}>🚗</span>}
