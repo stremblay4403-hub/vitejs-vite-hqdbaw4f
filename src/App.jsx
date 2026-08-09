@@ -882,6 +882,12 @@ try { localStorage.setItem(KEY, JSON.stringify(cached)); } catch(e) {}
   return cached;
 })();
 
+// Voitures retraitées (RIP) — liste fixe, suivies par un identifiant synthétique basé sur le nom
+const RIP_CARS = [
+  { name: 'X7 Pick-Up' },
+  { name: 'Rebellion' },
+].map(c => ({ ...c, photoKey: `byname-${c.name.toLowerCase()}` }));
+
 const LEAGUE_CARS = {
   "Voitures 1": [
     "300","308","2008","3008","370Z","600LT","718 Cayman","A6","Accent","Adam","Agera RS","Altima","Ariya","Arteon","Aveo","Battista","Beetle","Borrego",
@@ -3028,6 +3034,7 @@ export default function App() {
   const [mainTab, setMainTab] = useState("dashboard");
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
+  const [voituresQueueTab, setVoituresQueueTab] = useState(false);
   const allCarsActiveLetterRef = React.useRef('TOUS');
   const allCarsSearchRef = React.useRef('');
   const [confirmReset, setConfirmReset] = useState(false);
@@ -6057,6 +6064,16 @@ export default function App() {
         if (!car.id) return;
         perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, mainTitles: 0, league: lName };
       });
+      // Voitures en file d'attente — pas encore actives, mais déjà comptées dans les stats de marque
+      (league.queue || []).forEach(car => {
+        if (!car.id) return;
+        perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0, mainTitles: 0, league: `${lName} (file d'attente)` };
+      });
+    });
+
+    // Voitures retraitées (RIP) — comptabilisées dans les stats de marque via leur identifiant synthétique
+    RIP_CARS.forEach(c => {
+      perId[c.photoKey] = { id: c.photoKey, name: c.name, total: 0, titles: 0, mainTitles: 0, league: 'RIP' };
     });
 
     // 2) Balaie toute la carrière (toutes saisons, toutes ligues) pour accumuler
@@ -9213,14 +9230,14 @@ export default function App() {
                       value={queueName}
                       onChange={e => setQueueName(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Escape') setAddingQueue(false); }}
-                      style={{ fontSize:12 }}
+                      style={{ fontSize:16 }}
                     />
                     <div style={{ display:'flex', gap:6, alignItems:'center' }}>
                       <input
                         placeholder="Marque (optionnel)"
                         value={queueBrand}
                         onChange={e => setQueueBrand(e.target.value)}
-                        style={{ fontSize:12, flex:1 }}
+                        style={{ fontSize:16, flex:1 }}
                       />
                       <label style={photoBtnStyle} title="Choisir une photo">
                         {queuePhotoPreview ? <img src={queuePhotoPreview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '📷'}
@@ -9259,13 +9276,13 @@ export default function App() {
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => { if (e.key === 'Escape') setAdding(false); }}
-              style={{ width:150,fontSize:13 }}
+              style={{ width:150,fontSize:16 }}
             />
             <input
               placeholder="Marque"
               value={newBrand}
               onChange={e => setNewBrand(e.target.value)}
-              style={{ width:100,fontSize:13 }}
+              style={{ width:100,fontSize:16 }}
             />
             <label style={photoBtnStyle} title="Choisir une photo">
               {newPhotoPreview ? <img src={newPhotoPreview} alt="" style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : '📷'}
@@ -12131,14 +12148,20 @@ export default function App() {
     const [ripSearch, setRipSearch] = useState('');
     const [noBrandOnly, setNoBrandOnly] = useState(false);
 
-    const rip = React.useMemo(() => {
-      return [
-        { name: 'X7 Pick-Up' },
-        { name: 'Rebellion' },
-      ].map(c => ({ ...c, photoKey: `byname-${c.name.toLowerCase()}` }));
-    }, []);
+    const rip = RIP_CARS;
 
     const filteredRip = rip.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
+
+    // File d'attente — regroupe les voitures en attente de toutes les ligues Actuelles
+    const allQueued = React.useMemo(() => {
+      const out = [];
+      AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).forEach(lName => {
+        const q = currentSeason.leagues[lName]?.queue || [];
+        q.forEach(c => out.push({ ...c, league: lName }));
+      });
+      return out;
+    }, [currentSeason]);
+    const filteredQueue = allQueued.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
 
     const filtered = React.useMemo(() => {
       const all = [];
@@ -12209,17 +12232,61 @@ export default function App() {
     return (
       <div>
         <div className="section-title">Voitures — Toutes les ligues</div>
-        {/* Onglets Actives / RIP */}
+        {/* Onglets Actives / RIP / File d'attente */}
         <div style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
-          <button onClick={() => setRipTab(false)} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,background:'transparent',border:'none',borderBottom: !ripTab ? '2px solid var(--gold)' :'2px solid transparent',color: !ripTab ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
+          <button onClick={() => { setRipTab(false); setVoituresQueueTab(false); }} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,background:'transparent',border:'none',borderBottom: (!ripTab && !voituresQueueTab) ? '2px solid var(--gold)' :'2px solid transparent',color: (!ripTab && !voituresQueueTab) ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
             🏎️ Actives ({filtered.length})
           </button>
-          <button onClick={() => setRipTab(true)} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:2,background:'transparent',border:'none',borderBottom: ripTab ? '2px solid #e74c3c' :'2px solid transparent',color: ripTab ? '#e74c3c' :'var(--text-dim)',cursor:'pointer' }}>
+          <button onClick={() => { setRipTab(true); setVoituresQueueTab(false); }} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,background:'transparent',border:'none',borderBottom: ripTab ? '2px solid #e74c3c' :'2px solid transparent',color: ripTab ? '#e74c3c' :'var(--text-dim)',cursor:'pointer' }}>
             🪦 RIP ({rip.length})
+          </button>
+          <button onClick={() => { setRipTab(false); setVoituresQueueTab(true); }} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,background:'transparent',border:'none',borderBottom: voituresQueueTab ? '2px solid #e67e22' :'2px solid transparent',color: voituresQueueTab ? '#e67e22' :'var(--text-dim)',cursor:'pointer' }}>
+            🕐 File d'attente ({allQueued.length})
           </button>
         </div>
 
-        {ripTab ? (
+        {voituresQueueTab ? (
+          /* ---- VUE FILE D'ATTENTE ---- */
+          <div className="card">
+            <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center' }}>
+              <input placeholder="🔍 Rechercher..." value={ripSearch} onChange={e => setRipSearch(e.target.value)} style={{ width:180,fontSize:16 }} />
+              <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>{filteredQueue.length} voitures</span>
+            </div>
+            <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8,padding:8 }}>
+              {filteredQueue.map(c => {
+                const photo = getCarPhoto(c.id);
+                return (
+                  <div key={c.id} style={{ borderRadius:8,border:'1px solid #e67e2255',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                    <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>
+                      {photo ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover' }} /> : <span style={{ fontSize:36 }}>🚗</span>}
+                    </div>
+                    <div style={{ padding:'6px 8px' }}>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</div>
+                      <span style={{ fontSize:9,color:'#e67e22',background:'rgba(230,126,34,0.15)',border:'1px solid rgba(230,126,34,0.3)',borderRadius:3,padding:'1px 4px',display:'inline-block',marginTop:2 }}>→ {c.league}</span>
+                      <div style={{ display:'flex',alignItems:'center',gap:3,marginTop:4 }}>
+                        <span style={{ fontSize:10,color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
+                          {getCarBrand(c.id)}
+                        </span>
+                        {!isPublicMode && (
+                          <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:9,flexShrink:0,opacity:0.85 }}
+                            onClick={() => setBrandModal({ carId: c.id, carName: c.name, photo })}>
+                            🏷️ {getCarBrand(c.id) ? '' : 'Marque'}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredQueue.length === 0 && (
+                <div className="empty-state" style={{ gridColumn:'1/-1' }}>
+                  <div className="empty-icon">🕐</div>
+                  <div className="empty-sub">Aucune voiture en attente pour l'instant.</div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : ripTab ? (
           /* ---- VUE RIP ---- */
           <div className="card">
             <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:8,alignItems:'center' }}>
@@ -12246,6 +12313,17 @@ export default function App() {
                       onClick={() => openProfileCar({ leagueName: LEAGUES[0], carId: c.photoKey, histName: c.name })}>
                       <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,flex:1,color:'var(--text-dim)' }}>{c.name}</span>
                       <span style={{ fontSize:11,color:'var(--text-dim)' }}>→ profil</span>
+                    </div>
+                    <div style={{ padding:'0 8px 6px',display:'flex',alignItems:'center',gap:3 }}>
+                      <span style={{ fontSize:10,color:'var(--text-dim)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>
+                        {getCarBrand(c.photoKey)}
+                      </span>
+                      {!isPublicMode && (
+                        <button className="btn btn-dark btn-xs" style={{ padding:'1px 4px',fontSize:9,flexShrink:0,opacity:0.85 }}
+                          onClick={e => { e.stopPropagation(); setBrandModal({ carId: c.photoKey, carName: c.name, photo: db.photos?.[c.photoKey] || getCarPhotoByName(c.name) }); }}>
+                          🏷️ {getCarBrand(c.photoKey) ? '' : 'Marque'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
