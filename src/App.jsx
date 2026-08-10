@@ -2114,6 +2114,73 @@ const css = `
     42%  { opacity: 1; transform: scale(1); }
     100% { opacity: 1; transform: scale(1); }
   }
+
+  /* Tilt 3D léger sur les cartes voiture — effet "carte à collectionner", pur CSS (pas de JS mousemove) */
+  .car-tilt-wrap { perspective: 600px; }
+  .car-tilt {
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  .car-tilt-wrap:hover .car-tilt,
+  .car-tilt-wrap:active .car-tilt {
+    transform: rotateX(6deg) rotateY(-8deg) scale(1.035);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.25);
+  }
+
+  /* Ripple au clic sur les tabs */
+  .tab-ripple { position: relative; overflow: hidden; }
+  .tab-ripple .ripple-circle {
+    position: absolute; border-radius: 50%; transform: scale(0);
+    background: rgba(212,175,55,0.35);
+    animation: tabRippleAnim 0.55s ease-out;
+    pointer-events: none;
+  }
+  @keyframes tabRippleAnim {
+    to { transform: scale(2.6); opacity: 0; }
+  }
+
+  /* Skeleton loader générique réutilisable pour les vues lourdes */
+  .skel-block {
+    background: linear-gradient(90deg, var(--dark3) 0%, var(--dark2) 50%, var(--dark3) 100%);
+    background-size: 200% 100%;
+    animation: skeletonPulse 1.3s ease-in-out infinite;
+    border-radius: 6px;
+  }
+
+  /* Transition de saison — voile cinématique court entre deux saisons */
+  @keyframes seasonTransitionSweep {
+    0%   { opacity: 0; transform: scaleX(0); }
+    45%  { opacity: 1; transform: scaleX(1); }
+    55%  { opacity: 1; transform: scaleX(1); }
+    100% { opacity: 0; transform: scaleX(1); }
+  }
+  @keyframes seasonTransitionTextIn {
+    0%   { opacity: 0; transform: translateY(14px) scale(0.94); }
+    40%  { opacity: 0; }
+    55%  { opacity: 1; transform: translateY(0) scale(1); }
+    85%  { opacity: 1; }
+    100% { opacity: 0; transform: translateY(-8px) scale(1.02); }
+  }
+  .season-transition-overlay {
+    position: fixed; inset: 0; z-index: 9998;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .season-transition-sweep {
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, var(--black) 0%, #0d0d0d 50%, var(--black) 100%);
+    transform-origin: left center;
+    animation: seasonTransitionSweep 1.1s ease-in-out forwards;
+  }
+  .season-transition-text {
+    position: relative;
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 4px;
+    color: var(--gold);
+    animation: seasonTransitionTextIn 1.1s ease-in-out forwards;
+    text-align: center;
+  }
   .splash-screen {
     position: fixed; inset: 0; z-index: 9999;
     background: var(--black);
@@ -2722,6 +2789,41 @@ function isMathematicallySecured(standings, carIndex, threshold, allMatches, isT
 }
 
 // Compteur animé — anime un nombre de 0 vers sa valeur finale, décalé pour démarrer une fois la case révélée
+// Skeleton court à l'entrée d'une vue lourde (Marques, Historique...) — évite le flash de
+// contenu vide/brut pendant que les agrégations (useMemo) se calculent au montage.
+function useMountSkeleton(ms = 220) {
+  const [showSkeleton, setShowSkeleton] = React.useState(true);
+  React.useEffect(() => {
+    const t = setTimeout(() => setShowSkeleton(false), ms);
+    return () => clearTimeout(t);
+  }, []);
+  return showSkeleton;
+}
+
+function SkeletonRows({ count = 6, height = 44 }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="skel-block" style={{ height, opacity: 1 - i * 0.06 }} />
+      ))}
+    </div>
+  );
+}
+
+// Effet ripple générique au clic — à utiliser sur des boutons avec className "tab-ripple"
+function spawnRipple(e) {
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  const circle = document.createElement('span');
+  circle.className = 'ripple-circle';
+  circle.style.width = circle.style.height = `${size}px`;
+  circle.style.left = `${(e.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2}px`;
+  circle.style.top = `${(e.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2}px`;
+  btn.appendChild(circle);
+  setTimeout(() => circle.remove(), 550);
+}
+
 function CountUp({ value, duration = 700, decimals = 0, suffix = '', delay = 0 }) {
   const [display, setDisplay] = React.useState(0);
   React.useEffect(() => {
@@ -2970,6 +3072,7 @@ export default function App() {
     });
   }, []);
   const [loaded, setLoaded] = useState(false);
+  const [seasonTransition, setSeasonTransition] = useState(null); // { from, to } numéros de saison, ou null
   // Live standings (Ligues Principales) — déclarés ici au niveau App, PAS dans GroupesView,
   // car GroupesView est redéfini à chaque rendu de App et perdrait sinon tout son historique.
   const standingsRowRefs = React.useRef({});
@@ -4466,6 +4569,13 @@ export default function App() {
     // de l'admin au prochain snapshot Firebase).
     manualSeasonPickRef.current = true;
     pickedSeasonNumRef.current = (db.seasons[idx] && db.seasons[idx].season) ?? null;
+    // Petite transition cinématique quand on change réellement de saison (pas si on reclique la même)
+    const fromNum = currentSeason?.season;
+    const toNum = db.seasons[idx]?.season;
+    if (toNum != null && fromNum !== toNum) {
+      setSeasonTransition({ from: fromNum, to: toNum });
+      setTimeout(() => setSeasonTransition(null), 1100);
+    }
     setDb(d => ({ ...d, currentSeasonIdx: idx }));
     setSectionTab("groupes");
     loadedForNotifs.current = false;
@@ -7202,7 +7312,8 @@ export default function App() {
         const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
         const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
         return (
-          <div className={justArrived ? 'bracket-car-arrived' : ''} style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0, position:'relative' }}
+          <div className="car-tilt-wrap" style={{ display:'inline-block', flexShrink:0 }}>
+          <div className={`car-tilt ${justArrived ? 'bracket-car-arrived' : ''}`} style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', position:'relative' }}
             onClick={e => { e.stopPropagation(); openProfileCar({ leagueName: leagueTab, carId }); }}>
             <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
               {photo
@@ -7224,6 +7335,7 @@ export default function App() {
                 <span style={{ fontSize:8, color:'#e74c3c' }}>{stats.l}D</span>
               </div>
             </div>
+          </div>
           </div>
         );
       }
@@ -12474,12 +12586,23 @@ export default function App() {
   allCarsViewImplRef.current = AllCarsView;
 
   function MarquesView({ subTab }) {
+    const showSkeleton = useMountSkeleton();
+
     if (brandDetail) {
       return <BrandDetailPage key={brandDetail} brand={brandDetail} />;
     }
 
     if (countryDetail) {
       return <CountryDetailPage key={countryDetail} code={countryDetail} />;
+    }
+
+    if (showSkeleton) {
+      return (
+        <div style={{ padding: 16 }}>
+          <div className="section-title">Marques</div>
+          <SkeletonRows count={7} height={48} />
+        </div>
+      );
     }
 
     if (!brandStats.length) {
@@ -13347,12 +13470,28 @@ export default function App() {
               const wA=h2h.filter(m=>m.result==='A').length;
               const wB=h2h.filter(m=>m.result==='B').length;
               const draws=h2h.filter(m=>m.result==='N').length;
+              const gfA=h2h.reduce((s,m)=>s+m.gA,0);
+              const gfB=h2h.reduce((s,m)=>s+m.gB,0);
               const last5 = [...h2h].sort((a,b)=>b.season-a.season).slice(0,5);
+              // Avantage historique : basé sur les victoires, buts en tie-break
+              let advantageText = null;
+              if (wA !== wB) {
+                const leader = wA > wB ? carA.name : carB.name;
+                const gap = Math.abs(wA - wB);
+                const dominant = gap >= 3 || (h2h.length >= 4 && Math.max(wA,wB) >= h2h.length * 0.7);
+                advantageText = dominant
+                  ? `👑 ${leader} domine nettement cette rivalité`
+                  : `${leader} a un léger avantage historique`;
+              } else if (gfA !== gfB) {
+                advantageText = `Bilan égal en victoires — ${gfA > gfB ? carA.name : carB.name} marque plus en tête-à-tête`;
+              } else {
+                advantageText = `⚖️ Rivalité parfaitement équilibrée`;
+              }
               return (
                 <div style={{background:'var(--dark2)',borderRadius:8,padding:'12px',border:'1px solid var(--border)'}}>
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--gold-dim)',letterSpacing:2,marginBottom:10}}>🥊 CONFRONTATIONS DIRECTES ({h2h.length} matchs)</div>
                   {/* Bilan global */}
-                  <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:12}}>
+                  <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:8}}>
                     <div style={{textAlign:'right'}}>
                       <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:wA>wB?'var(--green)':wA<wB?'#e74c3c':'var(--gold)'}}>{wA}</span>
                       <div style={{fontSize:10,color:'var(--text-dim)'}}>VICTOIRES</div>
@@ -13364,6 +13503,16 @@ export default function App() {
                       <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:36,color:wB>wA?'var(--green)':wB<wA?'#e74c3c':'var(--gold)'}}>{wB}</span>
                       <div style={{fontSize:10,color:'var(--text-dim)'}}>VICTOIRES</div>
                     </div>
+                  </div>
+                  {/* Différentiel de buts en tête-à-tête */}
+                  <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:10,paddingBottom:10,borderBottom:'1px solid #111'}}>
+                    <div style={{textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:gfA>gfB?'var(--green)':gfA<gfB?'#e74c3c':'var(--text)'}}>{gfA} buts</div>
+                    <div style={{textAlign:'center',padding:'0 12px',fontSize:10,color:'var(--text-dim)',letterSpacing:1}}>MARQUÉS</div>
+                    <div style={{textAlign:'left',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,color:gfB>gfA?'var(--green)':gfB<gfA?'#e74c3c':'var(--text)'}}>{gfB} buts</div>
+                  </div>
+                  {/* Avantage historique */}
+                  <div style={{textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:13,letterSpacing:0.5,color:'var(--gold)',marginBottom:12,padding:'6px 8px',background:'rgba(212,175,55,0.08)',borderRadius:6}}>
+                    {advantageText}
                   </div>
                   {/* 5 dernières rencontres */}
                   <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:11,color:'var(--text-dim)',letterSpacing:1,marginBottom:6}}>5 DERNIÈRES RENCONTRES</div>
@@ -14411,6 +14560,16 @@ export default function App() {
     }
 
     const tcSeasons = [...db.seasons].reverse().map(s => ({ s, podium: getTCPodium(s) })).filter(x => x.podium);
+    const showSkeleton = useMountSkeleton();
+
+    if (showSkeleton) {
+      return (
+        <div style={{ padding: 16 }}>
+          <div className="section-title">Historique</div>
+          <SkeletonRows count={8} height={52} />
+        </div>
+      );
+    }
 
     return (
       <div>
@@ -14675,6 +14834,15 @@ export default function App() {
           <div className="splash-logo">
             TOURNOIS DE VOITURES
             <span>🏎️</span>
+          </div>
+        </div>
+      )}
+      {seasonTransition && (
+        <div className="season-transition-overlay">
+          <div className="season-transition-sweep" />
+          <div className="season-transition-text">
+            <div style={{ fontSize: 14, color: 'var(--text-dim)', letterSpacing: 3 }}>SAISON {seasonTransition.from}</div>
+            <div style={{ fontSize: 34 }}>→ SAISON {seasonTransition.to}</div>
           </div>
         </div>
       )}
@@ -14943,7 +15111,8 @@ export default function App() {
             { key: 'marques', label: 'Marques' },
             { key: 'historique', label: 'Historique' },
           ].map(t => (
-            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
+            <button key={t.key} className={`tab tab-ripple ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
+              spawnRipple(e);
               const bar = e.currentTarget.parentElement;
               const sl = bar.scrollLeft;
               const liguesBar = document.getElementById('tabs-ligues');
@@ -14986,7 +15155,8 @@ export default function App() {
               { key: 'import', label: 'Importation' },
               { key: 'oubl', label: 'Oubliettes' },
             ].map(t => (
-              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
+              <button key={t.key} className={`tab tab-ripple ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
+                spawnRipple(e);
                 const bar = e.currentTarget.parentElement;
                 const sl = bar.scrollLeft;
                 const mainBar = document.getElementById('tabs-main');
