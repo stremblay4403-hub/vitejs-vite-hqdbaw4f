@@ -2128,18 +2128,6 @@ const css = `
     box-shadow: 0 10px 22px rgba(0,0,0,0.45), 0 0 0 1px rgba(212,175,55,0.25);
   }
 
-  /* Ripple au clic sur les tabs */
-  .tab-ripple { position: relative; overflow: hidden; }
-  .tab-ripple .ripple-circle {
-    position: absolute; border-radius: 50%; transform: scale(0);
-    background: rgba(212,175,55,0.35);
-    animation: tabRippleAnim 0.55s ease-out;
-    pointer-events: none;
-  }
-  @keyframes tabRippleAnim {
-    to { transform: scale(2.6); opacity: 0; }
-  }
-
   /* Skeleton loader générique réutilisable pour les vues lourdes */
   .skel-block {
     background: linear-gradient(90deg, var(--dark3) 0%, var(--dark2) 50%, var(--dark3) 100%);
@@ -2808,20 +2796,6 @@ function SkeletonRows({ count = 6, height = 44 }) {
       ))}
     </div>
   );
-}
-
-// Effet ripple générique au clic — à utiliser sur des boutons avec className "tab-ripple"
-function spawnRipple(e) {
-  const btn = e.currentTarget;
-  const rect = btn.getBoundingClientRect();
-  const size = Math.max(rect.width, rect.height);
-  const circle = document.createElement('span');
-  circle.className = 'ripple-circle';
-  circle.style.width = circle.style.height = `${size}px`;
-  circle.style.left = `${(e.clientX ?? rect.left + rect.width / 2) - rect.left - size / 2}px`;
-  circle.style.top = `${(e.clientY ?? rect.top + rect.height / 2) - rect.top - size / 2}px`;
-  btn.appendChild(circle);
-  setTimeout(() => circle.remove(), 550);
 }
 
 function CountUp({ value, duration = 700, decimals = 0, suffix = '', delay = 0 }) {
@@ -15111,8 +15085,7 @@ export default function App() {
             { key: 'marques', label: 'Marques' },
             { key: 'historique', label: 'Historique' },
           ].map(t => (
-            <button key={t.key} className={`tab tab-ripple ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
-              spawnRipple(e);
+            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
               const bar = e.currentTarget.parentElement;
               const sl = bar.scrollLeft;
               const liguesBar = document.getElementById('tabs-ligues');
@@ -15155,8 +15128,7 @@ export default function App() {
               { key: 'import', label: 'Importation' },
               { key: 'oubl', label: 'Oubliettes' },
             ].map(t => (
-              <button key={t.key} className={`tab tab-ripple ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
-                spawnRipple(e);
+              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
                 const bar = e.currentTarget.parentElement;
                 const sl = bar.scrollLeft;
                 const mainBar = document.getElementById('tabs-main');
