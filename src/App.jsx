@@ -7048,10 +7048,12 @@ export default function App() {
                                   awayQual: getQualBadge(m.awayId),
                                   homeProbs: groupProbs[m.homeId],
                                   awayProbs: groupProbs[m.awayId],
-                                  homePlayoffGap: computeMagicNumber(groupCars, matches, m.homeId, 8),
-                                  awayPlayoffGap: computeMagicNumber(groupCars, matches, m.awayId, 8),
-                                  homePointsGap: computeMagicNumber(groupCars, matches, m.homeId, 10),
-                                  awayPointsGap: computeMagicNumber(groupCars, matches, m.awayId, 10),
+                                  // Magic number playoffs/points annexes : pas pertinent avant la journée 11
+                                  // (trop de matchs restants pour que ce soit lisible/utile).
+                                  homePlayoffGap: (m.day || 0) >= 11 ? computeMagicNumber(groupCars, matches, m.homeId, 8) : null,
+                                  awayPlayoffGap: (m.day || 0) >= 11 ? computeMagicNumber(groupCars, matches, m.awayId, 8) : null,
+                                  homePointsGap: (m.day || 0) >= 11 ? computeMagicNumber(groupCars, matches, m.homeId, 10) : null,
+                                  awayPointsGap: (m.day || 0) >= 11 ? computeMagicNumber(groupCars, matches, m.awayId, 10) : null,
                                   onConfirm: (hg, ag) => updateGroupMatch(leagueTab, activeGroup, m.id, hg, ag),
                                 });
                               }}
