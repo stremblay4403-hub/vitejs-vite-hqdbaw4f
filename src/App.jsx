@@ -4103,19 +4103,31 @@ export default function App() {
     return { X, Y, Z, P, ELIM };
   }
 
-  // Combien de points supplémentaires il faudrait à une voiture pour atteindre/sécuriser
-  // la zone playoffs (top 8), à partir de son classement actuel. Approximation simple basée
-  // sur les points du 8e de son groupe — cohérent avec les badges X/P/ELIM déjà affichés.
-  function computeQualGap(standings, carId, quals) {
-    if (!standings || !standings.length) return null;
-    if (quals.ELIM.has(carId)) return { status: 'eliminated' };
-    if (quals.X.has(carId)) return { status: 'secured' };
+  // "Magic number" — combien de points supplémentaires garantiraient MATHÉMATIQUEMENT une place
+  // dans le top `zoneSize` (8 = playoffs, 10 = points annexes), en tenant compte du potentiel
+  // maximal restant de toutes les rivales (pas juste de leur score actuel).
+  function computeMagicNumber(groupCars, allMatches, carId, zoneSize) {
+    const played = allMatches.filter(m => m.homeGoals !== null);
+    const remaining = allMatches.filter(m => m.homeGoals === null);
+    const standings = computeStandings(groupCars, played);
     const car = standings.find(s => s.id === carId);
     if (!car) return null;
-    const PLAYOFFS_GAP = 8;
-    const cutoffPts = standings[PLAYOFFS_GAP - 1]?.pts ?? 0;
-    const gap = cutoffPts - car.pts;
-    const neededPts = gap <= 0 ? 1 : gap + 1;
+    function remPts(id) { return remaining.filter(m => m.homeId === id || m.awayId === id).length * 3; }
+    const carMaxPts = car.pts + remPts(carId);
+    const others = standings.filter(s => s.id !== carId);
+
+    // Élimination : au moins `zoneSize` rivales ont déjà, avec leurs points ACTUELS (qui ne
+    // peuvent que grimper), plus de points que notre maximum théorique — impossible de les rattraper.
+    const lockedAhead = others.filter(o => o.pts > carMaxPts).length;
+    if (lockedAhead >= zoneSize) return { status: 'eliminated' };
+
+    // Sécurisé : nos points actuels dépassent déjà le maximum théorique de la rivale la plus
+    // dangereuse encore capable de nous priver de la zone.
+    const othersMaxSorted = others.map(o => o.pts + remPts(o.id)).sort((a, b) => b - a);
+    const V = othersMaxSorted[zoneSize - 1] ?? 0;
+    if (car.pts > V) return { status: 'secured' };
+
+    const neededPts = V - car.pts + 1;
     return { status: 'chasing', neededPts };
   }
 
@@ -4443,7 +4455,7 @@ export default function App() {
     if (!matchModal) return null;
     const { homeName, awayName, homePhoto, awayPhoto, onConfirm, homeStats, awayStats,
             homeRank, awayRank, homePts, awayPts, homeQual, awayQual, homeProbs, awayProbs,
-            homeQualGap, awayQualGap } = matchModal;
+            homePlayoffGap, awayPlayoffGap, homePointsGap, awayPointsGap } = matchModal;
 
     // hg/ag vivent dans le state parent pour survivre aux re-renders des notifications
     const hg = matchHg;
@@ -4451,18 +4463,18 @@ export default function App() {
     const setHg = setMatchHg;
     const setAg = setMatchAg;
 
-    function QualGapLine({ gap, align = 'center' }) {
+    function QualGapLine({ gap, align = 'center', label, icon, color = 'var(--gold-dim)' }) {
       if (!gap) return null;
       const justify = align === 'left' ? 'flex-start' : align === 'right' ? 'flex-end' : 'center';
       if (gap.status === 'secured') {
-        return <div style={{ fontSize:10,color:'var(--green)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,display:'flex',justifyContent:justify }}>✅ Playoffs assurés</div>;
+        return <div style={{ fontSize:10,color:'var(--green)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,display:'flex',justifyContent:justify }}>✅ {label} assurés</div>;
       }
       if (gap.status === 'eliminated') {
-        return <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,display:'flex',justifyContent:justify }}>❌ Élimination des playoffs</div>;
+        return <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,display:'flex',justifyContent:justify }}>❌ {label} hors de portée</div>;
       }
       return (
-        <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,display:'flex',justifyContent:justify }}>
-          🎯 Playoffs à +{gap.neededPts} pt{gap.neededPts > 1 ? 's' : ''}
+        <div style={{ fontSize:10,color,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:0.5,display:'flex',justifyContent:justify }}>
+          {icon} {label} : encore {gap.neededPts} pt{gap.neededPts > 1 ? 's' : ''}
         </div>
       );
     }
@@ -4558,7 +4570,8 @@ export default function App() {
               <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: hWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:hWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{homeName}</div>
                 <StatsBadge stats={homeStats} rank={homeRank} pts={homePts} qual={homeQual} align="center" />
-                <QualGapLine gap={homeQualGap} align="center" />
+                <QualGapLine gap={homePlayoffGap} align="center" label="Playoffs" icon="🎯" />
+                <QualGapLine gap={homePointsGap} align="center" label="Points annexes" icon="💰" />
               </div>
             </div>
 
@@ -4572,7 +4585,8 @@ export default function App() {
               <div style={{ padding:'8px 12px',width:'100%',textAlign:'center',background: aWin ? 'rgba(201,168,76,0.12)' : 'transparent' }}>
                 <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:aWin ? 'var(--gold)' :'var(--text)',lineHeight:1.2 }}>{awayName}</div>
                 <StatsBadge stats={awayStats} rank={awayRank} pts={awayPts} qual={awayQual} align="center" />
-                <QualGapLine gap={awayQualGap} align="center" />
+                <QualGapLine gap={awayPlayoffGap} align="center" label="Playoffs" icon="🎯" />
+                <QualGapLine gap={awayPointsGap} align="center" label="Points annexes" icon="💰" />
               </div>
             </div>
           </div>
@@ -7034,8 +7048,10 @@ export default function App() {
                                   awayQual: getQualBadge(m.awayId),
                                   homeProbs: groupProbs[m.homeId],
                                   awayProbs: groupProbs[m.awayId],
-                                  homeQualGap: computeQualGap(standings, m.homeId, quals),
-                                  awayQualGap: computeQualGap(standings, m.awayId, quals),
+                                  homePlayoffGap: computeMagicNumber(groupCars, matches, m.homeId, 8),
+                                  awayPlayoffGap: computeMagicNumber(groupCars, matches, m.awayId, 8),
+                                  homePointsGap: computeMagicNumber(groupCars, matches, m.homeId, 10),
+                                  awayPointsGap: computeMagicNumber(groupCars, matches, m.awayId, 10),
                                   onConfirm: (hg, ag) => updateGroupMatch(leagueTab, activeGroup, m.id, hg, ag),
                                 });
                               }}
