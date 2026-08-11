@@ -2822,6 +2822,47 @@ function CountUp({ value, duration = 700, decimals = 0, suffix = '', delay = 0 }
   return <>{display.toFixed(decimals)}{suffix}</>;
 }
 
+// Petit graphique SVG en ligne — évolution du rang journée par journée dans le groupe (ligues principales uniquement)
+function RankEvolutionChart({ points, groupSize }) {
+  // points: [{ day, rank }] triés par jour croissant
+  if (!points || points.length < 2) return null;
+  const W = 100, H = 60, PAD = 6;
+  const maxRank = groupSize || Math.max(...points.map(p => p.rank));
+  const xStep = (W - PAD * 2) / (points.length - 1);
+  const yFor = rank => PAD + ((rank - 1) / Math.max(1, maxRank - 1)) * (H - PAD * 2);
+  const xFor = i => PAD + i * xStep;
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(2)} ${yFor(p.rank).toFixed(2)}`).join(' ');
+  const firstRank = points[0].rank, lastRank = points[points.length - 1].rank;
+  const improved = lastRank < firstRank, worsened = lastRank > firstRank;
+  const lineColor = improved ? 'var(--green)' : worsened ? '#e74c3c' : 'var(--gold-dim)';
+  return (
+    <div style={{ padding: '10px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, color: 'var(--gold-dim)', letterSpacing: 2 }}>📈 ÉVOLUTION DU CLASSEMENT — SAISON EN COURS</div>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, color: lineColor }}>
+          {improved ? `▲ +${firstRank - lastRank}` : worsened ? `▼ -${lastRank - firstRank}` : '— stable'}
+        </div>
+      </div>
+      <div style={{ background: 'var(--dark2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
+        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 90, display: 'block' }} preserveAspectRatio="none">
+          {/* Ligne du 1er rang, repère visuel */}
+          <line x1={PAD} y1={yFor(1)} x2={W - PAD} y2={yFor(1)} stroke="rgba(212,175,55,0.15)" strokeWidth="0.5" />
+          <path d={path} fill="none" stroke={lineColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+          {points.map((p, i) => (
+            <circle key={i} cx={xFor(i)} cy={yFor(p.rank)} r={i === points.length - 1 ? 2.2 : 1.3}
+              fill={i === points.length - 1 ? lineColor : 'var(--text-dim)'} />
+          ))}
+        </svg>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>
+          <span>J{points[0].day}</span>
+          <span>#{firstRank} → #{lastRank} (sur {maxRank})</span>
+          <span>J{points[points.length - 1].day}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor, noStatsToggle }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
@@ -2912,9 +2953,9 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
       )}
 
       {/* Points — clic pour toggle stats */}
-      <div style={{ width:58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background: showStats ? 'rgba(201,168,76,0.1)' : 'var(--dark2)', cursor:'pointer' }}
+      <div style={{ width:58, minWidth:58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background: showStats ? 'rgba(201,168,76,0.1)' : 'var(--dark2)', cursor:'pointer', overflow:'visible' }}
         onClick={() => noStatsToggle ? (onClick && onClick()) : setShowStats(s => !s)}>
-        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:40, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize: String(pts ?? 0).length >= 3 ? 26 : String(pts ?? 0).length === 2 ? 34 : 40, color:'var(--gold)', lineHeight:1, whiteSpace:'nowrap' }}>{pts ?? 0}</span>
       </div>
     </div>
   );
@@ -8338,6 +8379,30 @@ export default function App() {
               </div>
             ))}
           </div>
+
+          {/* Évolution du classement — saison en cours, ligues principales uniquement */}
+          {(() => {
+            // Retrouver la ligue + groupe de la voiture dans la saison courante
+            let curLeagueName = null, curGroup = null, curCarId = null;
+            for (const l of LEAGUES) {
+              const lg = currentSeason.leagues[l];
+              if (!lg) continue;
+              const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+              if (entry) { curLeagueName = l; curGroup = entry.group; curCarId = entry.id; break; }
+            }
+            if (!curLeagueName || curGroup === undefined || curGroup === null) return null; // pas dans une ligue principale actuellement
+            const lg = currentSeason.leagues[curLeagueName];
+            const groupCars = (lg.cars || []).filter(c => c.group === curGroup);
+            const groupMatches = lg.groupResults?.[curGroup] || [];
+            const playedDays = [...new Set(groupMatches.filter(m => m.homeGoals !== null).map(m => m.day || 0))].sort((a, b) => a - b);
+            if (playedDays.length < 2) return null; // pas assez de données pour une courbe
+            const evolutionPoints = playedDays.map(day => {
+              const standingsUpTo = computeStandings(groupCars, groupMatches.filter(m => m.homeGoals !== null && (m.day || 0) <= day));
+              const rank = standingsUpTo.findIndex(s => s.id === curCarId) + 1;
+              return { day, rank: rank || groupCars.length };
+            });
+            return <RankEvolutionChart points={evolutionPoints} groupSize={groupCars.length} />;
+          })()}
 
           {/* Séries consécutives */}
           {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2 || consecNoPlayoffs >= 2 || consecPtsAnnexes >= 2) && (
