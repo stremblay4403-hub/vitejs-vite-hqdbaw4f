@@ -1896,10 +1896,17 @@ const css = `
     animation: cardSettleIn 0.4s cubic-bezier(0.22,1,0.36,1) both;
     position: relative;
   }
-  /* Effet holographique — réservé aux voitures titrées, léger reflet arc-en-ciel discret */
-  .car-profile-card.is-champion::before {
+  /* Effet holographique — réservé aux voitures titrées, léger reflet arc-en-ciel discret.
+     Limité au header (zone à hauteur fixe) plutôt qu'à toute la carte, qui elle grandit avec
+     le scroll et faisait apparaître un cutoff carré une fois le contenu plus long que 90vh. */
+  .car-profile-card.is-champion .car-profile-header {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px 10px 0 0;
+  }
+  .car-profile-card.is-champion .car-profile-header::before {
     content: '';
-    position: absolute; inset: 0; z-index: 5; pointer-events: none; border-radius: 10px;
+    position: absolute; inset: 0; z-index: 1; pointer-events: none;
     background: linear-gradient(115deg, transparent 20%, rgba(255,180,255,0.05) 32%, rgba(180,220,255,0.06) 40%, rgba(255,240,180,0.06) 48%, transparent 60%);
     background-size: 250% 250%;
     animation: holoSheen 5s ease-in-out infinite;
@@ -2824,41 +2831,86 @@ function CountUp({ value, duration = 700, decimals = 0, suffix = '', delay = 0 }
 
 // Petit graphique SVG en ligne — évolution du rang journée par journée dans le groupe (ligues principales uniquement)
 function RankEvolutionChart({ points, groupSize }) {
-  // points: [{ day, rank }] triés par jour croissant
+  // points: [{ day, rank, pts }] triés par jour croissant
+  const [selectedIdx, setSelectedIdx] = React.useState(points ? points.length - 1 : 0);
   if (!points || points.length < 2) return null;
-  const W = 100, H = 60, PAD = 6;
-  const maxRank = groupSize || Math.max(...points.map(p => p.rank));
-  const xStep = (W - PAD * 2) / (points.length - 1);
-  const yFor = rank => PAD + ((rank - 1) / Math.max(1, maxRank - 1)) * (H - PAD * 2);
-  const xFor = i => PAD + i * xStep;
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(2)} ${yFor(p.rank).toFixed(2)}`).join(' ');
+
+  const DAY_W = 34, ROW_H = 14, PAD_X = 12, PAD_Y = 10;
+  const chartW = PAD_X * 2 + (points.length - 1) * DAY_W;
+  const chartH = PAD_Y * 2 + (groupSize - 1) * ROW_H;
+  const yFor = rank => PAD_Y + (rank - 1) * ROW_H;
+  const xFor = i => PAD_X + i * DAY_W;
+  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${xFor(i).toFixed(1)} ${yFor(p.rank).toFixed(1)}`).join(' ');
   const firstRank = points[0].rank, lastRank = points[points.length - 1].rank;
   const improved = lastRank < firstRank, worsened = lastRank > firstRank;
   const lineColor = improved ? 'var(--green)' : worsened ? '#e74c3c' : 'var(--gold-dim)';
+  const sel = points[selectedIdx];
+  const ranks = Array.from({ length: groupSize }, (_, i) => i + 1);
+
   return (
     <div style={{ padding: '10px 16px' }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
         <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, color: 'var(--gold-dim)', letterSpacing: 2 }}>📈 ÉVOLUTION DU CLASSEMENT — SAISON EN COURS</div>
         <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, color: lineColor }}>
           {improved ? `▲ +${firstRank - lastRank}` : worsened ? `▼ -${lastRank - firstRank}` : '— stable'}
         </div>
       </div>
-      <div style={{ background: 'var(--dark2)', border: '1px solid var(--border)', borderRadius: 6, padding: 8 }}>
-        <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 90, display: 'block' }} preserveAspectRatio="none">
-          {/* Ligne du 1er rang, repère visuel */}
-          <line x1={PAD} y1={yFor(1)} x2={W - PAD} y2={yFor(1)} stroke="rgba(212,175,55,0.15)" strokeWidth="0.5" />
-          <path d={path} fill="none" stroke={lineColor} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-          {points.map((p, i) => (
-            <circle key={i} cx={xFor(i)} cy={yFor(p.rank)} r={i === points.length - 1 ? 2.2 : 1.3}
-              fill={i === points.length - 1 ? lineColor : 'var(--text-dim)'} />
+
+      {/* Fiche détail — journée sélectionnée */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14, background: 'rgba(212,175,55,0.08)', border: '1px solid var(--gold-dim)', borderRadius: 6, padding: '8px 12px', marginBottom: 8 }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1 }}>JOURNÉE</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: 'var(--text)' }}>{sel.day}</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1 }}>RANG</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: 'var(--gold)' }}>#{sel.rank}</div>
+        </div>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: 9, color: 'var(--text-dim)', letterSpacing: 1 }}>POINTS</div>
+          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 20, color: 'var(--text)' }}>{sel.pts}</div>
+        </div>
+        <div style={{ marginLeft: 'auto', fontSize: 9, color: 'var(--text-dim)', textAlign: 'right' }}>touche un point<br />du graphique</div>
+      </div>
+
+      <div style={{ background: 'var(--dark2)', border: '1px solid var(--border)', borderRadius: 6, padding: '8px 4px 8px 8px', display: 'flex' }}>
+        {/* Colonne fixe des rangs 1 → groupSize, alignée sur la grille du SVG */}
+        <div style={{ position: 'relative', width: 20, height: chartH, flexShrink: 0 }}>
+          {ranks.map(r => (
+            <div key={r} style={{ position: 'absolute', top: yFor(r) - 5, right: 2, fontSize: 8, color: r === 1 ? 'var(--gold-dim)' : 'var(--text-dim)', fontFamily: "'Bebas Neue',sans-serif" }}>{r}</div>
           ))}
-        </svg>
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text-dim)', marginTop: 2 }}>
-          <span>J{points[0].day}</span>
-          <span>#{firstRank} → #{lastRank} (sur {maxRank})</span>
-          <span>J{points[points.length - 1].day}</span>
+        </div>
+
+        {/* Zone scrollable horizontalement : grille + courbe + labels de journées */}
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch', flex: 1 }}>
+          <svg width={chartW} height={chartH} viewBox={`0 0 ${chartW} ${chartH}`} style={{ display: 'block' }}>
+            {ranks.map(r => (
+              <line key={r} x1={PAD_X} y1={yFor(r)} x2={chartW - PAD_X} y2={yFor(r)}
+                stroke={r === 1 ? 'rgba(212,175,55,0.18)' : 'rgba(255,255,255,0.04)'} strokeWidth="1" />
+            ))}
+            <path d={path} fill="none" stroke={lineColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            {points.map((p, i) => (
+              <g key={i} onClick={() => setSelectedIdx(i)} style={{ cursor: 'pointer' }}>
+                {/* Zone de tap plus large, invisible */}
+                <circle cx={xFor(i)} cy={yFor(p.rank)} r={9} fill="transparent" />
+                {i === selectedIdx && <circle cx={xFor(i)} cy={yFor(p.rank)} r={7} fill={lineColor} opacity={0.22} />}
+                <circle cx={xFor(i)} cy={yFor(p.rank)} r={i === selectedIdx ? 4 : 2.4}
+                  fill={i === selectedIdx ? lineColor : i === points.length - 1 ? lineColor : 'var(--text-dim)'}
+                  stroke={i === selectedIdx ? '#fff' : 'none'} strokeWidth={i === selectedIdx ? 1 : 0} />
+              </g>
+            ))}
+          </svg>
+          <div style={{ position: 'relative', width: chartW, height: 14 }}>
+            {points.map((p, i) => (
+              <div key={i} onClick={() => setSelectedIdx(i)}
+                style={{ position: 'absolute', top: 0, left: xFor(i) - 12, width: 24, textAlign: 'center', fontSize: 8, color: i === selectedIdx ? lineColor : 'var(--text-dim)', fontFamily: "'Bebas Neue',sans-serif", cursor: 'pointer' }}>
+                J{p.day}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
+      <div style={{ fontSize: 9, color: 'var(--text-dim)', marginTop: 4, textAlign: 'right' }}>← glisser pour voir toutes les journées →</div>
     </div>
   );
 }
@@ -8039,6 +8091,7 @@ export default function App() {
   function CarProfileModal() {
     const [showChampSeasons, setShowChampSeasons] = useState(false);
     const [showRelSeasons, setShowRelSeasons] = useState(false);
+    const [showRankChart, setShowRankChart] = useState(false);
     const mountTimeRef = React.useRef(Date.now());
     if (!profileCar) return null;
     const { leagueName, carId, histName } = profileCar;
@@ -8253,6 +8306,31 @@ export default function App() {
       if (!isPublicMode && resolvedCarId) uploadToCloudinary(file).then(url => setCarPhoto(resolvedCarId, url));
     }
 
+    // Évolution du classement — saison en cours, ligues principales uniquement (calculé une fois,
+    // réutilisé pour le bouton toggle ET pour le graphique lui-même)
+    const rankEvolutionData = (() => {
+      let curLeagueName = null, curGroup = null, curCarId = null;
+      for (const l of LEAGUES) {
+        const lg = currentSeason.leagues[l];
+        if (!lg) continue;
+        const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+        if (entry) { curLeagueName = l; curGroup = entry.group; curCarId = entry.id; break; }
+      }
+      if (!curLeagueName || curGroup === undefined || curGroup === null) return null;
+      const lg = currentSeason.leagues[curLeagueName];
+      const groupCars = (lg.cars || []).filter(c => c.group === curGroup);
+      const groupMatches = lg.groupResults?.[curGroup] || [];
+      const playedDays = [...new Set(groupMatches.filter(m => m.homeGoals !== null).map(m => m.day || 0))].sort((a, b) => a - b);
+      if (playedDays.length < 2) return null;
+      const points = playedDays.map(day => {
+        const standingsUpTo = computeStandings(groupCars, groupMatches.filter(m => m.homeGoals !== null && (m.day || 0) <= day));
+        const idx = standingsUpTo.findIndex(s => s.id === curCarId);
+        const entry = standingsUpTo[idx];
+        return { day, rank: (idx + 1) || groupCars.length, pts: entry?.pts ?? 0 };
+      });
+      return { points, groupSize: groupCars.length };
+    })();
+
     return (
       <div className="car-profile-modal" onClick={() => setProfileCar(null)}>
         <div className={`car-profile-card${(champCount + histChampions.length) > 0 ? ' is-champion' : ''}`} onClick={e => e.stopPropagation()}>
@@ -8354,8 +8432,14 @@ export default function App() {
           </div>
 
           {/* App stats note */}
-          <div style={{ padding:'6px 16px',background:'rgba(201,168,76,0.06)',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--gold-dim)',letterSpacing:1,fontFamily:"'Bebas Neue',sans-serif" }}>
-            ★ STATISTIQUES DE MATCHS À PARTIR DE S33
+          <div style={{ padding:'6px 16px',background:'rgba(201,168,76,0.06)',borderBottom:'1px solid var(--border)',fontSize:11,color:'var(--gold-dim)',letterSpacing:1,fontFamily:"'Bebas Neue',sans-serif",display:'flex',alignItems:'center',justifyContent:'space-between',gap:8 }}>
+            <span>★ STATISTIQUES DE MATCHS À PARTIR DE S33</span>
+            {rankEvolutionData && (
+              <button className="btn btn-dark btn-xs" style={{ padding:'3px 9px',fontSize:11,letterSpacing:1,flexShrink:0 }}
+                onClick={() => setShowRankChart(v => !v)}>
+                📈 {showRankChart ? 'Masquer le graphique' : 'Voir le graphique'}
+              </button>
+            )}
           </div>
 
           {/* Stats grid */}
@@ -8381,28 +8465,9 @@ export default function App() {
           </div>
 
           {/* Évolution du classement — saison en cours, ligues principales uniquement */}
-          {(() => {
-            // Retrouver la ligue + groupe de la voiture dans la saison courante
-            let curLeagueName = null, curGroup = null, curCarId = null;
-            for (const l of LEAGUES) {
-              const lg = currentSeason.leagues[l];
-              if (!lg) continue;
-              const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
-              if (entry) { curLeagueName = l; curGroup = entry.group; curCarId = entry.id; break; }
-            }
-            if (!curLeagueName || curGroup === undefined || curGroup === null) return null; // pas dans une ligue principale actuellement
-            const lg = currentSeason.leagues[curLeagueName];
-            const groupCars = (lg.cars || []).filter(c => c.group === curGroup);
-            const groupMatches = lg.groupResults?.[curGroup] || [];
-            const playedDays = [...new Set(groupMatches.filter(m => m.homeGoals !== null).map(m => m.day || 0))].sort((a, b) => a - b);
-            if (playedDays.length < 2) return null; // pas assez de données pour une courbe
-            const evolutionPoints = playedDays.map(day => {
-              const standingsUpTo = computeStandings(groupCars, groupMatches.filter(m => m.homeGoals !== null && (m.day || 0) <= day));
-              const rank = standingsUpTo.findIndex(s => s.id === curCarId) + 1;
-              return { day, rank: rank || groupCars.length };
-            });
-            return <RankEvolutionChart points={evolutionPoints} groupSize={groupCars.length} />;
-          })()}
+          {showRankChart && rankEvolutionData && (
+            <RankEvolutionChart points={rankEvolutionData.points} groupSize={rankEvolutionData.groupSize} />
+          )}
 
           {/* Séries consécutives */}
           {(consecPlayoffs >= 2 || consecPromo >= 2 || consecRel >= 2 || consecNoPlayoffs >= 2 || consecPtsAnnexes >= 2) && (
