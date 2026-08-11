@@ -2954,7 +2954,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
       </div>
 
       {/* Image */}
-      <div style={{ width:PHOTO_W, flexShrink:0, overflow:'hidden', background:'var(--dark3)', cursor:'pointer' }} onClick={onClick}>
+      <div style={{ width:`clamp(96px, 40vw, ${PHOTO_W}px)`, flexShrink:0, overflow:'hidden', background:'var(--dark3)', cursor:'pointer' }} onClick={onClick}>
         {photo
           ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>🚗</div>}
@@ -3005,9 +3005,9 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
       )}
 
       {/* Points — clic pour toggle stats */}
-      <div style={{ width:58, minWidth:58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background: showStats ? 'rgba(201,168,76,0.1)' : 'var(--dark2)', cursor:'pointer', overflow:'visible' }}
+      <div style={{ width:58, minWidth:58, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', borderLeft:'1px solid #2a2a2a', background: showStats ? 'rgba(201,168,76,0.1)' : 'var(--dark2)', cursor:'pointer' }}
         onClick={() => noStatsToggle ? (onClick && onClick()) : setShowStats(s => !s)}>
-        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize: String(pts ?? 0).length >= 3 ? 26 : String(pts ?? 0).length === 2 ? 34 : 40, color:'var(--gold)', lineHeight:1, whiteSpace:'nowrap' }}>{pts ?? 0}</span>
+        <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:40, color:'var(--gold)', lineHeight:1 }}>{pts ?? 0}</span>
       </div>
     </div>
   );
@@ -6850,32 +6850,32 @@ export default function App() {
             if (standings.length < 3 || playedMatches < totalMatches) return null;
             const order = [standings[1], standings[0], standings[2]];
             const isDesktop = window.innerWidth >= 768;
-            const photoW  = isDesktop ? 320 : 110;
             const photoH  = isDesktop ? 210 : 76;
-            const cardW   = isDesktop ? 340 : 120;
+            const cardMaxW = isDesktop ? 340 : 130;
+            const gapPx   = isDesktop ? 16 : 6;
             const barH    = isDesktop ? [240, 310, 170] : [80, 110, 60];
-            const nameFs  = isDesktop ? 28 : 12;
-            const ptsFs   = isDesktop ? 24 : 13;
-            const rankFs  = isDesktop ? 56 : 22;
+            const nameFs  = isDesktop ? 28 : 11;
+            const ptsFs   = isDesktop ? 24 : 12;
+            const rankFs  = isDesktop ? 56 : 20;
             const totalH  = isDesktop ? 600 : 220;
             const colors  = ['#bdc3c7','#f1c40f','#cd7f32'];
             const labels  = ['2e','1er','3e'];
             return (
-              <div style={{gridColumn:'1/-1',background:'var(--dark2)',borderRadius:8,border:'1px solid var(--border)',padding:'16px 12px 8px',marginBottom:8}}>
+              <div style={{gridColumn:'1/-1',background:'var(--dark2)',borderRadius:8,border:'1px solid var(--border)',padding:'16px 12px 8px',marginBottom:8,overflow:'hidden'}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:isDesktop?18:13,color:'var(--gold-dim)',letterSpacing:2,textAlign:'center',marginBottom:12}}>🏆 PODIUM DU GROUPE {activeGroup+1}</div>
-                <div style={{display:'flex',justifyContent:'center',alignItems:'flex-end',gap:isDesktop?16:8,height:totalH}}>
+                <div style={{display:'flex',justifyContent:'center',alignItems:'flex-end',gap:gapPx,height:totalH,width:'100%'}}>
                   {order.map((car, idx) => {
                     const photo = getCarPhoto(car.id);
                     // order = [2e, 1er, 3e] → on veut faire monter 3e d'abord, puis 2e, puis 1er en dernier (effet de révélation)
                     const delaySteps = [0.25, 0.5, 0];
                     const delay = `${delaySteps[idx]}s`;
                     return (
-                      <div key={car.id} className="podium-card" style={{display:'flex',flexDirection:'column',alignItems:'center',width:cardW,animationDelay:delay}}>
-                        <div style={{width:photoW,height:photoH,borderRadius:8,overflow:'hidden',border:`2px solid ${colors[idx]}`,marginBottom:6,boxShadow:`0 0 16px ${colors[idx]}55`}}>
+                      <div key={car.id} className="podium-card" style={{display:'flex',flexDirection:'column',alignItems:'center',flex:'1 1 0',minWidth:0,maxWidth:cardMaxW,animationDelay:delay}}>
+                        <div style={{width:'100%',height:photoH,borderRadius:8,overflow:'hidden',border:`2px solid ${colors[idx]}`,marginBottom:6,boxShadow:`0 0 16px ${colors[idx]}55`}}>
                           {photo ? <img src={photo} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}} /> : <div style={{width:'100%',height:'100%',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28}}>🚗</div>}
                         </div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:nameFs,color:colors[idx],textAlign:'center',letterSpacing:1,marginBottom:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:cardW}}>{car.name}</div>
-                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:ptsFs,color:'var(--text)',marginBottom:4}}>{car.pts} pts</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:nameFs,color:colors[idx],textAlign:'center',letterSpacing:1,marginBottom:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'100%'}}>{car.name}</div>
+                        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:ptsFs,color:'var(--text)',marginBottom:4,whiteSpace:'nowrap'}}>{car.pts} pts</div>
                         <div className="podium-bar" style={{width:'100%',height:barH[idx],background:`linear-gradient(180deg, ${colors[idx]}44, ${colors[idx]}22)`,border:`1px solid ${colors[idx]}66`,borderRadius:'4px 4px 0 0',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:8,animationDelay:delay}}>
                           <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:rankFs,color:colors[idx]}}>{labels[idx]}</span>
                         </div>
