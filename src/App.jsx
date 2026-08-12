@@ -7277,19 +7277,42 @@ export default function App() {
     const [paused, setPaused] = useState(false);
     const total = groupCars.length;
 
-    const allBonus = React.useMemo(() => computeAllSeasonsBonus(leagueName), [leagueName]);
+    // Si jamais il n'y a aucune voiture (cas limite), on ferme immédiatement plutôt que
+    // d'afficher un écran vide.
+    useEffect(() => {
+      if (total === 0) onClose();
+    }, [total]);
+
+    const allBonus = React.useMemo(() => {
+      try {
+        return computeAllSeasonsBonus(leagueName);
+      } catch (err) {
+        console.error('Erreur calcul bonus intro de groupe:', err);
+        return [];
+      }
+    }, [leagueName]);
 
     const cars = React.useMemo(() => {
-      return groupCars.map(c => {
-        const entry = allBonus.find(e => e.id === c.id || namesMatch(e.name, c.name));
-        const totalPts = entry?.total || 0;
-        const info = computeCarSimpleInfo(c.id, c.name, seasonNum, totalPts);
-        return {
-          ...c,
-          photo: getCarPhoto(c.id),
-          info,
-        };
-      });
+      try {
+        return groupCars.map(c => {
+          const entry = allBonus.find(e => e.id === c.id || namesMatch(e.name, c.name));
+          const totalPts = entry?.total || 0;
+          const info = computeCarSimpleInfo(c.id, c.name, seasonNum, totalPts);
+          return {
+            ...c,
+            photo: getCarPhoto(c.id),
+            info,
+          };
+        });
+      } catch (err) {
+        // Filet de sécurité : si le calcul détaillé plante pour une raison ou une autre, on
+        // affiche quand même les voitures avec des infos vides plutôt qu'un écran noir.
+        console.error('Erreur calcul infos intro de groupe:', err);
+        return groupCars.map(c => ({
+          ...c, photo: getCarPhoto(c.id),
+          info: { totalPts: 0, lastSeasonRank: null, lastSeasonGroupSize: null, streak: null, dangerLastSeason: false, championLastSeason: null, newlyPromoted: false, recentSeasons: [] },
+        }));
+      }
     }, [groupCars, allBonus, seasonNum]);
 
     useEffect(() => {
@@ -7304,7 +7327,17 @@ export default function App() {
       return () => clearTimeout(t);
     }, [idx, paused, total]);
 
-    const car = idx >= 0 ? cars[idx] : null;
+    // Filet de sécurité supplémentaire : si idx pointe hors des bornes de `cars` (ex. la liste
+    // de voitures a changé pendant que l'intro était affichée), on avance automatiquement au
+    // lieu de rester bloqué sur un écran vide.
+    useEffect(() => {
+      if (idx >= 0 && idx < total && !cars[idx]) {
+        const t = setTimeout(() => setIdx(i => (i + 1 >= total ? (onClose(), i) : i + 1)), 50);
+        return () => clearTimeout(t);
+      }
+    }, [idx, cars, total]);
+
+    const car = idx >= 0 && idx < cars.length ? cars[idx] : null;
 
     return (
       <div
