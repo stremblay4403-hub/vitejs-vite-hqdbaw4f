@@ -2110,9 +2110,9 @@ const css = `
     animation: dashPulse 2.2s ease-in-out infinite;
   }
 
-  /* Écran de démarrage — logo qui "vrombit" (scale + fade) avant d'afficher le tableau de bord */
+  /* Écran de démarrage — jauge RPM qui s'emballe, puis logo qui "vrombit" (scale + fade) */
   @keyframes splashOverlayFade {
-    0%, 72%  { opacity: 1; }
+    0%, 78%  { opacity: 1; }
     100%     { opacity: 0; }
   }
   @keyframes splashLogoVroom {
@@ -2120,6 +2120,18 @@ const css = `
     28%  { opacity: 1; transform: scale(1.06); }
     42%  { opacity: 1; transform: scale(1); }
     100% { opacity: 1; transform: scale(1); }
+  }
+  @keyframes rpmNeedleSweep {
+    0%   { transform: rotate(-135deg); opacity: 0; }
+    10%  { opacity: 1; }
+    55%  { transform: rotate(128deg); }
+    70%  { transform: rotate(94deg); }
+    85%  { transform: rotate(110deg); }
+    100% { transform: rotate(100deg); }
+  }
+  @keyframes rpmGaugeOut {
+    0%, 58% { opacity: 1; transform: scale(1); }
+    100%    { opacity: 0; transform: scale(0.82); }
   }
 
   /* Tilt 3D léger sur les cartes voiture — effet "carte à collectionner", pur CSS (pas de JS mousemove) */
@@ -2181,15 +2193,18 @@ const css = `
     background: var(--black);
     display: flex; align-items: center; justify-content: center;
     pointer-events: none;
-    animation: splashOverlayFade 1.3s ease forwards;
+    animation: splashOverlayFade 1.9s ease forwards;
   }
+  .splash-content { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .splash-rpm { animation: rpmGaugeOut 1.9s ease forwards; filter: drop-shadow(0 0 14px rgba(212,175,55,0.35)); }
+  .splash-rpm-needle { animation: rpmNeedleSweep 0.75s cubic-bezier(0.22,1,0.36,1) both; transform-origin: 50px 50px; }
   .splash-logo {
     font-family: 'Bebas Neue', sans-serif;
     font-size: 34px; letter-spacing: 5px; text-align: center;
     background: linear-gradient(90deg, var(--gold-dim), var(--gold2), var(--gold-dim));
     background-size: 220% auto;
     -webkit-background-clip: text; background-clip: text; color: transparent;
-    animation: splashLogoVroom 0.9s cubic-bezier(0.34,1.56,0.64,1) both, chromeShine 2.4s ease-in-out infinite 0.4s;
+    animation: splashLogoVroom 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.6s both, chromeShine 2.4s ease-in-out infinite 1s;
     filter: drop-shadow(0 0 20px rgba(212,175,55,0.4));
   }
   .splash-logo span { display: block; font-size: 48px; margin-top: 10px; -webkit-text-fill-color: initial; }
@@ -3177,7 +3192,7 @@ export default function App() {
   const StableHistoriqueView = React.useRef((props) => historiqueViewImplRef.current ? historiqueViewImplRef.current(props) : null).current;
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 1300);
+    const t = setTimeout(() => setShowSplash(false), 1900);
     return () => clearTimeout(t);
   }, []);
   // Compteur pour FORCER un re-rendu garanti après chaque application de données Firebase.
@@ -14990,9 +15005,27 @@ export default function App() {
       <style>{css}</style>
       {showSplash && (
         <div className="splash-screen">
-          <div className="splash-logo">
-            TOURNOIS DE VOITURES
-            <span>🏎️</span>
+          <div className="splash-content">
+            <svg className="splash-rpm" viewBox="0 0 100 100" width="76" height="76">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.22)" strokeWidth="3" />
+              {/* Zone rouge (redline) */}
+              <path d="M 75.7 24.3 A 42 42 0 0 1 89 55" fill="none" stroke="#e74c3c" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
+              {/* Graduations */}
+              {Array.from({ length: 9 }).map((_, i) => {
+                const angle = (-135 + i * (270 / 8)) * Math.PI / 180;
+                const x1 = 50 + 34 * Math.cos(angle), y1 = 50 + 34 * Math.sin(angle);
+                const x2 = 50 + 40 * Math.cos(angle), y2 = 50 + 40 * Math.sin(angle);
+                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold-dim)" strokeWidth="2" strokeLinecap="round" />;
+              })}
+              <g className="splash-rpm-needle">
+                <line x1="50" y1="50" x2="50" y2="15" stroke="var(--gold)" strokeWidth="3" strokeLinecap="round" />
+              </g>
+              <circle cx="50" cy="50" r="4.5" fill="var(--gold)" />
+            </svg>
+            <div className="splash-logo">
+              TOURNOIS DE VOITURES
+              <span>🏎️</span>
+            </div>
           </div>
         </div>
       )}
