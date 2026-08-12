@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import ReactDOM from "react-dom";
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot, collection, getDocs, deleteDoc } from 'firebase/firestore';
 
@@ -7339,7 +7340,10 @@ export default function App() {
 
     const car = idx >= 0 && idx < cars.length ? cars[idx] : null;
 
-    return (
+    // Portail vers document.body : évite que le fixed soit piégé par un ancêtre qui aurait
+    // un transform actif (ex: .tab-content-fade dont l'animation "both" laisse un
+    // translateY(0) permanent, ce qui crée un containing block et casse position:fixed).
+    return ReactDOM.createPortal((
       <div
         onClick={() => { if (idx + 1 >= total) onClose(); else setIdx(i => i + 1); }}
         style={{
@@ -7446,7 +7450,7 @@ export default function App() {
           @keyframes introFill { from { width:0%; } to { width:100%; } }
         `}</style>
       </div>
-    );
+    ), document.body);
   }
 
 
@@ -15081,21 +15085,24 @@ export default function App() {
       {showSplash && (
         <div className="splash-screen">
           <div className="splash-content">
-            <svg className="splash-rpm" viewBox="0 0 100 100" width="76" height="76">
-              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.22)" strokeWidth="3" />
+            <svg className="splash-rpm" viewBox="0 0 100 100" width="220" height="220" style={{ maxWidth:'62vw', maxHeight:'62vw' }}>
+              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.28)" strokeWidth="2.5" />
+              <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(212,175,55,0.14)" strokeWidth="1" />
               {/* Zone rouge (redline) */}
-              <path d="M 75.7 24.3 A 42 42 0 0 1 89 55" fill="none" stroke="#e74c3c" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
+              <path d="M 75.7 24.3 A 42 42 0 0 1 89 55" fill="none" stroke="#e74c3c" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />
               {/* Graduations */}
               {Array.from({ length: 9 }).map((_, i) => {
                 const angle = (-135 + i * (270 / 8)) * Math.PI / 180;
-                const x1 = 50 + 34 * Math.cos(angle), y1 = 50 + 34 * Math.sin(angle);
+                const isMajor = i % 2 === 0;
+                const x1 = 50 + (isMajor ? 33 : 35.5) * Math.cos(angle), y1 = 50 + (isMajor ? 33 : 35.5) * Math.sin(angle);
                 const x2 = 50 + 40 * Math.cos(angle), y2 = 50 + 40 * Math.sin(angle);
-                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold-dim)" strokeWidth="2" strokeLinecap="round" />;
+                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold)" strokeWidth={isMajor ? 1.6 : 1} strokeLinecap="round" opacity={isMajor ? 0.9 : 0.55} />;
               })}
               <g className="splash-rpm-needle">
-                <line x1="50" y1="50" x2="50" y2="15" stroke="var(--gold)" strokeWidth="3" strokeLinecap="round" />
+                <line x1="50" y1="50" x2="50" y2="13" stroke="var(--gold)" strokeWidth="2.4" strokeLinecap="round" />
               </g>
-              <circle cx="50" cy="50" r="4.5" fill="var(--gold)" />
+              <circle cx="50" cy="50" r="4" fill="var(--gold)" />
+              <circle cx="50" cy="50" r="4" fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="0.6" />
             </svg>
             <div className="splash-logo">
               TOURNOIS DE VOITURES
