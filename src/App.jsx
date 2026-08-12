@@ -2014,6 +2014,31 @@ const css = `
 
   /* Sim buttons */
   .sim-bar { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  .sim-rpm-icon { display: inline-block; vertical-align: middle; margin-right: 5px; }
+  .rpm-needle-mini { transform-origin: 12px 12px; animation: rpmNeedleSweep 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+
+  /* Jauge de progression "essence" — remplace la barre plate pour X/Y matchs joués */
+  @keyframes fuelGaugeShine {
+    0%   { background-position: -60px 0; }
+    100% { background-position: 120px 0; }
+  }
+  .fuel-gauge-track {
+    position: relative; flex: 1; height: 10px; min-width: 60px;
+    background: var(--dark3); border: 1px solid var(--border); border-radius: 5px;
+    overflow: hidden;
+  }
+  .fuel-gauge-fill {
+    height: 100%; border-radius: 4px;
+    background: linear-gradient(90deg, #e74c3c 0%, #e67e22 35%, #f1c40f 60%, var(--green) 100%);
+    transition: width 0.6s cubic-bezier(0.22,1,0.36,1);
+    position: relative;
+  }
+  .fuel-gauge-fill::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.35) 40%, transparent 60%);
+    background-size: 60px 100%;
+    animation: fuelGaugeShine 1.8s ease-in-out infinite;
+  }
   .btn-sim { background: rgba(41,128,185,0.15); border: 1px solid rgba(41,128,185,0.4); color: #5dade2; }
   .btn-sim:hover { background: rgba(41,128,185,0.25); border-color: #5dade2; }
   .btn-sim-all { background: rgba(39,174,96,0.15); border: 1px solid rgba(39,174,96,0.4); color: var(--green); }
@@ -2135,6 +2160,12 @@ const css = `
   }
 
   /* Tilt 3D léger sur les cartes voiture — effet "carte à collectionner", pur CSS (pas de JS mousemove) */
+  /* Vignettage léger sur les photos de voitures — assombrit les coins pour un rendu plus "photo pro" */
+  .photo-vignette::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 14px rgba(0,0,0,0.55);
+  }
+
   .car-tilt-wrap { perspective: 600px; }
   .car-tilt {
     transition: transform 0.25s ease, box-shadow 0.25s ease;
@@ -2969,7 +3000,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
       </div>
 
       {/* Image */}
-      <div style={{ width:`clamp(96px, 40vw, ${PHOTO_W}px)`, flexShrink:0, overflow:'hidden', background:'var(--dark3)', cursor:'pointer' }} onClick={onClick}>
+      <div className="photo-vignette" style={{ width:`clamp(96px, 40vw, ${PHOTO_W}px)`, flexShrink:0, overflow:'hidden', background:'var(--dark3)', cursor:'pointer', position:'relative' }} onClick={onClick}>
         {photo
           ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
           : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:28 }}>🚗</div>}
@@ -6845,8 +6876,16 @@ export default function App() {
         <div className="sim-bar">
           <span className="text-dim font-bebas" style={{ fontSize:13,marginRight:4 }}>Simulation:</span>
           <button className="btn btn-sm btn-sim"
-            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
-            ▶ Journée {(nextUnplayedDay ?? '—')} (9 matchs)
+            style={{ opacity:nextUnplayedDay === undefined ? 0.4 :1, display: isPublicMode ? 'none' : undefined }} onClick={e => { if(!isPublicMode){
+              const iconEl = e.currentTarget.querySelector('.rpm-needle-mini');
+              if (iconEl) { iconEl.style.animation = 'none'; void iconEl.offsetWidth; iconEl.style.animation = ''; }
+              const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateDay(leagueTab, activeGroup); setOpenDay(nextUnplayedDay); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" className="sim-rpm-icon">
+              <circle cx="12" cy="12" r="9" fill="none" stroke="rgba(93,173,226,0.35)" strokeWidth="1.5" />
+              <line x1="12" y1="12" x2="12" y2="5" stroke="#5dade2" strokeWidth="2" strokeLinecap="round" className="rpm-needle-mini" />
+              <circle cx="12" cy="12" r="1.6" fill="#5dade2" />
+            </svg>
+            Journée {(nextUnplayedDay ?? '—')} (9 matchs)
           </button>
           <button className="btn btn-sm btn-sim-all" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateGroup(leagueTab, activeGroup); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
             ⚡ Groupe complet
@@ -6854,9 +6893,12 @@ export default function App() {
           <button className="btn btn-sm" style={{ background:'rgba(155,89,182,0.15)',border:'1px solid rgba(155,89,182,0.4)',color:'#a569bd', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode){ const sy = window.scrollY; const tabsEl = document.querySelector('.tabs'); const sl = tabsEl ? tabsEl.scrollLeft : 0; simulateLeagueComplete(leagueTab); requestAnimationFrame(() => { window.scrollTo(0, sy); if (tabsEl) tabsEl.scrollLeft = sl; }); } }}>
             ⚡⚡ Toute la ligue
           </button>
-          <span className="text-dim" style={{ fontSize:12,marginLeft:8 }}>
-            {playedMatches}/{totalMatches} matchs ({pct}%)
-          </span>
+          <div style={{ display:'flex',alignItems:'center',gap:6,marginLeft:8,flex:'1 1 140px',minWidth:100 }}>
+            <div className="fuel-gauge-track">
+              <div className="fuel-gauge-fill" style={{ width:`${pct}%` }} />
+            </div>
+            <span className="text-dim" style={{ fontSize:11,whiteSpace:'nowrap' }}>{playedMatches}/{totalMatches} ({pct}%)</span>
+          </div>
         </div>
 
         <div className="grid-2">
@@ -7452,7 +7494,7 @@ export default function App() {
           <div className="car-tilt-wrap" style={{ display:'inline-block', flexShrink:0 }}>
           <div className={`car-tilt ${justArrived ? 'bracket-car-arrived' : ''}`} style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', position:'relative' }}
             onClick={e => { e.stopPropagation(); openProfileCar({ leagueName: leagueTab, carId }); }}>
-            <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div className="photo-vignette" style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
               {photo
                 ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} />
                 : <span style={{ fontSize:22 }}>🚗</span>}
@@ -14282,7 +14324,7 @@ export default function App() {
           <div style={{ background: win ? 'rgba(201,168,76,0.12)' : 'var(--dark3)', border:`2px solid ${win ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer' }}
             onClick={e => { e.stopPropagation(); if(carId && league) openProfileCar({ leagueName: league, carId }); }}>
             {/* Photo */}
-            <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+            <div className="photo-vignette" style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
               {photo
                 ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} />
                 : <span style={{ fontSize:28 }}>🚗</span>}
@@ -14467,7 +14509,7 @@ export default function App() {
                 return (
                   <div style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', flexShrink:0 }}
                     onClick={e => { e.stopPropagation(); if(carId && league) openProfileCar({ leagueName: league, carId }); }}>
-                    <div style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div className="photo-vignette" style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
                       {photo ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} /> : <span style={{ fontSize:22 }}>🚗</span>}
                     </div>
                     <div style={{ padding:'2px 5px' }}>
@@ -15033,6 +15075,20 @@ export default function App() {
         <div className="season-transition-overlay">
           <div className="season-transition-sweep" />
           <div className="season-transition-text">
+            <svg viewBox="0 0 100 100" width="52" height="52" style={{ display:'block', margin:'0 auto 8px', filter:'drop-shadow(0 0 14px rgba(212,175,55,0.35))' }}>
+              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.22)" strokeWidth="3" />
+              <path d="M 75.7 24.3 A 42 42 0 0 1 89 55" fill="none" stroke="#e74c3c" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
+              {Array.from({ length: 9 }).map((_, i) => {
+                const angle = (-135 + i * (270 / 8)) * Math.PI / 180;
+                const x1 = 50 + 34 * Math.cos(angle), y1 = 50 + 34 * Math.sin(angle);
+                const x2 = 50 + 40 * Math.cos(angle), y2 = 50 + 40 * Math.sin(angle);
+                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold-dim)" strokeWidth="2" strokeLinecap="round" />;
+              })}
+              <g className="splash-rpm-needle">
+                <line x1="50" y1="50" x2="50" y2="15" stroke="var(--gold)" strokeWidth="3" strokeLinecap="round" />
+              </g>
+              <circle cx="50" cy="50" r="4.5" fill="var(--gold)" />
+            </svg>
             <div style={{ fontSize: 14, color: 'var(--text-dim)', letterSpacing: 3 }}>SAISON {seasonTransition.from}</div>
             <div style={{ fontSize: 34 }}>→ SAISON {seasonTransition.to}</div>
           </div>
