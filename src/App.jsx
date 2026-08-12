@@ -2156,7 +2156,7 @@ const css = `
     100% { transform: rotate(100deg); }
   }
   @keyframes rpmGaugeOut {
-    0%, 58% { opacity: 1; transform: scale(1); }
+    0%, 70% { opacity: 1; transform: scale(1); }
     100%    { opacity: 0; transform: scale(0.82); }
   }
 
@@ -2225,10 +2225,16 @@ const css = `
     background: var(--black);
     display: flex; align-items: center; justify-content: center;
     pointer-events: none;
-    animation: splashOverlayFade 1.9s ease forwards;
+    animation: splashOverlayFade 2.3s ease forwards;
   }
   .splash-content { display: flex; flex-direction: column; align-items: center; gap: 4px; }
-  .splash-rpm { animation: rpmGaugeOut 1.9s ease forwards; filter: drop-shadow(0 0 14px rgba(212,175,55,0.35)); }
+  .splash-rpm { animation: rpmGaugeOut 2.3s ease forwards; filter: drop-shadow(0 0 14px rgba(212,175,55,0.35)); }
+  @keyframes rpmNeedleSweepMain {
+    0%   { transform: rotate(-90deg); opacity: 0; }
+    8%   { opacity: 1; }
+    100% { transform: rotate(50deg); }
+  }
+  .splash-rpm-needle-main { animation: rpmNeedleSweepMain 1s cubic-bezier(0.45,0.05,0.55,0.95) both; transform-origin: 50px 50px; }
   .splash-rpm-needle { animation: rpmNeedleSweep 0.75s cubic-bezier(0.22,1,0.36,1) both; transform-origin: 50px 50px; }
   .splash-logo {
     font-family: 'Bebas Neue', sans-serif;
@@ -2236,7 +2242,7 @@ const css = `
     background: linear-gradient(90deg, var(--gold-dim), var(--gold2), var(--gold-dim));
     background-size: 220% auto;
     -webkit-background-clip: text; background-clip: text; color: transparent;
-    animation: splashLogoVroom 0.9s cubic-bezier(0.34,1.56,0.64,1) 0.6s both, chromeShine 2.4s ease-in-out infinite 1s;
+    animation: splashLogoVroom 0.7s cubic-bezier(0.34,1.56,0.64,1) 1s both, chromeShine 2.4s ease-in-out infinite 1.4s;
     filter: drop-shadow(0 0 20px rgba(212,175,55,0.4));
   }
   .splash-logo span { display: block; font-size: 48px; margin-top: 10px; -webkit-text-fill-color: initial; }
@@ -3224,7 +3230,7 @@ export default function App() {
   const StableHistoriqueView = React.useRef((props) => historiqueViewImplRef.current ? historiqueViewImplRef.current(props) : null).current;
   const [showSplash, setShowSplash] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 1900);
+    const t = setTimeout(() => setShowSplash(false), 2300);
     return () => clearTimeout(t);
   }, []);
   // Compteur pour FORCER un re-rendu garanti après chaque application de données Firebase.
@@ -7298,11 +7304,12 @@ export default function App() {
         return groupCars.map(c => {
           const entry = allBonus.find(e => e.id === c.id || namesMatch(e.name, c.name));
           const totalPts = entry?.total || 0;
+          const titleCount = (entry?.appChampions?.length || 0) + (entry?.histChampions?.length || 0);
           const info = computeCarSimpleInfo(c.id, c.name, seasonNum, totalPts);
           return {
             ...c,
             photo: getCarPhoto(c.id),
-            info,
+            info: { ...info, titleCount },
           };
         });
       } catch (err) {
@@ -7311,7 +7318,7 @@ export default function App() {
         console.error('Erreur calcul infos intro de groupe:', err);
         return groupCars.map(c => ({
           ...c, photo: getCarPhoto(c.id),
-          info: { totalPts: 0, lastSeasonRank: null, lastSeasonGroupSize: null, streak: null, dangerLastSeason: false, championLastSeason: null, newlyPromoted: false, recentSeasons: [] },
+          info: { totalPts: 0, lastSeasonRank: null, lastSeasonGroupSize: null, streak: null, dangerLastSeason: false, championLastSeason: null, newlyPromoted: false, recentSeasons: [], titleCount: 0 },
         }));
       }
     }, [groupCars, allBonus, seasonNum]);
@@ -7384,6 +7391,11 @@ export default function App() {
           </div>
         ) : car && (
           <div key={car.id} style={{ textAlign:'center', animation:'introSlideUp 0.5s ease', maxWidth:420, padding:'0 24px' }}>
+            {car.info.titleCount > 0 && (
+              <div style={{ marginBottom:10, fontSize: car.info.titleCount > 4 ? 26 : 34, letterSpacing:2, lineHeight:1 }}>
+                {'🏆'.repeat(car.info.titleCount)}
+              </div>
+            )}
             <div style={{
               width:320, maxWidth:'100%', height:190, margin:'0 auto 20px', borderRadius:10, overflow:'hidden',
               background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center',
@@ -15088,17 +15100,22 @@ export default function App() {
             <svg className="splash-rpm" viewBox="0 0 100 100" width="220" height="220" style={{ maxWidth:'62vw', maxHeight:'62vw' }}>
               <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.28)" strokeWidth="2.5" />
               <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(212,175,55,0.14)" strokeWidth="1" />
-              {/* Zone rouge (redline) */}
-              <path d="M 75.7 24.3 A 42 42 0 0 1 89 55" fill="none" stroke="#e74c3c" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />
-              {/* Graduations */}
+              {/* Zone rouge (redline) — dernier tiers du cadran (25° à 50°), là où l'aiguille termine sa course */}
+              {(() => {
+                const a1 = 25 * Math.PI / 180, a2 = 50 * Math.PI / 180;
+                const x1 = 50 + 42 * Math.cos(a1), y1 = 50 + 42 * Math.sin(a1);
+                const x2 = 50 + 42 * Math.cos(a2), y2 = 50 + 42 * Math.sin(a2);
+                return <path d={`M ${x1.toFixed(2)} ${y1.toFixed(2)} A 42 42 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`} fill="none" stroke="#e74c3c" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />;
+              })()}
+              {/* Graduations — de -90° (gauche complète) à +50° (zone rouge) */}
               {Array.from({ length: 9 }).map((_, i) => {
-                const angle = (-135 + i * (270 / 8)) * Math.PI / 180;
+                const angle = (-90 + i * (140 / 8)) * Math.PI / 180;
                 const isMajor = i % 2 === 0;
                 const x1 = 50 + (isMajor ? 33 : 35.5) * Math.cos(angle), y1 = 50 + (isMajor ? 33 : 35.5) * Math.sin(angle);
                 const x2 = 50 + 40 * Math.cos(angle), y2 = 50 + 40 * Math.sin(angle);
                 return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold)" strokeWidth={isMajor ? 1.6 : 1} strokeLinecap="round" opacity={isMajor ? 0.9 : 0.55} />;
               })}
-              <g className="splash-rpm-needle">
+              <g className="splash-rpm-needle-main">
                 <line x1="50" y1="50" x2="50" y2="13" stroke="var(--gold)" strokeWidth="2.4" strokeLinecap="round" />
               </g>
               <circle cx="50" cy="50" r="4" fill="var(--gold)" />
