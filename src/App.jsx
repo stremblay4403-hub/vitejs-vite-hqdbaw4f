@@ -15100,20 +15100,26 @@ export default function App() {
             <svg className="splash-rpm" viewBox="0 0 100 100" width="220" height="220" style={{ maxWidth:'62vw', maxHeight:'62vw' }}>
               <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.28)" strokeWidth="2.5" />
               <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(212,175,55,0.14)" strokeWidth="1" />
-              {/* Zone rouge (redline) — dernier tiers du cadran (25° à 50°), là où l'aiguille termine sa course */}
+              {/* Convention d'angle : 0° = haut (12h), sens horaire, IDENTIQUE à celle utilisée par
+                  rotate() sur l'aiguille — x = cx + r·sin(θ), y = cy − r·cos(θ). Avant, les graduations
+                  utilisaient cos/sin "brut" (0°=droite) alors que l'aiguille tourne avec rotate()
+                  (0°=haut) : les deux systèmes ne s'alignaient pas, d'où le rouge mal placé. */}
+              {/* Zone rouge (redline) — derniers 25° du cadran, là où l'aiguille termine sa course */}
               {(() => {
-                const a1 = 25 * Math.PI / 180, a2 = 50 * Math.PI / 180;
-                const x1 = 50 + 42 * Math.cos(a1), y1 = 50 + 42 * Math.sin(a1);
-                const x2 = 50 + 42 * Math.cos(a2), y2 = 50 + 42 * Math.sin(a2);
-                return <path d={`M ${x1.toFixed(2)} ${y1.toFixed(2)} A 42 42 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`} fill="none" stroke="#e74c3c" strokeWidth="3.5" strokeLinecap="round" opacity="0.8" />;
+                const toRad = d => d * Math.PI / 180;
+                const pt = (r, deg) => [50 + r * Math.sin(toRad(deg)), 50 - r * Math.cos(toRad(deg))];
+                const [x1, y1] = pt(42, 25), [x2, y2] = pt(42, 50);
+                return <path d={`M ${x1.toFixed(2)} ${y1.toFixed(2)} A 42 42 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`} fill="none" stroke="#e74c3c" strokeWidth="3.5" strokeLinecap="round" opacity="0.85" />;
               })()}
-              {/* Graduations — de -90° (gauche complète) à +50° (zone rouge) */}
-              {Array.from({ length: 9 }).map((_, i) => {
-                const angle = (-90 + i * (140 / 8)) * Math.PI / 180;
-                const isMajor = i % 2 === 0;
-                const x1 = 50 + (isMajor ? 33 : 35.5) * Math.cos(angle), y1 = 50 + (isMajor ? 33 : 35.5) * Math.sin(angle);
-                const x2 = 50 + 40 * Math.cos(angle), y2 = 50 + 40 * Math.sin(angle);
-                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold)" strokeWidth={isMajor ? 1.6 : 1} strokeLinecap="round" opacity={isMajor ? 0.9 : 0.55} />;
+              {/* Graduations denses — de -90° (gauche complète) à +50° (fin de la zone rouge), une majeure toutes les 3 */}
+              {Array.from({ length: 19 }).map((_, i) => {
+                const deg = -90 + i * (140 / 18);
+                const toRad = d => d * Math.PI / 180;
+                const isMajor = i % 3 === 0;
+                const r1 = isMajor ? 33 : 36.5;
+                const x1 = 50 + r1 * Math.sin(toRad(deg)), y1 = 50 - r1 * Math.cos(toRad(deg));
+                const x2 = 50 + 40 * Math.sin(toRad(deg)), y2 = 50 - 40 * Math.cos(toRad(deg));
+                return <line key={i} x1={x1.toFixed(2)} y1={y1.toFixed(2)} x2={x2.toFixed(2)} y2={y2.toFixed(2)} stroke="var(--gold)" strokeWidth={isMajor ? 1.6 : 0.9} strokeLinecap="round" opacity={isMajor ? 0.9 : 0.5} />;
               })}
               <g className="splash-rpm-needle-main">
                 <line x1="50" y1="50" x2="50" y2="13" stroke="var(--gold)" strokeWidth="2.4" strokeLinecap="round" />
@@ -15134,12 +15140,19 @@ export default function App() {
           <div className="season-transition-text">
             <svg viewBox="0 0 100 100" width="52" height="52" style={{ display:'block', margin:'0 auto 8px', filter:'drop-shadow(0 0 14px rgba(212,175,55,0.35))' }}>
               <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.22)" strokeWidth="3" />
-              <path d="M 75.7 24.3 A 42 42 0 0 1 89 55" fill="none" stroke="#e74c3c" strokeWidth="4" strokeLinecap="round" opacity="0.85" />
+              {/* Même convention d'angle que l'aiguille (0°=haut, sens horaire) — voir splash principal */}
+              {(() => {
+                const toRad = d => d * Math.PI / 180;
+                const pt = (r, deg) => [50 + r * Math.sin(toRad(deg)), 50 - r * Math.cos(toRad(deg))];
+                const [x1, y1] = pt(42, 80), [x2, y2] = pt(42, 100);
+                return <path d={`M ${x1.toFixed(2)} ${y1.toFixed(2)} A 42 42 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`} fill="none" stroke="#e74c3c" strokeWidth="4" strokeLinecap="round" opacity="0.85" />;
+              })()}
               {Array.from({ length: 9 }).map((_, i) => {
-                const angle = (-135 + i * (270 / 8)) * Math.PI / 180;
-                const x1 = 50 + 34 * Math.cos(angle), y1 = 50 + 34 * Math.sin(angle);
-                const x2 = 50 + 40 * Math.cos(angle), y2 = 50 + 40 * Math.sin(angle);
-                return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="var(--gold-dim)" strokeWidth="2" strokeLinecap="round" />;
+                const deg = -135 + i * (235 / 8);
+                const toRad = d => d * Math.PI / 180;
+                const x1 = 50 + 34 * Math.sin(toRad(deg)), y1 = 50 - 34 * Math.cos(toRad(deg));
+                const x2 = 50 + 40 * Math.sin(toRad(deg)), y2 = 50 - 40 * Math.cos(toRad(deg));
+                return <line key={i} x1={x1.toFixed(2)} y1={y1.toFixed(2)} x2={x2.toFixed(2)} y2={y2.toFixed(2)} stroke="var(--gold-dim)" strokeWidth="2" strokeLinecap="round" />;
               })}
               <g className="splash-rpm-needle">
                 <line x1="50" y1="50" x2="50" y2="15" stroke="var(--gold)" strokeWidth="3" strokeLinecap="round" />
