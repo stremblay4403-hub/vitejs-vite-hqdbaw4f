@@ -4946,6 +4946,17 @@ export default function App() {
     const lastPlacers = [];
     const dangerCars = []; // pour la présentation cinématique — car + groupe + stats qui l'ont envoyé en barrage
     const allBonus = computeAllSeasonsBonus(leagueName);
+    // « Bien positionnée aux points annexes » = top 50 du classement COMBINÉ des 4 ligues
+    // principales (Voitures 1-2-3-4), pas juste de sa propre ligue — un vrai repère absolu.
+    const combinedMap = {};
+    LEAGUES.forEach(ln => {
+      computeAllSeasonsBonus(ln).forEach(e => {
+        if (!combinedMap[e.name]) combinedMap[e.name] = { name: e.name, total: 0, ids: [] };
+        combinedMap[e.name].total += e.total;
+        if (e.id) combinedMap[e.name].ids.push(e.id);
+      });
+    });
+    const combinedSorted = Object.values(combinedMap).sort((a, b) => b.total - a.total);
     for (let g = 0; g < GROUPS; g++) {
       const groupCars = l.cars.filter(c => c.group === g);
       const matches = l.groupResults[g] || [];
@@ -4957,10 +4968,13 @@ export default function App() {
         if (car) {
           const bonusEntry = allBonus.find(e => e.id === car.id || namesMatch(e.name, car.name));
           const totalPts = bonusEntry?.total || 0;
+          const combinedRankIdx = combinedSorted.findIndex(e => e.ids.includes(car.id) || namesMatch(e.name, car.name));
           const info = computeCarSimpleInfo(car.id, car.name, currentSeason.season, totalPts);
           dangerCars.push({ ...car, group: g, photo: getCarPhoto(car.id),
             gp: last.gp, w: last.w, d: last.d, l: last.l, gf: last.gf, ga: last.ga, pts: last.pts,
-            narrative: buildDangerNarrative(info) });
+            narrative: buildDangerNarrative({ ...info,
+              totalPtsRank: combinedRankIdx >= 0 ? combinedRankIdx + 1 : null,
+              totalPtsCombined: combinedRankIdx >= 0 ? combinedSorted[combinedRankIdx].total : totalPts }) });
         }
       }
     }
@@ -7373,8 +7387,10 @@ export default function App() {
     if (info.streak?.type === 'playoffs' && info.streak.count >= 3) {
       return `Habituée des playoffs (${info.streak.count} saisons de suite) — accident de parcours cette fois ?`;
     }
-    if (info.totalPts >= 15) {
-      return `Mauvaise saison sur le terrain, mais bien positionnée aux points annexes (${info.totalPts} pts carrière).`;
+    // Top 50 du classement COMBINÉ des points annexes sur les 4 ligues principales
+    // (Voitures 1-2-3-4) — repère absolu plutôt qu'un pourcentage relatif à sa propre ligue.
+    if (info.totalPtsRank != null && info.totalPtsRank <= 50) {
+      return `Mauvaise saison sur le terrain, mais ${info.totalPtsRank}${info.totalPtsRank === 1 ? 're' : 'e'} au classement combiné des points annexes (Voitures 1-4) avec ${info.totalPtsCombined} pts carrière.`;
     }
     if (info.streak?.type === 'points' && info.streak.count >= 3) {
       return `Reste régulière aux points annexes depuis ${info.streak.count} saisons malgré cette contre-performance.`;
@@ -14259,6 +14275,8 @@ export default function App() {
       const sorted = [...t.matches].sort((a, b) => a.season - b.season || a.day - b.day);
       const ub = longestStreak(sorted, r => r !== 'L');
       const wl = longestStreak(sorted, r => r !== 'W');
+      const ws = longestStreak(sorted, r => r === 'W');
+      const ls = longestStreak(sorted, r => r === 'L');
       const seasonRecord = (seasonNum) => {
         if (seasonNum === null) return null;
         const sm = sorted.filter(m => m.season === seasonNum);
@@ -14268,10 +14286,14 @@ export default function App() {
         carId: id, name: t.name,
         unbeaten: ub.streak, unbeatenSeason: ub.season, unbeatenRecord: seasonRecord(ub.season),
         winless: wl.streak, winlessSeason: wl.season, winlessRecord: seasonRecord(wl.season),
+        winStreak: ws.streak, winStreakSeason: ws.season,
+        lossStreak: ls.streak, lossStreakSeason: ls.season,
       };
     });
     const topUnbeaten = [...streakEntries].filter(e => e.unbeaten > 0).sort((a, b) => b.unbeaten - a.unbeaten).slice(0, 20);
     const topWinless = [...streakEntries].filter(e => e.winless > 0).sort((a, b) => b.winless - a.winless).slice(0, 20);
+    const topWinStreak = [...streakEntries].filter(e => e.winStreak > 0).sort((a, b) => b.winStreak - a.winStreak).slice(0, 20);
+    const topLossStreak = [...streakEntries].filter(e => e.lossStreak > 0).sort((a, b) => b.lossStreak - a.lossStreak).slice(0, 20);
 
     const totalPtsMap = {};
     LEAGUES.forEach(l => {
@@ -14441,6 +14463,24 @@ export default function App() {
             <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
             <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.winlessSeason} · {e.winlessRecord?.w}V {e.winlessRecord?.d}N {e.winlessRecord?.l}D</td>
             <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#e74c3c' }}>{e.winless} matchs</td>
+          </tr>
+        )} />
+        <ExpandableSection id="winstreak" title="🔥 Plus Longue Série de Victoires" accent="var(--gold)" rows={topWinStreak} renderRow={(e, i) => (
+          <tr key={`${e.carId}-winstreak`} className={rowShimmerClass(i)} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:rankColor(i),padding:'8px 6px' }}>{rankDisplay(i)}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.winStreakSeason}</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'var(--gold)',...glowStat }}>{e.winStreak} victoires</td>
+          </tr>
+        )} />
+        <ExpandableSection id="lossstreak" title="💀 Plus Longue Série de Défaites" accent="#7f2020" rows={topLossStreak} renderRow={(e, i) => (
+          <tr key={`${e.carId}-lossstreak`} style={{ cursor:'pointer' }} onClick={() => openProfile(e.name, e.carId)}>
+            <td style={{ width:36,textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:i===0?'#7f2020':'var(--text-dim)',padding:'8px 6px' }}>{i+1}</td>
+            <td style={{ padding:'4px 6px',width:100 }}><div style={{ width:90,height:60,borderRadius:4,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center' }}>{(() => { const p = (e.carId && getCarPhoto(e.carId)) || getCarPhotoByName(e.name); return p ? <img src={p} style={{ width:'100%',height:'100%',objectFit:'contain' }} /> : <span style={{ fontSize:24 }}>🚗</span>; })()}</div></td>
+            <td style={{ padding:'8px 6px',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,letterSpacing:1 }}>{e.name}</td>
+            <td style={{ padding:'8px 6px',fontSize:12,color:'var(--text-dim)' }}>S{e.lossStreakSeason}</td>
+            <td style={{ padding:'8px 12px',textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:24,color:'#7f2020' }}>{e.lossStreak} défaites</td>
           </tr>
         )} />
         <ExpandableSection id="total" title="📊 Plus de Points Annexes (total)" accent="var(--gold)" rows={topTotal} renderRow={(e, i) => {
