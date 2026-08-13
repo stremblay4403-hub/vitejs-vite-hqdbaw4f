@@ -1971,6 +1971,41 @@ const css = `
   .trophy-badge { cursor: pointer; transition: transform 0.12s ease; }
   .trophy-badge:hover { transform: scale(1.08); }
   .trophy-badge:active { transform: scale(0.94); }
+
+  /* ── Cérémonie de tirage au sort (révélation des groupes en début de saison) ── */
+  .draw-ceremony-overlay {
+    position: fixed; inset: 0; z-index: 10000;
+    background: radial-gradient(ellipse 1200px 700px at 50% -10%, rgba(212,175,55,0.08), transparent 60%), rgba(6,6,6,0.97);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px 16px; overflow-y: auto; animation: modalOverlayFadeIn 0.3s ease;
+  }
+  .draw-ceremony-header { text-align: center; margin-bottom: 20px; flex-shrink: 0; }
+  .draw-ceremony-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px; font-size: 22px; color: var(--gold); text-shadow: var(--glow-gold); }
+  .draw-ceremony-league { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 16px; margin-top: 4px; }
+  .draw-ceremony-progress { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+  .draw-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s ease; display: inline-block; }
+  .draw-dot.active { background: var(--dot-color, var(--gold)); box-shadow: 0 0 8px var(--dot-color, var(--gold)); transform: scale(1.3); }
+  .draw-dot.done { background: var(--dot-color, var(--gold-dim)); opacity: 0.6; }
+  .draw-ceremony-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
+    max-width: 960px; width: 100%;
+  }
+  .draw-group-card {
+    border: 1px solid var(--border); border-radius: var(--radius); background: var(--dark2);
+    padding: 10px; min-height: 90px; transition: border-color 0.3s ease;
+  }
+  .draw-group-card.revealed { border-color: var(--gold-dim); animation: drawGroupPop 0.4s ease; }
+  .draw-group-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 12px; color: var(--gold-dim); margin-bottom: 6px; text-align: center; }
+  .draw-group-pending { text-align: center; font-size: 20px; opacity: 0.3; animation: drawDicePulse 1s ease-in-out infinite; }
+  .draw-group-cars { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
+  .draw-car-chip {
+    font-size: 10px; color: var(--text); background: var(--dark3); border: 1px solid var(--border);
+    border-radius: 3px; padding: 2px 5px; animation: introSlideUp 0.3s ease backwards;
+  }
+  .draw-ceremony-actions { display: flex; gap: 10px; margin-top: 22px; flex-shrink: 0; }
+  @keyframes drawGroupPop { from { transform: scale(0.92); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+  @keyframes drawDicePulse { 0%,100% { opacity: 0.25; } 50% { opacity: 0.6; } }
+
   @keyframes champChipPop {
     0%   { opacity: 0; transform: scale(0.5); }
     70%  { opacity: 1; transform: scale(1.08); }
@@ -2263,6 +2298,22 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
+
+// ── Notifications push (Web Push) ──────────────────────────────────
+// Clé publique VAPID générée une fois via `npx web-push generate-vapid-keys`
+// (la clé privée correspondante reste côté serveur, en variable d'env Vercel).
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+
+// Safari/WebKit exige un Uint8Array pour applicationServerKey (une simple
+// string ne fonctionne que sur Chrome) — conversion depuis le base64url VAPID.
+function urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
+}
 console.log('%c[Tournois de Voitures] build archivage v30 — notifs responsive (desktop max-width 560px))', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
@@ -3193,6 +3244,26 @@ export default function App() {
   }, []);
   const [loaded, setLoaded] = useState(false);
   const [seasonTransition, setSeasonTransition] = useState(null); // { from, to } numéros de saison, ou null
+  const [drawCeremony, setDrawCeremony] = useState(null); // { season, leagues: { [name]: groups[][] } } ou null
+  const drawPendingRef = useRef(false); // marqué true uniquement par handleNextSeason (pas addSeason/import/reset)
+
+  // Dès que la nouvelle saison est committée en state (par handleNextSeason, jamais par
+  // addSeason/import/reset), on relit le résultat déjà tiré (initLeague/shuffle) et on
+  // l'anime — on ne recalcule RIEN, juste une révélation cinématique d'un tirage déjà fait.
+  useEffect(() => {
+    if (!drawPendingRef.current) return;
+    drawPendingRef.current = false;
+    const latest = db.seasons[db.seasons.length - 1];
+    if (!latest) return;
+    const leaguesData = {};
+    LEAGUES.forEach(l => {
+      const cars = latest.leagues[l]?.cars || [];
+      const groups = Array.from({ length: GROUPS }, () => []);
+      cars.forEach(c => { if (groups[c.group]) groups[c.group].push(c); });
+      leaguesData[l] = groups;
+    });
+    setDrawCeremony({ season: latest.season, leagues: leaguesData });
+  }, [db.seasons.length]);
   // Live standings (Ligues Principales) — déclarés ici au niveau App, PAS dans GroupesView,
   // car GroupesView est redéfini à chaque rendu de App et perdrait sinon tout son historique.
   const standingsRowRefs = React.useRef({});
@@ -3360,7 +3431,52 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
   const [notifications, setNotifications] = useState([]);
+  const [pushStatus, setPushStatus] = useState('checking'); // checking | unsupported | off | on | pending
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
+
+  // Vérifie au chargement si ce device a déjà un abonnement push actif
+  useEffect(() => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID_PUBLIC_KEY) {
+      setPushStatus('unsupported');
+      return;
+    }
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => reg.pushManager.getSubscription())
+      .then(sub => setPushStatus(sub ? 'on' : 'off'))
+      .catch(() => setPushStatus('unsupported'));
+  }, []);
+
+  async function togglePush() {
+    if (pushStatus === 'pending' || pushStatus === 'checking' || pushStatus === 'unsupported') return;
+    setPushStatus('pending');
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      if (pushStatus === 'on') {
+        const sub = await reg.pushManager.getSubscription();
+        if (sub) {
+          await deleteDoc(doc(firestoreDb, 'pushSubscriptions', btoa(sub.endpoint).slice(0, 120)));
+          await sub.unsubscribe();
+        }
+        setPushStatus('off');
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { setPushStatus('off'); return; }
+      const sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+      await setDoc(doc(firestoreDb, 'pushSubscriptions', btoa(sub.endpoint).slice(0, 120)), {
+        subscription: sub.toJSON(),
+        createdAt: Date.now(),
+      });
+      setPushStatus('on');
+    } catch (e) {
+      console.error('Push subscribe error:', e);
+      setPushStatus('off');
+      alert('❌ Impossible d\'activer les notifications : ' + e.message + '\n(Sur iPhone, l\'app doit être installée via "Ajouter à l\'écran d\'accueil".)');
+    }
+  }
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -4230,6 +4346,23 @@ export default function App() {
     const id = genId();
     setNotifications(n => [...n, { id, msg, type, photoUrl, carName, carPts, playoffCount }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
+    sendServerPush(msg, photoUrl, carName, carPts, playoffCount);
+  }
+
+  // Relaie le même événement vers /api/send-push, qui l'envoie à tous les
+  // devices abonnés (push natif — arrive même app fermée). Best-effort : un
+  // échec réseau ici ne doit jamais casser le flux de jeu, donc on avale l'erreur.
+  function sendServerPush(msg, photoUrl, carName, carPts, playoffCount) {
+    if (isLoadingFromFirebase.current) return; // évite le spam pendant un rechargement/sync massif
+    const title = carName || 'Tournois de Voitures';
+    const bodyParts = [msg];
+    if (carPts != null) bodyParts.push(`${carPts} pts`);
+    if (playoffCount) bodyParts.push(`${playoffCount} qualification aux playoffs`);
+    fetch('/api/send-push', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, body: bodyParts.join(' — '), icon: photoUrl, image: photoUrl }),
+    }).catch(() => {});
   }
 
   // Détecter les promotions/relégations mathématiques
@@ -5329,6 +5462,7 @@ export default function App() {
 
   function handleNextSeason() {
     setIsProcessing(true);
+    drawPendingRef.current = true;
     setTimeout(() => {
     setDb(d => {
       const seasons = [...d.seasons];
@@ -7277,6 +7411,68 @@ export default function App() {
     }
 
     return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted, recentSeasons };
+  }
+
+  function DrawCeremony({ data, onClose }) {
+    const [leagueIdx, setLeagueIdx] = useState(0);
+    const [revealedCount, setRevealedCount] = useState(0);
+    const [skipped, setSkipped] = useState(false);
+    const currentLeague = LEAGUES[leagueIdx];
+    const groups = data.leagues[currentLeague] || [];
+    const isLastLeague = leagueIdx === LEAGUES.length - 1;
+    const leagueDone = revealedCount >= groups.length;
+
+    useEffect(() => {
+      if (skipped || leagueDone) return;
+      const t = setTimeout(() => setRevealedCount(c => c + 1), 550);
+      return () => clearTimeout(t);
+    }, [revealedCount, skipped, leagueDone]);
+
+    useEffect(() => {
+      if (skipped || !leagueDone || isLastLeague) return;
+      const t = setTimeout(() => { setLeagueIdx(i => i + 1); setRevealedCount(0); }, 1300);
+      return () => clearTimeout(t);
+    }, [leagueDone, skipped, isLastLeague]);
+
+    function skipAll() { setSkipped(true); setLeagueIdx(LEAGUES.length - 1); setRevealedCount(groups.length); }
+
+    return (
+      <div className="draw-ceremony-overlay">
+        <div className="draw-ceremony-header">
+          <div className="draw-ceremony-title">🎟️ TIRAGE AU SORT — SAISON {data.season}</div>
+          <div className="draw-ceremony-league" style={{ color: MAIN_LEAGUE_COLORS[currentLeague] }}>{currentLeague}</div>
+          <div className="draw-ceremony-progress">
+            {LEAGUES.map((l, i) => (
+              <span key={l} className={`draw-dot ${i === leagueIdx ? 'active' : i < leagueIdx || skipped ? 'done' : ''}`}
+                style={{ '--dot-color': MAIN_LEAGUE_COLORS[l] }} />
+            ))}
+          </div>
+        </div>
+        <div className="draw-ceremony-grid">
+          {groups.map((g, gi) => (
+            <div key={gi} className={`draw-group-card ${gi < revealedCount || skipped ? 'revealed' : ''}`}>
+              <div className="draw-group-title">GROUPE {gi + 1}</div>
+              {gi < revealedCount || skipped ? (
+                <div className="draw-group-cars">
+                  {g.map((c, ci) => (
+                    <span key={c.id} className="draw-car-chip" style={{ animationDelay: `${ci * 25}ms` }}>{c.name}</span>
+                  ))}
+                </div>
+              ) : <div className="draw-group-pending">🎲</div>}
+            </div>
+          ))}
+        </div>
+        <div className="draw-ceremony-actions">
+          {!skipped && !(isLastLeague && leagueDone) && (
+            <button className="btn btn-outline btn-sm" onClick={skipAll}>⏭ Passer</button>
+          )}
+          {(skipped || (isLastLeague && leagueDone)) && (
+            <button className="btn btn-sm" style={{ background:'linear-gradient(180deg, var(--gold2), var(--gold))', color:'#1a1305' }}
+              onClick={onClose}>✓ Voir la saison {data.season}</button>
+          )}
+        </div>
+      </div>
+    );
   }
 
   function GroupIntroPresentation({ leagueName, group, groupCars, seasonNum, onClose }) {
@@ -15164,6 +15360,9 @@ export default function App() {
           </div>
         </div>
       )}
+      {drawCeremony && (
+        <DrawCeremony data={drawCeremony} onClose={() => setDrawCeremony(null)} />
+      )}
       <div className={`app${isPublicMode ? ' public-mode' : ''}`} style={{ '--season-tint': ['rgba(212,175,55,0.05)','rgba(41,128,185,0.05)','rgba(230,126,34,0.05)','rgba(46,204,113,0.04)'][currentSeason.season % 4] }}>
         {/* Avertissement navigation privée */}
         {isPrivate && (
@@ -15312,6 +15511,18 @@ export default function App() {
           <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
             🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
           </button>
+          {pushStatus !== 'unsupported' && (
+            <button className="btn btn-sm" style={{ flexShrink:0,
+                background: pushStatus === 'on' ? 'rgba(39,174,96,0.15)' : 'var(--dark3)',
+                borderColor: pushStatus === 'on' ? 'var(--green)' : 'var(--border)',
+                color: pushStatus === 'on' ? 'var(--green)' : 'var(--text-dim)',
+                opacity: pushStatus === 'pending' || pushStatus === 'checking' ? 0.5 : 1 }}
+              disabled={pushStatus === 'pending' || pushStatus === 'checking'}
+              onClick={togglePush}
+              title={pushStatus === 'on' ? 'Désactiver les notifications push' : 'Activer les notifications push (photo + mêmes alertes que dans l\'app)'}>
+              {pushStatus === 'on' ? '🔔' : '🔕'}
+            </button>
+          )}
           <div className="header-actions">
             {isPublicMode ? (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
