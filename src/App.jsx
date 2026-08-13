@@ -1994,17 +1994,24 @@ const css = `
   .draw-timerbar { width: 220px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 22px; }
   .draw-timerbar-fill { height: 100%; background: var(--gold); width: 0%; }
   .draw-car-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-    max-width: 420px; width: 100%;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    max-width: 460px; width: 100%;
   }
-  .draw-car-card { display: flex; flex-direction: column; align-items: center; gap: 6px; animation: drawCarPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .draw-car-card {
+    display: flex; flex-direction: column; border-radius: 6px; overflow: hidden;
+    background: var(--dark3); border: 1.5px solid var(--gold-dim);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5); animation: drawCarPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both;
+  }
   .draw-car-photo {
-    width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden;
-    border: 1.5px solid var(--gold-dim); background: var(--dark3);
-    box-shadow: 0 2px 10px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;
+    width: 100%; aspect-ratio: 16/9; overflow: hidden; background: var(--dark2);
+    display:flex; align-items:center; justify-content:center;
   }
   .draw-car-photo img { width:100%; height:100%; object-fit:cover; display:block; }
-  .draw-car-name { font-size: 11px; text-align: center; color: var(--text); line-height: 1.2; max-width: 100px; }
+  .draw-car-name {
+    font-size: 10px; text-align: center; color: var(--text); line-height: 1.3;
+    padding: 4px 3px; border-top: 1px solid rgba(212,175,55,0.2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   .draw-ceremony-actions { position: fixed; bottom: 24px; left:0; right:0; display: flex; gap: 10px; justify-content:center; z-index: 10001; }
   @keyframes drawCarPop { from { opacity:0; transform: scale(0.7); } to { opacity:1; transform: scale(1); } }
 
@@ -3320,6 +3327,9 @@ export default function App() {
   const allCarsSearchRef = React.useRef('');
   const [confirmReset, setConfirmReset] = useState(false);
   const [confirmResetSeason, setConfirmResetSeason] = useState(false);
+  const [confirmSimTout, setConfirmSimTout] = useState(false);
+  const [confirmSimActuelles, setConfirmSimActuelles] = useState(false);
+  const [confirmResetTC, setConfirmResetTC] = useState(false);
   const [leagueTab, setLeagueTab] = useState(LEAGUES[0]);
   const bonusScrollPos = React.useRef(0);
   const recordsScrollPos = React.useRef(0);
@@ -7464,7 +7474,7 @@ export default function App() {
 
         <div className="draw-car-grid">
           {cars.map((c, ci) => (
-            <div key={c.id} className="draw-car-card" style={{ animationDelay: `${ci * 40}ms` }}>
+            <div key={c.id} className="draw-car-card" style={{ animationDelay: `${ci * 40}ms`, borderColor: MAIN_LEAGUE_COLORS[currentLeague] }}>
               <div className="draw-car-photo">
                 {c.photo ? <img src={c.photo} alt={c.name} /> : <span style={{ fontSize:22, opacity:0.4 }}>🚗</span>}
               </div>
@@ -15068,11 +15078,18 @@ export default function App() {
             })()}
 
             <div style={{ padding:12,textAlign:'center' }}>
-              <button className="btn btn-danger btn-sm" onClick={() => {
-                if (confirm('Réinitialiser le Tournoi des Champions ?')) {
-                  setDb(d => { const s = [...d.seasons]; s[d.currentSeasonIdx] = { ...s[d.currentSeasonIdx], tournoiChampions: null }; return { ...d, seasons: s }; });
-                }
-              }}>🗑 Réinitialiser le tournoi</button>
+              {!confirmResetTC
+                ? <button className="btn btn-danger btn-sm" onClick={() => setConfirmResetTC(true)}>🗑 Réinitialiser le tournoi</button>
+                : <span style={{ display:'inline-flex',gap:6,alignItems:'center' }}>
+                    <span style={{ fontSize:12,color:'#e74c3c' }}>Réinitialiser le Tournoi des Champions ?</span>
+                    <button className="btn btn-sm" style={{ background:'#c0392b',color:'#fff',fontSize:12 }}
+                      onClick={() => {
+                        setDb(d => { const s = [...d.seasons]; s[d.currentSeasonIdx] = { ...s[d.currentSeasonIdx], tournoiChampions: null }; return { ...d, seasons: s }; });
+                        setConfirmResetTC(false);
+                      }}>✓ Oui</button>
+                    <button className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => setConfirmResetTC(false)}>✕ Non</button>
+                  </span>
+              }
             </div>
           </div>
         )}
@@ -15762,7 +15779,18 @@ export default function App() {
               S{s.season}
             </button>
           ))}
-          {!isPublicMode && <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }} onClick={simTout}>⚡ Simuler Tout</button>}
+          {!isPublicMode && (
+            !confirmSimTout
+              ? <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }}
+                  onClick={() => setConfirmSimTout(true)}>⚡ Simuler Tout</button>
+              : <span style={{ display:'inline-flex',gap:6,alignItems:'center',flexShrink:0 }}>
+                  <span style={{ fontSize:12,color:'var(--gold)' }}>Tout simuler ?</span>
+                  <button className="btn btn-sm" style={{ background:'var(--gold)',color:'#1a1305',fontSize:12 }}
+                    onClick={() => { simTout(); setConfirmSimTout(false); }}>✓ Oui</button>
+                  <button className="btn btn-dark btn-sm" style={{ fontSize:12 }}
+                    onClick={() => setConfirmSimTout(false)}>✕ Non</button>
+                </span>
+          )}
           {!isPublicMode && (
             !confirmResetSeason
               ? <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(231,76,60,0.12)',borderColor:'#c0392b',color:'#e74c3c' }}
@@ -15967,7 +15995,17 @@ export default function App() {
           {mainTab === 'ligues' && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && !isPublicMode && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
-              <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }} style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simAllActuelles(); }}>⚡ Simuler toutes les Actuelles</button>
+              {!confirmSimActuelles
+                ? <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }}
+                    onClick={() => setConfirmSimActuelles(true)}>⚡ Simuler toutes les Actuelles</button>
+                : <span style={{ display:'inline-flex',gap:6,alignItems:'center' }}>
+                    <span style={{ fontSize:12,color:'var(--gold)' }}>Tout simuler ?</span>
+                    <button className="btn btn-sm" style={{ background:'var(--gold)',color:'#1a1305',fontSize:12 }}
+                      onClick={() => { simAllActuelles(); setConfirmSimActuelles(false); }}>✓ Oui</button>
+                    <button className="btn btn-dark btn-sm" style={{ fontSize:12 }}
+                      onClick={() => setConfirmSimActuelles(false)}>✕ Non</button>
+                  </span>
+              }
             </div>
           )}
           {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
