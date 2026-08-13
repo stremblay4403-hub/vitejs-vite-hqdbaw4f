@@ -1972,39 +1972,41 @@ const css = `
   .trophy-badge:hover { transform: scale(1.08); }
   .trophy-badge:active { transform: scale(0.94); }
 
-  /* ── Cérémonie de tirage au sort (révélation des groupes en début de saison) ── */
-  .draw-ceremony-overlay {
+  /* ── Cérémonie de tirage au sort (révélation groupe par groupe, avec photos) ── */
+  .draw-overlay {
     position: fixed; inset: 0; z-index: 10000;
     background: radial-gradient(ellipse 1200px 700px at 50% -10%, rgba(212,175,55,0.08), transparent 60%), rgba(6,6,6,0.97);
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 24px 16px; overflow-y: auto; animation: modalOverlayFadeIn 0.3s ease;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    padding: 20px 16px 90px; overflow-y: auto; animation: modalOverlayFadeIn 0.3s ease;
   }
-  .draw-ceremony-header { text-align: center; margin-bottom: 20px; flex-shrink: 0; }
-  .draw-ceremony-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px; font-size: 22px; color: var(--gold); text-shadow: var(--glow-gold); }
-  .draw-ceremony-league { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 16px; margin-top: 4px; }
-  .draw-ceremony-progress { display: flex; gap: 6px; justify-content: center; margin-top: 10px; }
+  .draw-header { text-align: center; margin-bottom: 6px; flex-shrink: 0; }
+  .draw-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 3px; font-size: 20px; color: var(--gold); text-shadow: var(--glow-gold); }
+  .draw-league { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 15px; margin-top: 4px; }
+  .draw-league-dots { display: flex; gap: 6px; justify-content: center; margin-top: 8px; }
   .draw-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: all 0.3s ease; display: inline-block; }
   .draw-dot.active { background: var(--dot-color, var(--gold)); box-shadow: 0 0 8px var(--dot-color, var(--gold)); transform: scale(1.3); }
   .draw-dot.done { background: var(--dot-color, var(--gold-dim)); opacity: 0.6; }
-  .draw-ceremony-grid {
-    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px;
-    max-width: 960px; width: 100%;
+  .draw-group-heading { font-family:'Bebas Neue',sans-serif; font-size:30px; letter-spacing:3px; color:#fff; margin: 18px 0 4px; text-align:center; }
+  .draw-group-subprogress { display:flex; gap:5px; justify-content:center; margin-bottom:16px; flex-wrap: wrap; max-width: 260px; }
+  .draw-group-dot { width:22px; height:4px; border-radius:2px; background:var(--border); transition: background 0.3s ease; }
+  .draw-group-dot.active { background:var(--gold); }
+  .draw-group-dot.done { background:var(--gold-dim); }
+  .draw-timerbar { width: 220px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 22px; }
+  .draw-timerbar-fill { height: 100%; background: var(--gold); width: 0%; }
+  .draw-car-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    max-width: 420px; width: 100%;
   }
-  .draw-group-card {
-    border: 1px solid var(--border); border-radius: var(--radius); background: var(--dark2);
-    padding: 10px; min-height: 90px; transition: border-color 0.3s ease;
+  .draw-car-card { display: flex; flex-direction: column; align-items: center; gap: 6px; animation: drawCarPop 0.4s cubic-bezier(0.34,1.56,0.64,1) both; }
+  .draw-car-photo {
+    width: 100%; aspect-ratio: 1/1; border-radius: 8px; overflow: hidden;
+    border: 1.5px solid var(--gold-dim); background: var(--dark3);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center;
   }
-  .draw-group-card.revealed { border-color: var(--gold-dim); animation: drawGroupPop 0.4s ease; }
-  .draw-group-title { font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px; font-size: 12px; color: var(--gold-dim); margin-bottom: 6px; text-align: center; }
-  .draw-group-pending { text-align: center; font-size: 20px; opacity: 0.3; animation: drawDicePulse 1s ease-in-out infinite; }
-  .draw-group-cars { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; }
-  .draw-car-chip {
-    font-size: 10px; color: var(--text); background: var(--dark3); border: 1px solid var(--border);
-    border-radius: 3px; padding: 2px 5px; animation: introSlideUp 0.3s ease backwards;
-  }
-  .draw-ceremony-actions { display: flex; gap: 10px; margin-top: 22px; flex-shrink: 0; }
-  @keyframes drawGroupPop { from { transform: scale(0.92); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
-  @keyframes drawDicePulse { 0%,100% { opacity: 0.25; } 50% { opacity: 0.6; } }
+  .draw-car-photo img { width:100%; height:100%; object-fit:cover; display:block; }
+  .draw-car-name { font-size: 11px; text-align: center; color: var(--text); line-height: 1.2; max-width: 100px; }
+  .draw-ceremony-actions { position: fixed; bottom: 24px; left:0; right:0; display: flex; gap: 10px; justify-content:center; z-index: 10001; }
+  @keyframes drawCarPop { from { opacity:0; transform: scale(0.7); } to { opacity:1; transform: scale(1); } }
 
   @keyframes champChipPop {
     0%   { opacity: 0; transform: scale(0.5); }
@@ -3244,7 +3246,7 @@ export default function App() {
     LEAGUES.forEach(l => {
       const cars = latest.leagues[l]?.cars || [];
       const groups = Array.from({ length: GROUPS }, () => []);
-      cars.forEach(c => { if (groups[c.group]) groups[c.group].push(c); });
+      cars.forEach(c => { if (groups[c.group]) groups[c.group].push({ ...c, photo: getCarPhoto(c.id) }); });
       leaguesData[l] = groups;
     });
     setDrawCeremony({ season: latest.season, leagues: leaguesData });
@@ -7384,59 +7386,82 @@ export default function App() {
   }
 
   function DrawCeremony({ data, onClose }) {
+    const GROUP_MS = 5000;
     const [leagueIdx, setLeagueIdx] = useState(0);
-    const [revealedCount, setRevealedCount] = useState(0);
+    const [groupIdx, setGroupIdx] = useState(0);
     const [skipped, setSkipped] = useState(false);
+    const [barKey, setBarKey] = useState(0); // force le redémarrage de l'animation de la barre à chaque groupe
     const currentLeague = LEAGUES[leagueIdx];
     const groups = data.leagues[currentLeague] || [];
     const isLastLeague = leagueIdx === LEAGUES.length - 1;
-    const leagueDone = revealedCount >= groups.length;
+    const isLastGroup = groupIdx === groups.length - 1;
+    const cars = groups[groupIdx] || [];
 
     useEffect(() => {
-      if (skipped || leagueDone) return;
-      const t = setTimeout(() => setRevealedCount(c => c + 1), 550);
+      if (skipped) return;
+      const t = setTimeout(() => {
+        if (!isLastGroup) {
+          setGroupIdx(g => g + 1);
+        } else if (!isLastLeague) {
+          setLeagueIdx(i => i + 1);
+          setGroupIdx(0);
+        }
+        // dernier groupe de la dernière ligue : on s'arrête, le bouton "Voir la saison" est déjà affiché
+      }, GROUP_MS);
       return () => clearTimeout(t);
-    }, [revealedCount, skipped, leagueDone]);
+    }, [leagueIdx, groupIdx, skipped, isLastGroup, isLastLeague]);
 
-    useEffect(() => {
-      if (skipped || !leagueDone || isLastLeague) return;
-      const t = setTimeout(() => { setLeagueIdx(i => i + 1); setRevealedCount(0); }, 1300);
-      return () => clearTimeout(t);
-    }, [leagueDone, skipped, isLastLeague]);
+    useEffect(() => { setBarKey(k => k + 1); }, [leagueIdx, groupIdx]);
 
-    function skipAll() { setSkipped(true); setLeagueIdx(LEAGUES.length - 1); setRevealedCount(groups.length); }
+    function skipAll() {
+      setSkipped(true);
+      setLeagueIdx(LEAGUES.length - 1);
+      setGroupIdx((data.leagues[LEAGUES[LEAGUES.length - 1]] || []).length - 1);
+    }
+
+    const showFinish = skipped || (isLastLeague && isLastGroup);
 
     return (
-      <div className="draw-ceremony-overlay">
-        <div className="draw-ceremony-header">
-          <div className="draw-ceremony-title">🎟️ TIRAGE AU SORT — SAISON {data.season}</div>
-          <div className="draw-ceremony-league" style={{ color: MAIN_LEAGUE_COLORS[currentLeague] }}>{currentLeague}</div>
-          <div className="draw-ceremony-progress">
+      <div className="draw-overlay">
+        <div className="draw-header">
+          <div className="draw-title">🎟️ TIRAGE AU SORT — SAISON {data.season}</div>
+          <div className="draw-league" style={{ color: MAIN_LEAGUE_COLORS[currentLeague] }}>{currentLeague}</div>
+          <div className="draw-league-dots">
             {LEAGUES.map((l, i) => (
               <span key={l} className={`draw-dot ${i === leagueIdx ? 'active' : i < leagueIdx || skipped ? 'done' : ''}`}
                 style={{ '--dot-color': MAIN_LEAGUE_COLORS[l] }} />
             ))}
           </div>
         </div>
-        <div className="draw-ceremony-grid">
-          {groups.map((g, gi) => (
-            <div key={gi} className={`draw-group-card ${gi < revealedCount || skipped ? 'revealed' : ''}`}>
-              <div className="draw-group-title">GROUPE {gi + 1}</div>
-              {gi < revealedCount || skipped ? (
-                <div className="draw-group-cars">
-                  {g.map((c, ci) => (
-                    <span key={c.id} className="draw-car-chip" style={{ animationDelay: `${ci * 25}ms` }}>{c.name}</span>
-                  ))}
-                </div>
-              ) : <div className="draw-group-pending">🎲</div>}
+
+        <div className="draw-group-heading">GROUPE {groupIdx + 1}</div>
+        <div className="draw-group-subprogress">
+          {groups.map((_, i) => (
+            <span key={i} className={`draw-group-dot ${i === groupIdx ? 'active' : i < groupIdx ? 'done' : ''}`} />
+          ))}
+        </div>
+        {!skipped && (
+          <div className="draw-timerbar">
+            <div key={barKey} className="draw-timerbar-fill" style={{ transition: `width ${GROUP_MS}ms linear`, width: '100%' }} />
+          </div>
+        )}
+
+        <div className="draw-car-grid">
+          {cars.map((c, ci) => (
+            <div key={c.id} className="draw-car-card" style={{ animationDelay: `${ci * 40}ms` }}>
+              <div className="draw-car-photo">
+                {c.photo ? <img src={c.photo} alt={c.name} /> : <span style={{ fontSize:22, opacity:0.4 }}>🚗</span>}
+              </div>
+              <div className="draw-car-name">{c.name}</div>
             </div>
           ))}
         </div>
+
         <div className="draw-ceremony-actions">
-          {!skipped && !(isLastLeague && leagueDone) && (
+          {!showFinish && (
             <button className="btn btn-outline btn-sm" onClick={skipAll}>⏭ Passer</button>
           )}
-          {(skipped || (isLastLeague && leagueDone)) && (
+          {showFinish && (
             <button className="btn btn-sm" style={{ background:'linear-gradient(180deg, var(--gold2), var(--gold))', color:'#1a1305' }}
               onClick={onClose}>✓ Voir la saison {data.season}</button>
           )}
