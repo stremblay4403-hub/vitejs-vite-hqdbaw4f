@@ -4943,6 +4943,7 @@ export default function App() {
     const l = currentSeason.leagues[leagueName];
     const lastPlacers = [];
     const dangerCars = []; // pour la présentation cinématique — car + groupe + stats qui l'ont envoyé en barrage
+    const allBonus = computeAllSeasonsBonus(leagueName);
     for (let g = 0; g < GROUPS; g++) {
       const groupCars = l.cars.filter(c => c.group === g);
       const matches = l.groupResults[g] || [];
@@ -4951,8 +4952,14 @@ export default function App() {
       if (last) {
         const car = l.cars.find(c => c.id === last.id);
         lastPlacers.push(car);
-        if (car) dangerCars.push({ ...car, group: g, photo: getCarPhoto(car.id),
-          gp: last.gp, w: last.w, d: last.d, l: last.l, gf: last.gf, ga: last.ga, pts: last.pts });
+        if (car) {
+          const bonusEntry = allBonus.find(e => e.id === car.id || namesMatch(e.name, car.name));
+          const totalPts = bonusEntry?.total || 0;
+          const info = computeCarSimpleInfo(car.id, car.name, currentSeason.season, totalPts);
+          dangerCars.push({ ...car, group: g, photo: getCarPhoto(car.id),
+            gp: last.gp, w: last.w, d: last.d, l: last.l, gf: last.gf, ga: last.ga, pts: last.pts,
+            narrative: buildDangerNarrative(info) });
+        }
       }
     }
     const validCars = lastPlacers.filter(Boolean);
@@ -7345,6 +7352,37 @@ export default function App() {
     return { totalPts, lastSeasonRank, lastSeasonGroupSize, streak, dangerLastSeason, championLastSeason, newlyPromoted, recentSeasons };
   }
 
+  // Génère une phrase contextuelle sur le parcours de la voiture, à la place d'un
+  // texte générique — priorité aux faits les plus parlants (récidive en danger,
+  // série noire, ex-championne, promue trop vite...) avant les cas plus neutres.
+  function buildDangerNarrative(info) {
+    if (info.dangerLastSeason) {
+      return 'Déjà en danger la saison dernière — deuxième zone rouge de suite.';
+    }
+    if (info.streak?.type === 'none' && info.streak.count >= 3) {
+      return `${info.streak.count} saisons difficiles de suite, sans points annexes.`;
+    }
+    if (info.championLastSeason) {
+      return `Championne de ${info.championLastSeason} la saison dernière — chute vertigineuse.`;
+    }
+    if (info.newlyPromoted) {
+      return 'À peine promue en ligue principale, déjà dans le dur.';
+    }
+    if (info.streak?.type === 'playoffs' && info.streak.count >= 3) {
+      return `Habituée des playoffs (${info.streak.count} saisons de suite) — accident de parcours cette fois ?`;
+    }
+    if (info.totalPts >= 15) {
+      return `Mauvaise saison sur le terrain, mais bien positionnée aux points annexes (${info.totalPts} pts carrière).`;
+    }
+    if (info.streak?.type === 'points' && info.streak.count >= 3) {
+      return `Reste régulière aux points annexes depuis ${info.streak.count} saisons malgré cette contre-performance.`;
+    }
+    if (info.lastSeasonRank && info.lastSeasonGroupSize && info.lastSeasonRank <= Math.ceil(info.lastSeasonGroupSize / 2)) {
+      return 'Était pourtant dans le haut de son groupe la saison dernière.';
+    }
+    return 'Une saison compliquée à confirmer dès le barrage.';
+  }
+
   function DrawCeremony({ data, onClose }) {
     const [leagueIdx, setLeagueIdx] = useState(0);
     const [revealedCount, setRevealedCount] = useState(0);
@@ -7693,8 +7731,12 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ marginTop:18 }}>
-              <span className="badge badge-red">⚠️ Doit gagner le barrage pour rester en {leagueName}</span>
+            <div style={{
+                marginTop:18, fontSize:13, color:'var(--text-dim)', fontStyle:'italic',
+                maxWidth:340, marginLeft:'auto', marginRight:'auto', lineHeight:1.4,
+                borderTop:'1px solid rgba(231,76,60,0.25)', paddingTop:12,
+              }}>
+              {car.narrative || 'Une saison compliquée à confirmer dès le barrage.'}
             </div>
           </div>
         )}
