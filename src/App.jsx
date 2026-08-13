@@ -2298,22 +2298,6 @@ const firebaseConfig = {
 
 const firebaseApp = initializeApp(firebaseConfig);
 const firestoreDb = getFirestore(firebaseApp);
-
-// ── Notifications push (Web Push) ──────────────────────────────────
-// Clé publique VAPID générée une fois via `npx web-push generate-vapid-keys`
-// (la clé privée correspondante reste côté serveur, en variable d'env Vercel).
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY;
-
-// Safari/WebKit exige un Uint8Array pour applicationServerKey (une simple
-// string ne fonctionne que sur Chrome) — conversion depuis le base64url VAPID.
-function urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; i++) outputArray[i] = rawData.charCodeAt(i);
-  return outputArray;
-}
 console.log('%c[Tournois de Voitures] build archivage v30 — notifs responsive (desktop max-width 560px))', 'color:#c9a84c;font-weight:bold');
 const dataDocRef   = doc(firestoreDb, 'tournois', 'main');
 const photosDocRef = doc(firestoreDb, 'tournois', 'photos');
@@ -3246,6 +3230,7 @@ export default function App() {
   const [seasonTransition, setSeasonTransition] = useState(null); // { from, to } numéros de saison, ou null
   const [drawCeremony, setDrawCeremony] = useState(null); // { season, leagues: { [name]: groups[][] } } ou null
   const drawPendingRef = useRef(false); // marqué true uniquement par handleNextSeason (pas addSeason/import/reset)
+  const [dangerPresentation, setDangerPresentation] = useState(null); // { leagueName, seasonNum, cars } ou null
 
   // Dès que la nouvelle saison est committée en state (par handleNextSeason, jamais par
   // addSeason/import/reset), on relit le résultat déjà tiré (initLeague/shuffle) et on
@@ -3431,52 +3416,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
   const [notifications, setNotifications] = useState([]);
-  const [pushStatus, setPushStatus] = useState('checking'); // checking | unsupported | off | on | pending
   const [globalSearchOpen, setGlobalSearchOpen] = useState(false);
-
-  // Vérifie au chargement si ce device a déjà un abonnement push actif
-  useEffect(() => {
-    if (!('serviceWorker' in navigator) || !('PushManager' in window) || !VAPID_PUBLIC_KEY) {
-      setPushStatus('unsupported');
-      return;
-    }
-    navigator.serviceWorker.register('/sw.js')
-      .then(reg => reg.pushManager.getSubscription())
-      .then(sub => setPushStatus(sub ? 'on' : 'off'))
-      .catch(() => setPushStatus('unsupported'));
-  }, []);
-
-  async function togglePush() {
-    if (pushStatus === 'pending' || pushStatus === 'checking' || pushStatus === 'unsupported') return;
-    setPushStatus('pending');
-    try {
-      const reg = await navigator.serviceWorker.register('/sw.js');
-      if (pushStatus === 'on') {
-        const sub = await reg.pushManager.getSubscription();
-        if (sub) {
-          await deleteDoc(doc(firestoreDb, 'pushSubscriptions', btoa(sub.endpoint).slice(0, 120)));
-          await sub.unsubscribe();
-        }
-        setPushStatus('off');
-        return;
-      }
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') { setPushStatus('off'); return; }
-      const sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-      await setDoc(doc(firestoreDb, 'pushSubscriptions', btoa(sub.endpoint).slice(0, 120)), {
-        subscription: sub.toJSON(),
-        createdAt: Date.now(),
-      });
-      setPushStatus('on');
-    } catch (e) {
-      console.error('Push subscribe error:', e);
-      setPushStatus('off');
-      alert('❌ Impossible d\'activer les notifications : ' + e.message + '\n(Sur iPhone, l\'app doit être installée via "Ajouter à l\'écran d\'accueil".)');
-    }
-  }
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
 
@@ -4346,23 +4286,6 @@ export default function App() {
     const id = genId();
     setNotifications(n => [...n, { id, msg, type, photoUrl, carName, carPts, playoffCount }]);
     setTimeout(() => setNotifications(n => n.filter(x => x.id !== id)), 5000);
-    sendServerPush(msg, photoUrl, carName, carPts, playoffCount);
-  }
-
-  // Relaie le même événement vers /api/send-push, qui l'envoie à tous les
-  // devices abonnés (push natif — arrive même app fermée). Best-effort : un
-  // échec réseau ici ne doit jamais casser le flux de jeu, donc on avale l'erreur.
-  function sendServerPush(msg, photoUrl, carName, carPts, playoffCount) {
-    if (isLoadingFromFirebase.current) return; // évite le spam pendant un rechargement/sync massif
-    const title = carName || 'Tournois de Voitures';
-    const bodyParts = [msg];
-    if (carPts != null) bodyParts.push(`${carPts} pts`);
-    if (playoffCount) bodyParts.push(`${playoffCount} qualification aux playoffs`);
-    fetch('/api/send-push', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, body: bodyParts.join(' — '), icon: photoUrl, image: photoUrl }),
-    }).catch(() => {});
   }
 
   // Détecter les promotions/relégations mathématiques
@@ -5019,12 +4942,18 @@ export default function App() {
   function initRelegation(leagueName) {
     const l = currentSeason.leagues[leagueName];
     const lastPlacers = [];
+    const dangerCars = []; // pour la présentation cinématique — car + groupe + stats qui l'ont envoyé en barrage
     for (let g = 0; g < GROUPS; g++) {
       const groupCars = l.cars.filter(c => c.group === g);
       const matches = l.groupResults[g] || [];
       const standings = computeStandings(groupCars, matches);
       const last = standings[standings.length - 1];
-      if (last) lastPlacers.push(l.cars.find(c => c.id === last.id));
+      if (last) {
+        const car = l.cars.find(c => c.id === last.id);
+        lastPlacers.push(car);
+        if (car) dangerCars.push({ ...car, group: g, photo: getCarPhoto(car.id),
+          gp: last.gp, w: last.w, d: last.d, l: last.l, gf: last.gf, ga: last.ga, pts: last.pts });
+      }
     }
     const validCars = lastPlacers.filter(Boolean);
     const matches = roundRobinMatchups(validCars);
@@ -5032,6 +4961,9 @@ export default function App() {
     const relMatches = {};
     matches.forEach(m => { relMatches[m.id] = m; });
     updateLeague(leagueName, l => ({ ...l, relegationResults: relMatches, relegationCars: validCars.map(c => c.id) }));
+    if (dangerCars.length > 0) {
+      setDangerPresentation({ leagueName, seasonNum: currentSeason.season, cars: dangerCars });
+    }
   }
 
   function updatePlayoffMatch(leagueName, matchId, homeGoals, awayGoals) {
@@ -7656,6 +7588,123 @@ export default function App() {
           @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
           @keyframes introSlideUp { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:translateY(0); } }
           @keyframes introFill { from { width:0%; } to { width:100%; } }
+        `}</style>
+      </div>
+    ), document.body);
+  }
+
+  // Présentation cinématique des voitures « en danger » (dernières de chaque groupe),
+  // déclenchée automatiquement quand le barrage de relégation est généré. Même pattern
+  // que GroupIntroPresentation (reveal une par une, portal, avance au clic) mais teinté
+  // rouge/alerte plutôt que doré, et centré sur les stats qui ont valu la dernière place.
+  function RelegationDangerPresentation({ leagueName, seasonNum, cars, onClose }) {
+    const [idx, setIdx] = useState(-1); // -1 = carton de titre
+    const [paused, setPaused] = useState(false);
+    const total = cars.length;
+
+    useEffect(() => { if (total === 0) onClose(); }, [total]);
+
+    useEffect(() => {
+      if (paused) return;
+      const delay = idx === -1 ? 1600 : 3000;
+      const t = setTimeout(() => {
+        setIdx(i => {
+          if (i + 1 >= total) { onClose(); return i; }
+          return i + 1;
+        });
+      }, delay);
+      return () => clearTimeout(t);
+    }, [idx, paused, total]);
+
+    const car = idx >= 0 && idx < cars.length ? cars[idx] : null;
+
+    return ReactDOM.createPortal((
+      <div
+        onClick={() => { if (idx + 1 >= total) onClose(); else setIdx(i => i + 1); }}
+        style={{
+          position:'fixed', inset:0, zIndex:9999,
+          background:'radial-gradient(ellipse at center, #2a0e0e 0%, #000 100%)',
+          display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center',
+          cursor:'pointer', animation:'fadeIn 0.4s ease',
+        }}>
+        <button
+          onClick={e => { e.stopPropagation(); onClose(); }}
+          style={{
+            position:'absolute', top:18, right:18, background:'rgba(255,255,255,0.08)', border:'1px solid rgba(255,255,255,0.2)',
+            color:'#fff', borderRadius:20, padding:'6px 14px', fontSize:12, letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif",
+          }}>
+          PASSER ›
+        </button>
+
+        {/* Barre de progression rouge */}
+        <div style={{ position:'absolute', top:18, left:18, right:100, display:'flex', gap:4 }}>
+          {cars.map((_, i) => (
+            <div key={i} style={{
+              flex:1, height:3, borderRadius:2, background: i < idx ? '#e74c3c' : i === idx ? 'rgba(231,76,60,0.5)' : 'rgba(255,255,255,0.15)',
+              overflow:'hidden',
+            }}>
+              {i === idx && <div style={{ height:'100%', width:'100%', background:'#e74c3c', animation:'introFill 3s linear forwards' }} />}
+            </div>
+          ))}
+        </div>
+
+        {idx === -1 ? (
+          <div style={{ textAlign:'center', animation:'introSlideUp 0.6s ease' }}>
+            <div style={{ fontSize:38, marginBottom:10, animation:'dangerPulse 1.4s ease-in-out infinite' }}>⚠️</div>
+            <div style={{ color:'#e88', fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:4, marginBottom:8 }}>
+              SAISON {seasonNum} — {leagueName}
+            </div>
+            <div style={{ color:'#e74c3c', fontFamily:"'Bebas Neue',sans-serif", fontSize:40, letterSpacing:5, textShadow:'0 0 24px rgba(231,76,60,0.4)' }}>
+              BARRAGE DE RELÉGATION
+            </div>
+            <div style={{ color:'var(--text-dim)', fontSize:13, marginTop:10 }}>{total} voitures en danger — dernières de leur groupe</div>
+          </div>
+        ) : car && (
+          <div key={car.id} style={{ textAlign:'center', animation:'introSlideUp 0.5s ease', maxWidth:420, padding:'0 24px' }}>
+            <div style={{ marginBottom:10, fontSize:13, letterSpacing:2, color:'#e74c3c', fontFamily:"'Bebas Neue',sans-serif" }}>
+              ⚠️ DERNIÈRE — GROUPE {car.group + 1}
+            </div>
+            <div style={{
+              width:320, maxWidth:'100%', height:190, margin:'0 auto 20px', borderRadius:10, overflow:'hidden',
+              background:'var(--dark3)', display:'flex', alignItems:'center', justifyContent:'center',
+              border:'2px solid rgba(231,76,60,0.5)', boxShadow:'0 0 40px rgba(231,76,60,0.25)',
+            }}>
+              {car.photo ? <img src={car.photo} style={{ width:'100%', height:'100%', objectFit:'cover' }} /> : <span style={{ fontSize:64 }}>🚗</span>}
+            </div>
+            <div style={{ color:'#fff', fontFamily:"'Bebas Neue',sans-serif", fontSize:32, letterSpacing:2 }}>{car.name}</div>
+            <div style={{ color:'var(--text-dim)', fontSize:12, marginTop:4 }}>
+              #{idx + 1} / {total} en danger
+            </div>
+
+            <div style={{ display:'flex', gap:16, justifyContent:'center', marginTop:18 }}>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'#e74c3c' }}>{car.pts}</div>
+                <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>PTS</div>
+              </div>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color:'var(--text)' }}>{car.w}-{car.d}-{car.l}</div>
+                <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>V-N-D</div>
+              </div>
+              <div style={{ textAlign:'center' }}>
+                <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:22, color: (car.gf - car.ga) < 0 ? '#e74c3c' : 'var(--text)' }}>
+                  {car.gf - car.ga > 0 ? '+' : ''}{car.gf - car.ga}
+                </div>
+                <div style={{ fontSize:9, color:'var(--text-dim)', letterSpacing:1 }}>DIFF</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop:18 }}>
+              <span className="badge badge-red">⚠️ Doit gagner le barrage pour rester en {leagueName}</span>
+            </div>
+          </div>
+        )}
+
+        <div style={{ position:'absolute', bottom:20, color:'var(--text-dim)', fontSize:11, letterSpacing:1 }}>
+          Touchez l'écran pour continuer
+        </div>
+
+        <style>{`
+          @keyframes dangerPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(1.08); } }
         `}</style>
       </div>
     ), document.body);
@@ -15363,6 +15412,14 @@ export default function App() {
       {drawCeremony && (
         <DrawCeremony data={drawCeremony} onClose={() => setDrawCeremony(null)} />
       )}
+      {dangerPresentation && (
+        <RelegationDangerPresentation
+          leagueName={dangerPresentation.leagueName}
+          seasonNum={dangerPresentation.seasonNum}
+          cars={dangerPresentation.cars}
+          onClose={() => setDangerPresentation(null)}
+        />
+      )}
       <div className={`app${isPublicMode ? ' public-mode' : ''}`} style={{ '--season-tint': ['rgba(212,175,55,0.05)','rgba(41,128,185,0.05)','rgba(230,126,34,0.05)','rgba(46,204,113,0.04)'][currentSeason.season % 4] }}>
         {/* Avertissement navigation privée */}
         {isPrivate && (
@@ -15511,18 +15568,6 @@ export default function App() {
           <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
             🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
           </button>
-          {pushStatus !== 'unsupported' && (
-            <button className="btn btn-sm" style={{ flexShrink:0,
-                background: pushStatus === 'on' ? 'rgba(39,174,96,0.15)' : 'var(--dark3)',
-                borderColor: pushStatus === 'on' ? 'var(--green)' : 'var(--border)',
-                color: pushStatus === 'on' ? 'var(--green)' : 'var(--text-dim)',
-                opacity: pushStatus === 'pending' || pushStatus === 'checking' ? 0.5 : 1 }}
-              disabled={pushStatus === 'pending' || pushStatus === 'checking'}
-              onClick={togglePush}
-              title={pushStatus === 'on' ? 'Désactiver les notifications push' : 'Activer les notifications push (photo + mêmes alertes que dans l\'app)'}>
-              {pushStatus === 'on' ? '🔔' : '🔕'}
-            </button>
-          )}
           <div className="header-actions">
             {isPublicMode ? (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
