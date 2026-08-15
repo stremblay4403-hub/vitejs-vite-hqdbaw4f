@@ -3283,6 +3283,14 @@ export default function App() {
   const StableAllCarsView = React.useRef((props) => allCarsViewImplRef.current ? allCarsViewImplRef.current(props) : null).current;
   const marquesViewImplRef = React.useRef(null);
   const StableMarquesView = React.useRef((props) => marquesViewImplRef.current ? marquesViewImplRef.current(props) : null).current;
+  // Sous-vues imbriquées dans MarquesView — stabilisées de la même façon, sinon elles sont
+  // redéfinies (nouvelle référence de fonction) à chaque re-render de MarquesView, donc React
+  // les démonte/remonte intégralement au moindre clic (même en restant sur la même marque/pays),
+  // ce qui perturbe le scroll de la barre d'onglets principale au passage.
+  const countryDetailPageImplRef = React.useRef(null);
+  const StableCountryDetailPage = React.useRef((props) => countryDetailPageImplRef.current ? countryDetailPageImplRef.current(props) : null).current;
+  const brandDetailPageImplRef = React.useRef(null);
+  const StableBrandDetailPage = React.useRef((props) => brandDetailPageImplRef.current ? brandDetailPageImplRef.current(props) : null).current;
   const voituresViewImplRef = React.useRef(null);
   const StableVoituresView = React.useRef((props) => voituresViewImplRef.current ? voituresViewImplRef.current(props) : null).current;
   const comparaisonViewImplRef = React.useRef(null);
@@ -13269,12 +13277,20 @@ export default function App() {
   function MarquesView({ subTab }) {
     const showSkeleton = useMountSkeleton();
 
+    // Rafraîchir les refs stables AVANT les retours anticipés ci-dessous, sinon elles ne seraient
+    // jamais mises à jour tant qu'on reste sur une page de détail (le code après un `return`
+    // anticipé ne s'exécute jamais) et le contenu affiché resterait figé sur d'anciennes valeurs.
+    // Les déclarations `function` étant hissées en JS, la référence est valide ici malgré leur
+    // position textuelle plus bas dans le fichier.
+    countryDetailPageImplRef.current = CountryDetailPage;
+    brandDetailPageImplRef.current = BrandDetailPage;
+
     if (brandDetail) {
-      return <BrandDetailPage key={brandDetail} brand={brandDetail} />;
+      return <StableBrandDetailPage key={brandDetail} brand={brandDetail} />;
     }
 
     if (countryDetail) {
-      return <CountryDetailPage key={countryDetail} code={countryDetail} />;
+      return <StableCountryDetailPage key={countryDetail} code={countryDetail} />;
     }
 
     if (showSkeleton) {
