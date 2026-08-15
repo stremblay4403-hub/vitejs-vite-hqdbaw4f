@@ -16040,7 +16040,7 @@ export default function App() {
 
 
         {/* League selector for principales + bonus */}
-        {((mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus') && (
+        {((mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales') || mainTab === 'bonus') && (
           <div className="tabs" id="tabs-leagues" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
             {LEAGUES.map(l => (
               <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={e => {
@@ -16058,7 +16058,7 @@ export default function App() {
         )}
 
         {/* Section tabs for principales */}
-        {mainTab === 'ligues' && ligueSubTab === 'principales' && (
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && (
           <div className="tabs" id="tabs-section" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
             {[
               { key: 'groupes', label: 'Phase de Groupes' },
@@ -16080,7 +16080,7 @@ export default function App() {
         )}
 
         {/* Sous-onglets Actuelles */}
-        {mainTab === 'ligues' && ligueSubTab === 'actuelles' && (
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && (
           <div className="tabs" id="tabs-actuelles" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
             {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
               <button key={l} className={`tab ${actuellesLeague === l ? 'active' : ''}`}
@@ -16143,24 +16143,24 @@ export default function App() {
         {/* Content */}
         <div className="content tab-content tab-content-fade" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'groupes' && <StableGroupesView />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <StablePlayoffsView />}
-          {mainTab === 'ligues' && ligueSubTab === 'principales' && sectionTab === 'relegation' && <StableRelegationView />}
-          {mainTab === 'ligues' && ligueSubTab === 'champions' && <StableTournoiChampionsView />}
-          {mainTab === 'ligues' && ligueSubTab === 'successeurs' && <StableSuccesseursView />}
-          {mainTab === 'ligues' && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'remplac' && <RemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'avantdern' && <AvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'derniere' && <DerniereView subTab={derniereSubTab} setSubTab={setDerniereSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'persev' && <PersevView subTab={persevSubTab} setSubTab={setPersevSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'deter' && <DeterView subTab={deterSubTab} setSubTab={setDeterSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'acharn' && <AcharnView subTab={acharnSubTab} setSubTab={setAcharnSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'obstin' && <ObstinView subTab={obstinSubTab} setSubTab={setObstinSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'insist' && <InsistView subTab={insistSubTab} setSubTab={setInsistSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
-          {mainTab === 'ligues' && ligueSubTab === 'actuelles' && !isPublicMode && (
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && sectionTab === 'groupes' && <StableGroupesView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <StablePlayoffsView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && sectionTab === 'relegation' && <StableRelegationView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'champions' && <StableTournoiChampionsView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'successeurs' && <StableSuccesseursView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'remplac' && <RemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'avantdern' && <AvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'derniere' && <DerniereView subTab={derniereSubTab} setSubTab={setDerniereSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'persev' && <PersevView subTab={persevSubTab} setSubTab={setPersevSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'deter' && <DeterView subTab={deterSubTab} setSubTab={setDeterSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'acharn' && <AcharnView subTab={acharnSubTab} setSubTab={setAcharnSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'obstin' && <ObstinView subTab={obstinSubTab} setSubTab={setObstinSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'insist' && <InsistView subTab={insistSubTab} setSubTab={setInsistSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !isPublicMode && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
               {!confirmSimActuelles
                 ? <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }}
@@ -16175,7 +16175,7 @@ export default function App() {
               }
             </div>
           )}
-          {mainTab === 'ligues' && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
           {mainTab === 'bonus' && <StableBonusView />}
           {mainTab === 'voitures' && <StableAllCarsView />}
           {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
