@@ -24,6 +24,24 @@ const LIGUE_SUBTAB_COLORS = {
   import: '#784212',
   oubl: '#424949',
 };
+const LIGUE_SUBTAB_LABELS = {
+  champions: '🏆 Tournoi des Champions',
+  principales: 'Ligues Principales',
+  successeurs: 'Successeurs',
+  actuelles: 'Actuelles',
+  sucsucc: 'Succ. aux Succ.',
+  remplac: 'Remplaçants',
+  avantdern: 'Avant-dernière',
+  derniere: 'Dernière chance',
+  persev: 'Persévérance',
+  deter: 'Détermination',
+  acharn: 'Acharnement',
+  obstin: 'Obstination',
+  insist: 'Insistance',
+  comeback: 'Comeback',
+  import: 'Importation',
+  oubl: 'Oubliettes',
+};
 const AUXILIARY_LEAGUES = ["Successeurs", "Actuelles 1", "Actuelles 2", "Actuelles 3", "Actuelles 4", "Actuelles 5", "Actuelles 6", "Actuelles 7", "Actuelles 8", "Actuelles 9", "Actuelles 10", "Actuelles 11", "Actuelles 12", "Successeurs aux Successeurs", "Remplaçants des Successeurs", "Avant-dernière chance", "Dernière chance", "Persévérance", "Détermination", "Acharnement", "Obstination", "Insistance", "Comeback", "Importation", "Oubliettes"];
 const GROUPS = 8;
 const CARS_PER_GROUP = 18;
@@ -1559,6 +1577,8 @@ const css = `
 
   /* Tabs — hiérarchie de profondeur : niveau 1 = nav héros soulignée, niveaux 2+ = pilules compactes */
   .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; position: relative; }
+  .menu-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
+  @media (min-width: 900px) { .menu-grid { grid-template-columns: repeat(3, 1fr); } }
   .tab {
     font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.5px; font-size: 13px;
     padding: 8px 14px; cursor: pointer; border: none; background: none;
@@ -3330,6 +3350,8 @@ export default function App() {
   const [mainTab, setMainTab] = useState("dashboard");
   // Menu plein écran (grille des 6 sections) — remplace l'ancienne barre d'onglets horizontale
   const [menuOpen, setMenuOpen] = useState(false);
+  // Sous-menu Ligues (grille des 16 ligues/paliers) — même principe de navigation
+  const [liguesMenuOpen, setLiguesMenuOpen] = useState(true);
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
   const [voituresQueueTab, setVoituresQueueTab] = useState(false);
@@ -15940,7 +15962,7 @@ export default function App() {
         {menuOpen && (
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>Menu</div>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+            <div className="menu-grid">
               {[
                 { key: 'ligues', label: 'Ligues', icon: '🏁' },
                 { key: 'bonus', label: 'Points Annexes', icon: '⭐' },
@@ -15950,7 +15972,7 @@ export default function App() {
                 { key: 'pays', label: 'Pays', icon: '🌍' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setMainTab(t.key); setMenuOpen(false); }}
+                  onClick={() => { setMainTab(t.key); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -15967,50 +15989,55 @@ export default function App() {
 
         {!menuOpen && (
         <>
-        {/* Sous-onglets Ligues */}
-        {mainTab === 'ligues' && (
-          <div className="tabs" id="tabs-ligues" style={{ background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
-            {[
-              { key: 'champions', label: '🏆 Tournoi des Champions' },
-              { key: 'principales', label: 'Ligues Principales' },
-              { key: 'successeurs', label: 'Successeurs' },
-              { key: 'actuelles', label: 'Actuelles' },
-              { key: 'sucsucc', label: 'Succ. aux Succ.' },
-              { key: 'remplac', label: 'Remplaçants' },
-              { key: 'avantdern', label: 'Avant-dernière' },
-              { key: 'derniere', label: 'Dernière chance' },
-              { key: 'persev', label: 'Persévérance' },
-              { key: 'deter', label: 'Détermination' },
-              { key: 'acharn', label: 'Acharnement' },
-              { key: 'obstin', label: 'Obstination' },
-              { key: 'insist', label: 'Insistance' },
-              { key: 'comeback', label: 'Comeback' },
-              { key: 'import', label: 'Importation' },
-              { key: 'oubl', label: 'Oubliettes' },
-            ].map(t => (
-              <button key={t.key} className={`tab ${ligueSubTab === t.key ? 'active' : ''}`} onClick={e => {
-                const bar = e.currentTarget.parentElement;
-                const sl = bar.scrollLeft;
-                const mainBar = document.getElementById('tabs-main');
-                const mainSl = mainBar ? mainBar.scrollLeft : 0;
-                saveScrollForTab();
-                setLigueSubTab(t.key);
-                restoreScrollForTab(`ligues|${t.key}|${leagueTab}|${sectionTab}|${histSubTab}`);
-                requestAnimationFrame(() => {
-                  bar.scrollLeft = sl;
-                  if (mainBar) mainBar.scrollLeft = mainSl;
-                  // Double rAF pour s'assurer que le DOM est stable
-                  requestAnimationFrame(() => {
-                    bar.scrollLeft = sl;
-                    if (mainBar) mainBar.scrollLeft = mainSl;
-                  });
-                });
-              }} style={ligueSubTab === t.key && LIGUE_SUBTAB_COLORS[t.key] ? { background: LIGUE_SUBTAB_COLORS[t.key], color: '#fff', boxShadow: `0 2px 8px ${LIGUE_SUBTAB_COLORS[t.key]}55` } : undefined}>
-                {t.label}
-              </button>
-            ))}
+        {/* Sous-menu Ligues — grille de choix (16 ligues/paliers) */}
+        {mainTab === 'ligues' && liguesMenuOpen && (
+          <div style={{ padding:24 }}>
+            <div className="section-title" style={{ marginBottom:16 }}>Ligues</div>
+            <div className="menu-grid">
+              {[
+                { key: 'champions', label: '🏆 Tournoi des Champions' },
+                { key: 'principales', label: 'Ligues Principales' },
+                { key: 'successeurs', label: 'Successeurs' },
+                { key: 'actuelles', label: 'Actuelles' },
+                { key: 'sucsucc', label: 'Succ. aux Succ.' },
+                { key: 'remplac', label: 'Remplaçants' },
+                { key: 'avantdern', label: 'Avant-dernière' },
+                { key: 'derniere', label: 'Dernière chance' },
+                { key: 'persev', label: 'Persévérance' },
+                { key: 'deter', label: 'Détermination' },
+                { key: 'acharn', label: 'Acharnement' },
+                { key: 'obstin', label: 'Obstination' },
+                { key: 'insist', label: 'Insistance' },
+                { key: 'comeback', label: 'Comeback' },
+                { key: 'import', label: 'Importation' },
+                { key: 'oubl', label: 'Oubliettes' },
+              ].map(t => (
+                <button key={t.key}
+                  onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); }}
+                  style={{
+                    aspectRatio:'1.3',
+                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
+                    background: LIGUE_SUBTAB_COLORS[t.key] ? `${LIGUE_SUBTAB_COLORS[t.key]}22` : 'var(--dark2)',
+                    border:`1px solid ${LIGUE_SUBTAB_COLORS[t.key] || 'var(--border)'}`, borderRadius:10,
+                    color:'var(--text)', cursor:'pointer', textAlign:'center', padding:8,
+                  }}>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
+
+        {/* Barre de retour vers le sous-menu Ligues, une fois une ligue choisie */}
+        {mainTab === 'ligues' && !liguesMenuOpen && (
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 24px',background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
+            <button className="btn btn-dark btn-sm" onClick={() => setLiguesMenuOpen(true)}>← Retour aux ligues</button>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color: LIGUE_SUBTAB_COLORS[ligueSubTab] || 'var(--gold)' }}>
+              {LIGUE_SUBTAB_LABELS[ligueSubTab] || ligueSubTab}
+            </span>
+          </div>
+        )}
+
 
         {/* League selector for principales + bonus */}
         {((mainTab === 'ligues' && ligueSubTab === 'principales') || mainTab === 'bonus') && (
