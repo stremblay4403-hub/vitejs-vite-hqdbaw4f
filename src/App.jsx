@@ -6693,6 +6693,8 @@ export default function App() {
                         const absDiff = diff !== null ? Math.abs(diff) : 0;
                         const { fontSize: arrowSize, glow } = arrowIntensity(absDiff);
                         const arrowColor = diff > 0 ? '39,174,96' : '231,76,60'; // rgb de --green / rouge relégation
+                        const brand = e.id ? getCarBrand(e.id) : '';
+                        const flagCode = brand ? getBrandCountry(brand) : '';
                         return (
                           <div key={e.id || e.name}
                             style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
@@ -6703,7 +6705,15 @@ export default function App() {
                                 : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                             </div>
                             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
-                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1,letterSpacing:1,color:'var(--text)' }}>{e.name}</span>
+                            <div style={{ flex:1,display:'flex',flexDirection:'column',gap:1,minWidth:0 }}>
+                              <div style={{ display:'flex',alignItems:'center',gap:6 }}>
+                                {flagCode && <CountryFlag code={flagCode} size={16} />}
+                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{e.name}</span>
+                              </div>
+                              {brand && (
+                                <span style={{ fontSize:10,color:'var(--text-dim)',letterSpacing:1.5,textTransform:'uppercase',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{brand}</span>
+                              )}
+                            </div>
                             {diff !== null && diff !== 0 && (
                               <span style={{
                                 fontSize: arrowSize,
