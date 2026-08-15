@@ -3917,7 +3917,15 @@ export default function App() {
     // (l'équivalent exact d'un rafraîchissement manuel, qui chez toi marche instantanément).
     // Le garde "updatedAt déjà appliqué" dans subscribeData évite tout re-rendu inutile quand
     // rien n'a changé. Entre deux redémarrages, le temps réel instantané fonctionne normalement.
-    const resubInterval = setInterval(() => { subscribeData(); }, 3000);
+    const resubInterval = setInterval(() => {
+      // Ne pas recréer le listener au milieu d'une rafale d'écritures (ex. plusieurs journées
+      // simulées rapidement) : chaque redémarrage force une lecture serveur complète, et en
+      // pleine rafale ça s'accumule avec la file d'écriture → blocage perçu de 1-2 min avant
+      // que ça se stabilise. On attend que ça soit calme (aucune écriture en cours/en attente
+      // et rien parti depuis 4s) avant de relancer le filet de sécurité.
+      if (dataWriteInFlight || pendingDataWrite || (Date.now() - lastDataWriteAt < 4000)) return;
+      subscribeData();
+    }, 3000);
 
     return () => { if (unsubData) unsubData(); unsubPhotos(); clearInterval(resubInterval); };
   }, []);
@@ -6671,10 +6679,20 @@ export default function App() {
                         .forEach((e, idx) => { prevRankMap[e.name] = idx + 1; });
                       const hasPrev = Object.keys(prevRankMap).length > 0;
 
+                      // Intensité de la flèche selon l'ampleur du saut de classement : plus le
+                      // écart |diff| est grand, plus la flèche est grosse et lumineuse (glow).
+                      const arrowIntensity = (absDiff) => {
+                        if (absDiff >= 8) return { fontSize: 17, glow: 0.85, scale: 1 };
+                        if (absDiff >= 4) return { fontSize: 14, glow: 0.55, scale: 1 };
+                        return { fontSize: 12, glow: 0, scale: 1 };
+                      };
                       const renderRow = (e, i) => {
                         const prevRank = prevRankMap[e.name];
                         const diff = prevRank != null ? prevRank - (i + 1) : null;
                         const photo = getCarPhoto(e.id) || getCarPhotoByName(e.name);
+                        const absDiff = diff !== null ? Math.abs(diff) : 0;
+                        const { fontSize: arrowSize, glow } = arrowIntensity(absDiff);
+                        const arrowColor = diff > 0 ? '39,174,96' : '231,76,60'; // rgb de --green / rouge relégation
                         return (
                           <div key={e.id || e.name}
                             style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
@@ -6687,8 +6705,15 @@ export default function App() {
                             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
                             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,flex:1,letterSpacing:1,color:'var(--text)' }}>{e.name}</span>
                             {diff !== null && diff !== 0 && (
-                              <span style={{ fontSize:12,fontWeight:700,color: diff > 0 ? 'var(--green)' : '#e74c3c',flexShrink:0 }}>
-                                {diff > 0 ? '▲' : '▼'}{Math.abs(diff)}
+                              <span style={{
+                                fontSize: arrowSize,
+                                fontWeight:700,
+                                color: `rgb(${arrowColor})`,
+                                flexShrink:0,
+                                textShadow: glow > 0 ? `0 0 ${6 + glow*10}px rgba(${arrowColor},${glow})` : undefined,
+                                transition:'font-size 0.2s ease',
+                              }}>
+                                {diff > 0 ? '▲' : '▼'}{absDiff}
                               </span>
                             )}
                             {diff === 0 && <span style={{ fontSize:12,color:'var(--text-dim)',flexShrink:0 }}>—</span>}
