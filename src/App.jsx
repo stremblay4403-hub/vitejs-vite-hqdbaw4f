@@ -13610,8 +13610,18 @@ export default function App() {
         <div>
           <div className="section-title">Marques — Pays</div>
           <div className="tabs" style={{ marginBottom:10 }}>
-            <button className={`tab ${paysSubTab === 'points' ? 'active' : ''}`} onClick={() => setPaysSubTab('points')}>Points Annexes</button>
-            <button className={`tab ${paysSubTab === 'titres' ? 'active' : ''}`} onClick={() => setPaysSubTab('titres')}>🏆 Titres</button>
+            <button className={`tab ${paysSubTab === 'points' ? 'active' : ''}`} onClick={() => {
+              const mainBar = document.getElementById('tabs-main');
+              const mainSl = mainBar ? mainBar.scrollLeft : 0;
+              setPaysSubTab('points');
+              requestAnimationFrame(() => { if (mainBar) mainBar.scrollLeft = mainSl; });
+            }}>Points Annexes</button>
+            <button className={`tab ${paysSubTab === 'titres' ? 'active' : ''}`} onClick={() => {
+              const mainBar = document.getElementById('tabs-main');
+              const mainSl = mainBar ? mainBar.scrollLeft : 0;
+              setPaysSubTab('titres');
+              requestAnimationFrame(() => { if (mainBar) mainBar.scrollLeft = mainSl; });
+            }}>🏆 Titres</button>
           </div>
           <input
             value={paysSearch}
@@ -16053,14 +16063,30 @@ export default function App() {
         )}
 
         {mainTab === 'marques' && (
-          <div className="tabs" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+          <div className="tabs" id="tabs-marques" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
             {[
               { key: 'titres', label: '🏆 Titres' },
               { key: 'principales', label: 'Ligues Principales' },
               { key: 'points', label: 'Points Annexes' },
               { key: 'pays', label: '🌍 Pays' },
             ].map(t => (
-              <button key={t.key} className={`tab ${marquesSubTab === t.key ? 'active' : ''}`} onClick={() => setMarquesSubTab(t.key)}>
+              <button key={t.key} className={`tab ${marquesSubTab === t.key ? 'active' : ''}`} onClick={e => {
+                const bar = e.currentTarget.parentElement;
+                const sl = bar.scrollLeft;
+                const mainBar = document.getElementById('tabs-main');
+                const mainSl = mainBar ? mainBar.scrollLeft : 0;
+                saveScrollForTab();
+                setMarquesSubTab(t.key);
+                restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`);
+                requestAnimationFrame(() => {
+                  bar.scrollLeft = sl;
+                  if (mainBar) mainBar.scrollLeft = mainSl;
+                  requestAnimationFrame(() => {
+                    bar.scrollLeft = sl;
+                    if (mainBar) mainBar.scrollLeft = mainSl;
+                  });
+                });
+              }}>
                 {t.label}
               </button>
             ))}
