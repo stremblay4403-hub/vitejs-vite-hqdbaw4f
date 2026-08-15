@@ -3328,6 +3328,8 @@ export default function App() {
   }, [isPublicMode]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [mainTab, setMainTab] = useState("dashboard");
+  // Menu plein écran (grille des 6 sections) — remplace l'ancienne barre d'onglets horizontale
+  const [menuOpen, setMenuOpen] = useState(false);
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
   const [voituresQueueTab, setVoituresQueueTab] = useState(false);
@@ -13358,7 +13360,7 @@ export default function App() {
           <div className="card" style={{ padding:8 }}>
             {ranked.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab('__marques_detail__'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={b.rank} />
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:16,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
@@ -13571,7 +13573,7 @@ export default function App() {
             )}
             {displayedTitles.map(b => (
               <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab('__marques_detail__'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
                   {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
@@ -13642,7 +13644,7 @@ export default function App() {
             )}
             {displayedCountries.map(c => (
               <div key={c.code} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab('__marques_detail__'); }}>
+                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={c.rank} size={22} /></span>
                   <span className="mq-flag"><CountryFlag code={c.code} size={28} /></span>
@@ -13709,7 +13711,7 @@ export default function App() {
             )}
             {displayedData.map(d => (
               <div key={d.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab('__marques_detail__'); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={d.rank} size={22} /></span>
                   {getBrandCountry(d.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(d.brand)} size={28} /></span>}
@@ -13769,7 +13771,7 @@ export default function App() {
           )}
           {displayedPts.map(b => (
             <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab('__marques_detail__'); }}>
+              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
               <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                 <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
                 {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
@@ -15914,38 +15916,57 @@ export default function App() {
           )}
         </div>
 
-        {/* Main nav */}
-        <div className="tabs" id="tabs-main">
-          {[
-            { key: 'dashboard', label: 'Tableau de Bord' },
-            { key: 'ligues', label: 'Ligues' },
-            { key: 'bonus', label: 'Points Annexes' },
-            { key: 'voitures', label: 'Voitures' },
-            { key: 'marques', label: 'Marques' },
-            { key: 'historique', label: 'Historique' },
-          ].map(t => (
-            <button key={t.key} className={`tab ${mainTab === t.key ? 'active' : ''}`} onClick={e => {
-              const bar = e.currentTarget.parentElement;
-              const sl = bar.scrollLeft;
-              const liguesBar = document.getElementById('tabs-ligues');
-              const liguesSl = liguesBar ? liguesBar.scrollLeft : 0;
-              saveScrollForTab();
-              setMainTab(t.key);
-              restoreScrollForTab(`${t.key}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`);
-              requestAnimationFrame(() => {
-                bar.scrollLeft = sl;
-                if (liguesBar) liguesBar.scrollLeft = liguesSl;
-                requestAnimationFrame(() => {
-                  bar.scrollLeft = sl;
-                  if (liguesBar) liguesBar.scrollLeft = liguesSl;
-                });
-              });
-            }}>
-              {t.label}
-            </button>
-          ))}
+        {/* Barre principale simplifiée — Tableau de Bord + bouton menu (grille des sections) */}
+        <div style={{ display:'flex', gap:8, padding:'10px 24px', borderBottom:'1px solid var(--border)', background:'var(--dark)', alignItems:'center' }}>
+          <button
+            className="btn btn-sm"
+            style={{ background: (mainTab === 'dashboard' && !menuOpen) ? 'var(--gold)' : 'var(--dark3)', color: (mainTab === 'dashboard' && !menuOpen) ? '#1a1305' : 'var(--text)', fontWeight:700 }}
+            onClick={() => { setMainTab('dashboard'); setMenuOpen(false); }}>
+            🏠 Tableau de Bord
+          </button>
+          <button
+            aria-label="Menu"
+            style={{ width:40, height:32, display:'flex',alignItems:'center',justifyContent:'center', background: menuOpen ? 'var(--gold)' : 'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', gap:3, flexDirection:'column' }}
+            onClick={() => setMenuOpen(true)}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 5px)', gridTemplateRows:'repeat(2, 5px)', gap:3 }}>
+              {[0,1,2,3].map(i => <div key={i} style={{ width:5,height:5, background: menuOpen ? '#1a1305' : 'var(--text-dim)', borderRadius:1 }} />)}
+            </div>
+          </button>
+          {!menuOpen && mainTab !== 'dashboard' && (
+            <button className="btn btn-dark btn-sm" style={{ marginLeft:'auto' }} onClick={() => setMenuOpen(true)}>← Retour au menu</button>
+          )}
         </div>
 
+        {menuOpen && (
+          <div style={{ padding:24 }}>
+            <div className="section-title" style={{ marginBottom:16 }}>Menu</div>
+            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:14 }}>
+              {[
+                { key: 'ligues', label: 'Ligues', icon: '🏁' },
+                { key: 'bonus', label: 'Points Annexes', icon: '⭐' },
+                { key: 'historique', label: 'Historique', icon: '📜' },
+                { key: 'voitures', label: 'Voitures', icon: '🚗' },
+                { key: 'marques', label: 'Marques', icon: '🏷️' },
+                { key: 'pays', label: 'Pays', icon: '🌍' },
+              ].map(t => (
+                <button key={t.key}
+                  onClick={() => { setMainTab(t.key); setMenuOpen(false); }}
+                  style={{
+                    aspectRatio:'1.3',
+                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
+                    background:'var(--dark2)', border:'1px solid var(--border)', borderRadius:10,
+                    color:'var(--text)', cursor:'pointer',
+                  }}>
+                  <span style={{ fontSize:32 }}>{t.icon}</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!menuOpen && (
+        <>
         {/* Sous-onglets Ligues */}
         {mainTab === 'ligues' && (
           <div className="tabs" id="tabs-ligues" style={{ background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
@@ -16068,7 +16089,6 @@ export default function App() {
               { key: 'titres', label: '🏆 Titres' },
               { key: 'principales', label: 'Ligues Principales' },
               { key: 'points', label: 'Points Annexes' },
-              { key: 'pays', label: '🌍 Pays' },
             ].map(t => (
               <button key={t.key} className={`tab ${marquesSubTab === t.key ? 'active' : ''}`} onClick={e => {
                 const bar = e.currentTarget.parentElement;
@@ -16132,11 +16152,14 @@ export default function App() {
           {mainTab === 'bonus' && <StableBonusView />}
           {mainTab === 'voitures' && <StableAllCarsView />}
           {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
+          {mainTab === 'pays' && <StableMarquesView subTab="pays" />}
           {mainTab === 'historique' && histSubTab === 'historique' && <StableHistoriqueView />}
           {mainTab === 'historique' && histSubTab === 'mouvements' && <StableVoituresView />}
           {mainTab === 'historique' && histSubTab === 'records' && <StableRecordsView />}
           {mainTab === 'historique' && histSubTab === 'comparaison' && <StableComparaisonView />}
         </div>
+        </>
+        )}
       </div>
     </>
     </PublicModeContext.Provider>
