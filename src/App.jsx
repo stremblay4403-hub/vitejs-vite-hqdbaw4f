@@ -8617,25 +8617,6 @@ export default function App() {
       if (scrollRef.current) scrollRef.current.scrollLeft = scrollRef.current.scrollWidth;
     }, []);
 
-    // Rang de la voiture au classement des points annexes de CETTE ligue, saison par saison
-    // (parmi toutes les voitures ayant marqué des points annexes cette saison-là) — sert à
-    // afficher une flèche de progression au CLASSEMENT, pas une simple différence de points.
-    const seasonRanks = React.useMemo(() => {
-      const allBonus = computeAllSeasonsBonus(l);
-      const ranks = {};
-      allNums.forEach(n => {
-        const histKey = `hist-S${n}`, appKey = `app-S${n}`;
-        const entries = allBonus
-          .map(e => ({ id: e.id, name: e.name, pts: e.bySeason[histKey] ?? e.bySeason[appKey] }))
-          .filter(e => e.pts != null && e.pts > 0)
-          .sort((a, b) => b.pts - a.pts);
-        const idx = entries.findIndex(e => (carId && e.id === carId) || (!carId && namesMatch(e.name, effectiveName)));
-        ranks[n] = idx >= 0 ? idx + 1 : null;
-      });
-      return ranks;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [l, carId, effectiveName, allNums.join(',')]);
-
     return (
       <div style={{ marginBottom:10 }}>
         <div style={{ display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4 }}>
@@ -8659,33 +8640,10 @@ export default function App() {
                   const pts = ldata.seasonPts[n];
                   const isChamp = ldata.champions.includes(n);
                   const isRel = ldata.relegated.includes(n);
-                  // Flèche de progression au CLASSEMENT vs la saison précédente (même principe
-                  // que le Top Points Annexes du Tableau de Bord) : plus l'écart de rangs
-                  // gagnés/perdus est grand, plus la flèche est grosse et lumineuse.
-                  const prevN = idx > 0 ? allNums[idx - 1] : null;
-                  const rank = seasonRanks[n];
-                  const prevRank = prevN !== null ? seasonRanks[prevN] : null;
-                  const diff = (rank != null && prevRank != null) ? prevRank - rank : null; // >0 = a gagné des places
-                  const absDiff = diff !== null ? Math.abs(diff) : 0;
-                  const arrowSize = absDiff >= 8 ? 13 : absDiff >= 4 ? 11 : 9;
-                  const glow = absDiff >= 8 ? 0.85 : absDiff >= 4 ? 0.5 : 0;
-                  const arrowColor = diff > 0 ? '39,174,96' : '231,76,60';
                   return (
                     <td key={n} style={{
                       textAlign:'center',fontSize:13,padding:'6px 6px',color:pts ? (isChamp ? 'var(--green)' :isRel ? '#e74c3c' :'var(--gold)') :'var(--text-dim)',background:isChamp ? 'rgba(39,174,96,0.12)' :isRel ? 'rgba(192,57,43,0.12)' :'transparent',fontWeight:(isChamp || isRel) ? 700 :400,}}>
                       {pts ? `${pts}${isChamp ? '🏆' : isRel ? '⬇' : ''}` : '—'}
-                      {diff !== null && diff !== 0 && (
-                        <div style={{
-                          fontSize: arrowSize,
-                          fontWeight:700,
-                          color: `rgb(${arrowColor})`,
-                          lineHeight:1,
-                          marginTop:2,
-                          textShadow: glow > 0 ? `0 0 ${6 + glow*10}px rgba(${arrowColor},${glow})` : undefined,
-                        }}>
-                          {diff > 0 ? '▲' : '▼'}{absDiff}
-                        </div>
-                      )}
                     </td>
                   );
                 })}
