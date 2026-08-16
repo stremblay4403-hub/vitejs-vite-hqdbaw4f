@@ -3785,7 +3785,7 @@ export default function App() {
   function restoreScrollForTab(key) {
     const saved = tabScrollPos.current[key];
     const pos = saved?.scrollY || 0;
-    requestAnimationFrame(() => {
+    const applyScroll = () => {
       window.scrollTo(0, pos);
       if (saved?.tabsScrollLeft) {
         const tabsEls = document.querySelectorAll('.tabs');
@@ -3793,6 +3793,12 @@ export default function App() {
           if (saved.tabsScrollLeft[i] !== undefined) el.scrollLeft = saved.tabsScrollLeft[i];
         });
       }
+    };
+    // Double rAF : un seul passage peut se faire écraser par le rendu qui suit encore (surtout
+    // iOS Safari lors d'un changement de page complet comme retour d'un pays/marque en détail).
+    requestAnimationFrame(() => {
+      applyScroll();
+      requestAnimationFrame(applyScroll);
     });
   }
 
@@ -13306,7 +13312,7 @@ export default function App() {
       if (!stats) {
         return (
           <div>
-            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => setCountryDetail(null)}>← Retour</button>
+            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour</button>
             <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Pays introuvable.</div>
           </div>
         );
