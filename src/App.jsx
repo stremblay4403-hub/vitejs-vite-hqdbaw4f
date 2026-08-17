@@ -1579,6 +1579,7 @@ const css = `
   .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--dark); padding: 0 24px; gap: 2px; overflow-x: auto; scroll-behavior: auto; position: relative; }
   .menu-grid { display:grid; grid-template-columns: 1fr 1fr; gap:14px; }
   @media (min-width: 900px) { .menu-grid { grid-template-columns: repeat(3, 1fr); } }
+  @keyframes pulse-sync { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .tab {
     font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.5px; font-size: 13px;
     padding: 8px 14px; cursor: pointer; border: none; background: none;
@@ -2341,6 +2342,18 @@ const isLoadingFromFirebase = {
 const savedTabsScrollLeft = { current: 0 };
 const isPublicModeRef = { current: true };
 let firebaseSaveTimeout = null;
+// ── Indicateur de synchro (petit point dans l'en-tête) ──────────────────────
+// Ces fonctions vivent hors du composant React (comme flushDataWrite/flushArchiveWrites),
+// donc un simple pub-sub module-level permet à l'en-tête de refléter l'état en temps réel
+// sans avoir à faire passer ces fonctions dans le state React.
+let syncStatus = 'synced'; // 'synced' | 'syncing' | 'error'
+let syncErrorAt = 0;
+const syncListeners = new Set();
+function setSyncStatus(next) {
+  syncStatus = next;
+  if (next === 'error') syncErrorAt = Date.now();
+  syncListeners.forEach(fn => { try { fn(syncStatus); } catch (e) {} });
+}
 // Throttle « bord d'attaque » pour les écritures du gros document de données :
 // écriture immédiate au repos (instantané comme les photos), regroupement des rafales
 // pour rester sous la limite Firestore (~1 écriture/s/document) → évite le gel en jouant vite.
@@ -2381,8 +2394,10 @@ function flushDataWrite() {
   if (firebaseSaveTimeout) { clearTimeout(firebaseSaveTimeout); firebaseSaveTimeout = null; }
   const _ua = Date.now();
   dataWriteInFlight = true;
+  setSyncStatus('syncing');
   setDoc(dataDocRef, { data: j, updatedAt: _ua, writer: CLIENT_ID })
-    .catch(e => console.warn('Firebase data save error:', e))
+    .then(() => { if (!pendingDataWrite && !archiveWriteInFlight && pendingArchiveWrites.size === 0) setSyncStatus('synced'); })
+    .catch(e => { console.warn('Firebase data save error:', e); setSyncStatus('error'); })
     .finally(() => {
       dataWriteInFlight = false;
       // Un nouvel état s'est accumulé pendant l'écriture → on l'écrit maintenant (en série).
@@ -2419,8 +2434,10 @@ function flushArchiveWrites() {
   const [num, payload] = next.value;
   pendingArchiveWrites.delete(num);
   archiveWriteInFlight = true;
+  setSyncStatus('syncing');
   setDoc(seasonDocRef(num), { data: payload, seasonNum: num, updatedAt: Date.now(), writer: CLIENT_ID })
-    .catch(e => console.warn('Firebase archive save error (season ' + num + '):', e))
+    .then(() => { if (!dataWriteInFlight && !pendingDataWrite && pendingArchiveWrites.size === 0) setSyncStatus('synced'); })
+    .catch(e => { console.warn('Firebase archive save error (season ' + num + '):', e); setSyncStatus('error'); })
     .finally(() => {
       archiveWriteInFlight = false;
       if (pendingArchiveWrites.size > 0) flushArchiveWrites();
@@ -2577,6 +2594,7 @@ function storageSave(data) {
 
   // Mémoriser le dernier état à écrire (une rafale n'écrira que le plus récent)
   pendingDataWrite = { jsonToSave, photos, photoTimes };
+  setSyncStatus('syncing');
 
   const elapsed = Date.now() - lastDataWriteAt;
   if (firebaseSaveTimeout) {
@@ -3352,6 +3370,49 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   // Sous-menu Ligues (grille des 16 ligues/paliers) — même principe de navigation
   const [liguesMenuOpen, setLiguesMenuOpen] = useState(true);
+  // Sous-niveaux "Ligues Principales" / "Points Annexes" — même principe de grille
+  const [leagueMenuOpen, setLeagueMenuOpen] = useState(true);
+  const [sectionMenuOpen, setSectionMenuOpen] = useState(true);
+  // Sous-niveau "Actuelles" — liste des 12 ligues actuelles
+  const [actuellesMenuOpen, setActuellesMenuOpen] = useState(true);
+
+  // Pile de navigation branchée sur l'historique du navigateur — permet au geste de retour
+  // natif iOS (glisser depuis le bord gauche) de fonctionner comme le bouton "← Retour" à
+  // l'écran. Chaque navPush() enregistre l'action à annuler ; navBack() (utilisé par TOUS les
+  // boutons retour à l'écran) déclenche history.back(), qui émet un popstate, qui dépile et
+  // exécute l'action — même mécanisme peu importe la source (bouton ou geste).
+  const navStackRef = React.useRef([]);
+  const navPoppingRef = React.useRef(false);
+  function navPush(undoFn) {
+    if (navPoppingRef.current) return;
+    navStackRef.current.push(undoFn);
+    try { window.history.pushState({ __navDepth: navStackRef.current.length }, ''); } catch (e) {}
+  }
+  function navBack() {
+    if (navStackRef.current.length > 0) {
+      try { window.history.back(); } catch (e) { const fn = navStackRef.current.pop(); if (fn) fn(); }
+    }
+  }
+  React.useEffect(() => {
+    const onPopState = () => {
+      const undoFn = navStackRef.current.pop();
+      if (undoFn) {
+        navPoppingRef.current = true;
+        undoFn();
+        navPoppingRef.current = false;
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, []);
+
+  // Indicateur de synchro réactif — s'abonne au pub-sub module-level (voir setSyncStatus)
+  const [syncStatusState, setSyncStatusState] = React.useState(syncStatus);
+  React.useEffect(() => {
+    const listener = (s) => setSyncStatusState(s);
+    syncListeners.add(listener);
+    return () => syncListeners.delete(listener);
+  }, []);
   const [allCarsFilter, setAllCarsFilter] = useState('Toutes');
   const [ripTab, setRipTab] = useState(false);
   const [voituresQueueTab, setVoituresQueueTab] = useState(false);
@@ -13312,7 +13373,7 @@ export default function App() {
       if (!stats) {
         return (
           <div>
-            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour</button>
+            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={navBack}>← Retour</button>
             <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Pays introuvable.</div>
           </div>
         );
@@ -13326,7 +13387,7 @@ export default function App() {
       return (
         <div>
           <div style={{ padding:'10px 12px' }}>
-            <button className="btn btn-dark btn-sm" onClick={() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour aux pays</button>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour aux pays</button>
           </div>
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
             <div style={{ display:'flex',alignItems:'center',gap:10,justifyContent:'center' }}>
@@ -13346,7 +13407,7 @@ export default function App() {
           <div className="card" style={{ padding:8 }}>
             {ranked.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={b.rank} />
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:16,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
@@ -13373,7 +13434,7 @@ export default function App() {
       if (!b) {
         return (
           <div>
-            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour</button>
+            <button className="btn btn-dark btn-sm" style={{ margin:12 }} onClick={navBack}>← Retour</button>
             <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Marque introuvable.</div>
           </div>
         );
@@ -13390,7 +13451,7 @@ export default function App() {
       return (
         <div>
           <div style={{ padding:'10px 12px' }}>
-            <button className="btn btn-dark btn-sm" onClick={() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>← Retour aux marques</button>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour aux marques</button>
           </div>
 
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
@@ -13559,7 +13620,7 @@ export default function App() {
             )}
             {displayedTitles.map(b => (
               <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
                   {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
@@ -13630,7 +13691,7 @@ export default function App() {
             )}
             {displayedCountries.map(c => (
               <div key={c.code} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
+                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={c.rank} size={22} /></span>
                   <span className="mq-flag"><CountryFlag code={c.code} size={28} /></span>
@@ -13697,7 +13758,7 @@ export default function App() {
             )}
             {displayedData.map(d => (
               <div key={d.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={d.rank} size={22} /></span>
                   {getBrandCountry(d.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(d.brand)} size={28} /></span>}
@@ -13757,7 +13818,7 @@ export default function App() {
           )}
           {displayedPts.map(b => (
             <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }}>
+              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
               <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                 <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
                 {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
@@ -15805,9 +15866,10 @@ export default function App() {
               </div>
             ) : (
               <React.Fragment>
-              <div style={{ fontSize:10,color:'var(--green)',letterSpacing:1,display:'flex',alignItems:'center',gap:4,whiteSpace:'nowrap' }}>
-              <span style={{ width:6,height:6,borderRadius:'50%',background:'var(--green)',display:'inline-block',flexShrink:0 }} />
-              Sauvegarde auto
+              <div style={{ fontSize:10,color: syncStatusState === 'error' ? '#e74c3c' : syncStatusState === 'syncing' ? 'orange' : 'var(--green)',letterSpacing:1,display:'flex',alignItems:'center',gap:4,whiteSpace:'nowrap' }}
+                title={syncStatusState === 'error' ? 'Dernière sauvegarde en échec — vérifie ta connexion' : syncStatusState === 'syncing' ? 'Sauvegarde en cours…' : 'Tout est synchronisé'}>
+              <span style={{ width:6,height:6,borderRadius:'50%',background: syncStatusState === 'error' ? '#e74c3c' : syncStatusState === 'syncing' ? 'orange' : 'var(--green)',display:'inline-block',flexShrink:0, animation: syncStatusState === 'syncing' ? 'pulse-sync 1s ease-in-out infinite' : 'none' }} />
+              {syncStatusState === 'error' ? 'Erreur de synchro' : syncStatusState === 'syncing' ? 'Synchro…' : 'Sauvegarde auto'}
             </div>
             <button className="btn btn-sm btn-dark" style={{ whiteSpace:'nowrap',flexShrink:0,fontSize:11 }}
               onClick={() => { localStorage.removeItem('tdv_admin'); sessionStorage.removeItem('tdv_admin'); setIsLoggedIn(false); }}>
@@ -15913,13 +15975,13 @@ export default function App() {
           <button
             aria-label="Menu"
             style={{ width:40, height:32, display:'flex',alignItems:'center',justifyContent:'center', background: menuOpen ? 'var(--gold)' : 'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', gap:3, flexDirection:'column' }}
-            onClick={() => setMenuOpen(true)}>
+            onClick={() => { setMenuOpen(true); navPush(() => setMenuOpen(false)); }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 5px)', gridTemplateRows:'repeat(2, 5px)', gap:3 }}>
               {[0,1,2,3].map(i => <div key={i} style={{ width:5,height:5, background: menuOpen ? '#1a1305' : 'var(--text-dim)', borderRadius:1 }} />)}
             </div>
           </button>
           {!menuOpen && mainTab !== 'dashboard' && (
-            <button className="btn btn-dark btn-sm" style={{ marginLeft:'auto' }} onClick={() => setMenuOpen(true)}>← Retour au menu</button>
+            <button className="btn btn-dark btn-sm" style={{ marginLeft:'auto' }} onClick={navBack}>← Retour au menu</button>
           )}
         </div>
 
@@ -15936,7 +15998,7 @@ export default function App() {
                 { key: 'pays', label: 'Pays', icon: '🌍' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setMainTab(t.key); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); }}
+                  onClick={() => { setMainTab(t.key); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); if (t.key === 'bonus') setLeagueMenuOpen(true); navPush(() => setMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -15977,7 +16039,7 @@ export default function App() {
                 { key: 'oubl', label: 'Oubliettes' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); }}
+                  onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); if (t.key === 'principales') { setLeagueMenuOpen(true); setSectionMenuOpen(true); } if (t.key === 'actuelles') setActuellesMenuOpen(true); navPush(() => setLiguesMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -15995,7 +16057,7 @@ export default function App() {
         {/* Barre de retour vers le sous-menu Ligues, une fois une ligue choisie */}
         {mainTab === 'ligues' && !liguesMenuOpen && (
           <div style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 24px',background:'var(--dark3)',borderTop:'1px solid #1a1a1a' }}>
-            <button className="btn btn-dark btn-sm" onClick={() => setLiguesMenuOpen(true)}>← Retour aux ligues</button>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour aux ligues</button>
             <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color: LIGUE_SUBTAB_COLORS[ligueSubTab] || 'var(--gold)' }}>
               {LIGUE_SUBTAB_LABELS[ligueSubTab] || ligueSubTab}
             </span>
@@ -16003,60 +16065,91 @@ export default function App() {
         )}
 
 
-        {/* League selector for principales + bonus */}
-        {((mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales') || mainTab === 'bonus') && (
-          <div className="tabs" id="tabs-leagues" style={{ background:'#111',borderTop:'1px solid #1a1a1a' }}>
-            {LEAGUES.map(l => (
-              <button key={l} className={`tab ${leagueTab === l ? 'active' : ''}`} onClick={e => {
-                const bar = e.currentTarget.parentElement;
-                const sl = bar.scrollLeft;
-                saveScrollForTab();
-                setLeagueTab(l);
-                restoreScrollForTab(`${mainTab}|${ligueSubTab}|${l}|${sectionTab}|${histSubTab}`);
-                requestAnimationFrame(() => { bar.scrollLeft = sl; });
-              }} style={leagueTab === l && MAIN_LEAGUE_COLORS[l] ? { background: MAIN_LEAGUE_COLORS[l], color: l === 'Voitures 2' ? '#1a1305' : '#fff', boxShadow: `0 2px 8px ${MAIN_LEAGUE_COLORS[l]}55` } : undefined}>
-                {l}
-              </button>
-            ))}
+        {/* League selector for principales + bonus — grille */}
+        {((mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && leagueMenuOpen) || (mainTab === 'bonus' && leagueMenuOpen)) && (
+          <div style={{ padding:24 }}>
+            <div className="section-title" style={{ marginBottom:16 }}>{mainTab === 'bonus' ? 'Points Annexes — Choisir une ligue' : 'Ligues Principales'}</div>
+            <div className="menu-grid">
+              {LEAGUES.map(l => (
+                <button key={l}
+                  onClick={() => { setLeagueTab(l); setLeagueMenuOpen(false); if (mainTab === 'ligues') setSectionMenuOpen(true); navPush(() => setLeagueMenuOpen(true)); }}
+                  style={{
+                    aspectRatio:'1.3',
+                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
+                    background: MAIN_LEAGUE_COLORS[l] ? `${MAIN_LEAGUE_COLORS[l]}22` : 'var(--dark2)',
+                    border:`1px solid ${MAIN_LEAGUE_COLORS[l] || 'var(--border)'}`, borderRadius:10,
+                    color:'var(--text)', cursor:'pointer',
+                  }}>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1 }}>{l}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {((mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen) || (mainTab === 'bonus' && !leagueMenuOpen)) && (
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 24px',background:'#111',borderTop:'1px solid #1a1a1a' }}>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour</button>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color: MAIN_LEAGUE_COLORS[leagueTab] || 'var(--gold)' }}>{leagueTab}</span>
           </div>
         )}
 
-        {/* Section tabs for principales */}
-        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && (
-          <div className="tabs" id="tabs-section" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
-            {[
-              { key: 'groupes', label: 'Phase de Groupes' },
-              { key: 'playoffs', label: 'Playoffs' },
-              { key: 'relegation', label: 'Barrage Relégation' },
-            ].map(t => (
-              <button key={t.key} className={`tab ${sectionTab === t.key ? 'active' : ''}`} onClick={e => {
-                const bar = e.currentTarget.parentElement;
-                const sl = bar.scrollLeft;
-                saveScrollForTab();
-                setSectionTab(t.key);
-                restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${t.key}|${histSubTab}`);
-                requestAnimationFrame(() => { bar.scrollLeft = sl; });
-              }}>
-                {t.label}
-              </button>
-            ))}
+        {/* Section tabs for principales — grille */}
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && sectionMenuOpen && (
+          <div style={{ padding:24 }}>
+            <div className="section-title" style={{ marginBottom:16 }}>{leagueTab} — Choisir une section</div>
+            <div className="menu-grid">
+              {[
+                { key: 'groupes', label: 'Phase de Groupes' },
+                { key: 'playoffs', label: 'Playoffs' },
+                { key: 'relegation', label: 'Barrage Relégation' },
+              ].map(t => (
+                <button key={t.key}
+                  onClick={() => { setSectionTab(t.key); setSectionMenuOpen(false); navPush(() => setSectionMenuOpen(true)); }}
+                  style={{
+                    aspectRatio:'1.3',
+                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
+                    background:'var(--dark2)', border:'1px solid var(--border)', borderRadius:10,
+                    color:'var(--text)', cursor:'pointer',
+                  }}>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1 }}>{t.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && (
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 24px',background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour</button>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--gold)' }}>
+              {leagueTab} — {sectionTab === 'groupes' ? 'Phase de Groupes' : sectionTab === 'playoffs' ? 'Playoffs' : 'Barrage Relégation'}
+            </span>
           </div>
         )}
 
-        {/* Sous-onglets Actuelles */}
-        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && (
-          <div className="tabs" id="tabs-actuelles" style={{ background:'#0d0d0d',borderTop:'1px solid #1a1a1a',overflowX:'auto' }}>
-            {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
-              <button key={l} className={`tab ${actuellesLeague === l ? 'active' : ''}`}
-                onClick={e => {
-                  const bar = e.currentTarget.parentElement;
-                  const sl = bar.scrollLeft;
-                  setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null);
-                  requestAnimationFrame(() => { bar.scrollLeft = sl; });
-                }}>
-                {l}
-              </button>
-            ))}
+        {/* Sous-onglets Actuelles — grille */}
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && actuellesMenuOpen && (
+          <div style={{ padding:24 }}>
+            <div className="section-title" style={{ marginBottom:16 }}>Actuelles</div>
+            <div className="menu-grid">
+              {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
+                <button key={l}
+                  onClick={() => { setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null); setActuellesMenuOpen(false); navPush(() => setActuellesMenuOpen(true)); }}
+                  style={{
+                    aspectRatio:'1.3',
+                    display:'flex',alignItems:'center',justifyContent:'center',
+                    background:'var(--dark2)', border:'1px solid var(--border)', borderRadius:10,
+                    color:'var(--text)', cursor:'pointer', textAlign:'center', padding:8,
+                  }}>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1 }}>{l}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && (
+          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 24px',background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour</button>
+            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--gold)' }}>{actuellesLeague}</span>
           </div>
         )}
         {mainTab === 'historique' && (
@@ -16107,9 +16200,9 @@ export default function App() {
         {/* Content */}
         <div className="content tab-content tab-content-fade" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
           {mainTab === 'dashboard' && <Dashboard />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && sectionTab === 'groupes' && <StableGroupesView />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && sectionTab === 'playoffs' && <StablePlayoffsView />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && sectionTab === 'relegation' && <StableRelegationView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'groupes' && <StableGroupesView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'playoffs' && <StablePlayoffsView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'relegation' && <StableRelegationView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'champions' && <StableTournoiChampionsView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'successeurs' && <StableSuccesseursView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
@@ -16124,7 +16217,7 @@ export default function App() {
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !isPublicMode && (
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && !isPublicMode && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
               {!confirmSimActuelles
                 ? <button className="btn btn-sm" style={{ background:'rgba(243,156,18,0.15)',borderColor:'var(--gold)',color:'var(--gold)' }}
@@ -16139,8 +16232,8 @@ export default function App() {
               }
             </div>
           )}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
-          {mainTab === 'bonus' && <StableBonusView />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
+          {mainTab === 'bonus' && !leagueMenuOpen && <StableBonusView />}
           {mainTab === 'voitures' && <StableAllCarsView />}
           {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
           {mainTab === 'pays' && <StableMarquesView subTab="pays" />}
