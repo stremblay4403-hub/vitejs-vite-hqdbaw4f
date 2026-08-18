@@ -9011,12 +9011,21 @@ export default function App() {
                     style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,color:'var(--text-dim)',letterSpacing:0.5,cursor:'pointer' }}
                     onClick={() => {
                       const br = getCarBrand(resolvedCarId);
+                      const prevMainTab = mainTab, prevMenuOpen = menuOpen, prevMarquesSubTab = marquesSubTab;
                       setProfileCar(null);
                       setMainTab('marques');
+                      setMenuOpen(false);
                       setMarquesSubTab('points');
                       setBrandDetailSort('points');
                       setBrandLeagueTab('toutes');
                       setBrandDetail(br);
+                      requestAnimationFrame(() => window.scrollTo(0, 0));
+                      navPush(() => {
+                        setBrandDetail(null);
+                        setMainTab(prevMainTab);
+                        setMenuOpen(prevMenuOpen);
+                        setMarquesSubTab(prevMarquesSubTab);
+                      });
                     }}
                   >{getCarBrand(resolvedCarId)}</span>
                 ) : (
@@ -13421,7 +13430,7 @@ export default function App() {
           <div className="card" style={{ padding:8 }}>
             {ranked.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <RankBadge rank={b.rank} />
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:16,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
@@ -13634,7 +13643,7 @@ export default function App() {
             )}
             {displayedTitles.map(b => (
               <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
                   {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
@@ -13705,7 +13714,7 @@ export default function App() {
             )}
             {displayedCountries.map(c => (
               <div key={c.code} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
+                onClick={() => { saveScrollForTab(); setCountryDetail(c.code); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={c.rank} size={22} /></span>
                   <span className="mq-flag"><CountryFlag code={c.code} size={28} /></span>
@@ -13772,7 +13781,7 @@ export default function App() {
             )}
             {displayedData.map(d => (
               <div key={d.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(d.brand); setBrandDetailSort('points'); setBrandLeagueTab('principales'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank"><RankBadge rank={d.rank} size={22} /></span>
                   {getBrandCountry(d.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(d.brand)} size={28} /></span>}
@@ -13832,7 +13841,7 @@ export default function App() {
           )}
           {displayedPts.map(b => (
             <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
-              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
+              onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
               <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                 <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
                 {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
