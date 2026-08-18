@@ -7075,14 +7075,26 @@ export default function App() {
     // ET seulement si aucun match n'a encore été joué (disparaît définitivement dès le 1er match).
     const introStorageKey = `groupIntroSeen_${leagueTab}_G${activeGroup}_S${currentSeason.season}`;
     const [showGroupIntro, setShowGroupIntro] = useState(false);
+    // Empêche un second déclenchement pour la MÊME clé si l'effet se rejoue peu après (ex: écho
+    // Firebase ~1s après la création des matchs, qui peut faire recalculer totalMatches/
+    // playedMatches brièvement) — sans ce garde-fou, l'intro pouvait sembler "rejouer" une
+    // seconde fois toute seule.
+    const introDecidedForKeyRef = useRef(null);
     useEffect(() => {
       if (totalMatches > 0 && playedMatches === 0) {
         const alreadySeen = localStorage.getItem(introStorageKey);
-        setShowGroupIntro(!alreadySeen);
+        if (alreadySeen) {
+          setShowGroupIntro(false);
+        } else if (introDecidedForKeyRef.current !== introStorageKey) {
+          introDecidedForKeyRef.current = introStorageKey;
+          setShowGroupIntro(true);
+        }
+        // sinon : on a déjà décidé de l'afficher pour cette clé durant ce montage — on ne
+        // retouche pas à showGroupIntro pour éviter de la relancer/couper en plein milieu.
       } else {
         setShowGroupIntro(false);
       }
-    }, [leagueTab, activeGroup, currentSeason.season, totalMatches, playedMatches]);
+    }, [leagueTab, activeGroup, currentSeason.season, totalMatches, playedMatches, introStorageKey]);
 
     function closeGroupIntro() {
       localStorage.setItem(introStorageKey, '1');
