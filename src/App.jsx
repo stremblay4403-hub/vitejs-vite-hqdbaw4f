@@ -1695,8 +1695,8 @@ const css = `
     border-bottom: 2px solid var(--border); background: var(--dark3);
   }
   .tbl td { padding: 9px 10px; border-bottom: 1px solid #1a1a1a; transition: background 0.12s ease; }
-  .tbl tbody tr:nth-child(even) td:not(.sticky-right) { background: rgba(255,255,255,0.014); }
-  .tbl tr:hover td { background: rgba(212,175,55,0.06) !important; }
+  .tbl tbody tr:nth-child(even) td:not(.sticky-right):not(.sticky-col) { background: rgba(255,255,255,0.014); }
+  .tbl tr:hover td:not(.sticky-right):not(.sticky-col) { background: rgba(212,175,55,0.06); }
   .tbl .rank { color: var(--gold-dim); font-family: 'Bebas Neue', sans-serif; font-size: 18px; }
   .tbl .car-name { font-weight: 600; font-size: 16px; }
   .tbl .pts-val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); text-shadow: 0 0 10px rgba(212,175,55,0.25); }
@@ -2230,6 +2230,14 @@ const css = `
   .photo-vignette::after {
     content: ''; position: absolute; inset: 0; pointer-events: none;
     box-shadow: inset 0 0 14px rgba(0,0,0,0.55);
+  }
+  /* Empêche les photos de voitures de clignoter quand la ligne parente est animée (FLIP lors
+     du réordonnancement du classement pendant une simulation rapide de plusieurs matchs) :
+     l'image reste sur son propre calque de composition stable au lieu d'être recréée à chaque
+     fois que le parent bascule position/transform. */
+  .photo-vignette img {
+    -webkit-backface-visibility: hidden; backface-visibility: hidden;
+    transform: translateZ(0);
   }
 
   .car-tilt-wrap { perspective: 600px; }
@@ -3495,6 +3503,13 @@ export default function App() {
   const [compareSearch, setCompareSearch] = useState('');
   const [compareCarId, setCompareCarId] = useState(null);
   function openProfileCar(config) {
+    // Garde-fou : si un verrou de scroll (utilisé ailleurs pour les bascules de journée) est
+    // resté actif par accident, body.style.position='fixed' casse le positionnement de TOUS
+    // les modals plein écran (position:fixed devient relatif au body au lieu du vrai viewport).
+    // On le réinitialise systématiquement avant d'ouvrir une fiche voiture, par sécurité.
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.width = '';
     const sy = window.scrollY || parseInt(document.body.dataset.scrollY || '0');
     const tabsEls = document.querySelectorAll('.tabs');
     const tabsScrolls = Array.from(tabsEls).map(el => ({ el, sl: el.scrollLeft }));
@@ -3548,6 +3563,19 @@ export default function App() {
   const [relegationModal, setRelegationModal] = useState(null);
   const [seasonTrophiesModal, setSeasonTrophiesModal] = useState(null);
   const [brandModal, setBrandModal] = useState(null);
+
+  // Garde-fou global : dès qu'un modal plein écran s'ouvre, on s'assure que le verrou de scroll
+  // (document.body.style.position='fixed', utilisé ailleurs pour les bascules de journée) n'est
+  // pas resté actif par accident. Un verrou coincé casse le positionnement de TOUS les éléments
+  // position:fixed (dont ces modals), qui deviennent alors relatifs au body au lieu du vrai
+  // viewport et semblent "coincés" au milieu de la page plutôt que de couvrir tout l'écran.
+  React.useEffect(() => {
+    if (profileCar || matchModal || celebrationModal || relegationModal || seasonTrophiesModal || brandModal) {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.width = '';
+    }
+  }, [profileCar, matchModal, celebrationModal, relegationModal, seasonTrophiesModal, brandModal]);
   const [brandQueue, setBrandQueue] = useState([]);
 
   // Démarre une série : ouvre la 1ère voiture de la liste, garde le reste en file
@@ -7077,26 +7105,23 @@ export default function App() {
     // ET seulement si aucun match n'a encore été joué (disparaît définitivement dès le 1er match).
     const introStorageKey = `groupIntroSeen_${leagueTab}_G${activeGroup}_S${currentSeason.season}`;
     const [showGroupIntro, setShowGroupIntro] = useState(false);
-    // Empêche un second déclenchement pour la MÊME clé si l'effet se rejoue peu après (ex: écho
-    // Firebase ~1s après la création des matchs, qui peut faire recalculer totalMatches/
-    // playedMatches brièvement) — sans ce garde-fou, l'intro pouvait sembler "rejouer" une
-    // seconde fois toute seule.
-    const introDecidedForKeyRef = useRef(null);
+    // La décision "faut-il l'afficher" n'est prise qu'UNE SEULE FOIS par clé groupe/saison —
+    // jamais redécidée sur les re-renders suivants (écho Firebase ~1s après création des
+    // matchs, resync, etc.), ce qui empêche tout redéclenchement/réapparition de l'intro.
+    const introInitializedForRef = useRef(null);
     useEffect(() => {
-      if (totalMatches > 0 && playedMatches === 0) {
-        const alreadySeen = localStorage.getItem(introStorageKey);
-        if (alreadySeen) {
-          setShowGroupIntro(false);
-        } else if (introDecidedForKeyRef.current !== introStorageKey) {
-          introDecidedForKeyRef.current = introStorageKey;
-          setShowGroupIntro(true);
-        }
-        // sinon : on a déjà décidé de l'afficher pour cette clé durant ce montage — on ne
-        // retouche pas à showGroupIntro pour éviter de la relancer/couper en plein milieu.
-      } else {
-        setShowGroupIntro(false);
-      }
-    }, [leagueTab, activeGroup, currentSeason.season, totalMatches, playedMatches, introStorageKey]);
+      if (introInitializedForRef.current === introStorageKey) return; // déjà décidé pour cette clé
+      if (totalMatches === 0) return; // matchs pas encore créés — on attend le prochain re-render
+      introInitializedForRef.current = introStorageKey;
+      const alreadySeen = localStorage.getItem(introStorageKey);
+      setShowGroupIntro(!alreadySeen && playedMatches === 0);
+    }, [introStorageKey, totalMatches, playedMatches]);
+
+    // Fermeture automatique et DÉFINITIVE dès qu'un match de ce groupe a été joué — jamais
+    // l'inverse (cet effet ne peut que cacher, jamais réafficher).
+    useEffect(() => {
+      if (playedMatches > 0) setShowGroupIntro(false);
+    }, [playedMatches]);
 
     function closeGroupIntro() {
       localStorage.setItem(introStorageKey, '1');
