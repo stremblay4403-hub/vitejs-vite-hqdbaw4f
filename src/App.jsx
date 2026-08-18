@@ -3058,6 +3058,21 @@ function RankEvolutionChart({ points, groupSize }) {
   );
 }
 
+// CarThumb — purement présentationnel (aucune dépendance à l'état de App), placé au niveau
+// module comme LeaderboardRow pour éviter d'être redéfini/remonté à chaque rendu de App(),
+// ce qui causait le clignotement des photos dans les listes de matchs à chaque saisie de score.
+function CarThumb({ photo, size = 52, onClick }) {
+  const h = Math.round(size * 0.73);
+  return (
+    <div onClick={onClick} style={{
+      width:size,height:h,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:onClick ? 'pointer' :'default',fontSize:size * 0.35,}}>
+      {photo
+        ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',display:'block' }} />
+        : '🚗'}
+    </div>
+  );
+}
+
 function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor, noStatsToggle }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
@@ -3335,6 +3350,10 @@ export default function App() {
   // matchs/modals. Même principe de stabilisation que pour les vues (Marques, Ligues, etc.).
   const groupIntroPresentationImplRef = React.useRef(null);
   const StableGroupIntroPresentation = React.useRef((props) => groupIntroPresentationImplRef.current ? groupIntroPresentationImplRef.current(props) : null).current;
+  const dashboardImplRef = React.useRef(null);
+  const StableDashboard = React.useRef((props) => dashboardImplRef.current ? dashboardImplRef.current(props) : null).current;
+  const drawCeremonyImplRef = React.useRef(null);
+  const StableDrawCeremony = React.useRef((props) => drawCeremonyImplRef.current ? drawCeremonyImplRef.current(props) : null).current;
   const matchModalImplRef = React.useRef(null);
   const StableMatchModal = React.useRef((props) => matchModalImplRef.current ? matchModalImplRef.current(props) : null).current;
   const carProfileModalImplRef = React.useRef(null);
@@ -4931,18 +4950,6 @@ export default function App() {
     );
   }
   matchModalImplRef.current = MatchModal;
-
-  function CarThumb({ photo, size = 52, onClick }) {
-    const h = Math.round(size * 0.73);
-    return (
-      <div onClick={onClick} style={{
-        width:size,height:h,borderRadius:3,border:'1px solid var(--border)',background:'var(--dark3)',overflow:'hidden',flexShrink:0,display:'flex',alignItems:'center',justifyContent:'center',cursor:onClick ? 'pointer' :'default',fontSize:size * 0.35,}}>
-        {photo
-          ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'contain',objectPosition:'center',display:'block' }} />
-          : '🚗'}
-      </div>
-    );
-  }
 
   function addSeason() {
     const prev = db.seasons[db.seasons.length - 1];
@@ -7004,6 +7011,7 @@ export default function App() {
       </div>
     );
   }
+  dashboardImplRef.current = Dashboard;
 
   function GroupesView() {
     const league = getLeague(leagueTab);
@@ -7709,6 +7717,7 @@ export default function App() {
       </div>
     );
   }
+  drawCeremonyImplRef.current = DrawCeremony;
 
   function GroupIntroPresentation({ leagueName, group, groupCars, seasonNum, onClose }) {
     const [idx, setIdx] = useState(-1); // -1 = carton de titre du groupe
@@ -15778,7 +15787,7 @@ export default function App() {
         </div>
       )}
       {drawCeremony && (
-        <DrawCeremony data={drawCeremony} onClose={() => setDrawCeremony(null)} />
+        <StableDrawCeremony data={drawCeremony} onClose={() => setDrawCeremony(null)} />
       )}
       {dangerPresentation && (
         <RelegationDangerPresentation
@@ -16290,7 +16299,7 @@ export default function App() {
 
         {/* Content */}
         <div className="content tab-content tab-content-fade" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
-          {mainTab === 'dashboard' && <Dashboard />}
+          {mainTab === 'dashboard' && <StableDashboard />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'groupes' && <StableGroupesView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'playoffs' && <StablePlayoffsView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'relegation' && <StableRelegationView />}
