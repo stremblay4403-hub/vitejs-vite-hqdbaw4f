@@ -3378,9 +3378,11 @@ export default function App() {
 
   // Pile de navigation branchée sur l'historique du navigateur — permet au geste de retour
   // natif iOS (glisser depuis le bord gauche) de fonctionner comme le bouton "← Retour" à
-  // l'écran. Chaque navPush() enregistre l'action à annuler ; navBack() (utilisé par TOUS les
-  // boutons retour à l'écran) déclenche history.back(), qui émet un popstate, qui dépile et
-  // exécute l'action — même mécanisme peu importe la source (bouton ou geste).
+  // l'écran. Le bouton à l'écran (navBack) exécute l'action DIRECTEMENT — fiable, immédiat,
+  // ne dépend pas du timing du navigateur — puis synchronise history.back() en arrière-plan
+  // pour que le geste natif reste cohérent ensuite. Le geste natif (popstate sans passer par
+  // navBack) exécute l'action via le popstate normalement. Le garde navPoppingRef évite de
+  // dépiler DEUX FOIS la même action (une fois par le bouton, une fois par le popstate qui suit).
   const navStackRef = React.useRef([]);
   const navPoppingRef = React.useRef(false);
   function navPush(undoFn) {
@@ -3389,18 +3391,18 @@ export default function App() {
     try { window.history.pushState({ __navDepth: navStackRef.current.length }, ''); } catch (e) {}
   }
   function navBack() {
-    if (navStackRef.current.length > 0) {
-      try { window.history.back(); } catch (e) { const fn = navStackRef.current.pop(); if (fn) fn(); }
-    }
+    const undoFn = navStackRef.current.pop();
+    if (!undoFn) return;
+    navPoppingRef.current = true;
+    undoFn();
+    try { window.history.back(); } catch (e) {}
+    setTimeout(() => { navPoppingRef.current = false; }, 300);
   }
   React.useEffect(() => {
     const onPopState = () => {
+      if (navPoppingRef.current) { navPoppingRef.current = false; return; } // déjà géré par navBack()
       const undoFn = navStackRef.current.pop();
-      if (undoFn) {
-        navPoppingRef.current = true;
-        undoFn();
-        navPoppingRef.current = false;
-      }
+      if (undoFn) undoFn();
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
