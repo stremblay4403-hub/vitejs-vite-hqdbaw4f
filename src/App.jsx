@@ -3329,6 +3329,24 @@ export default function App() {
   const StableAllCarsView = React.useRef((props) => allCarsViewImplRef.current ? allCarsViewImplRef.current(props) : null).current;
   const marquesViewImplRef = React.useRef(null);
   const StableMarquesView = React.useRef((props) => marquesViewImplRef.current ? marquesViewImplRef.current(props) : null).current;
+  // Modals — mêmes remontages intempestifs que les vues sans ce wrapper : redéfinis à chaque
+  // render de App(), donc React les démonte/remonte en boucle (chaque simulation de match,
+  // chaque tick de synchro Firebase...), ce qui causait le clignotement des photos dans les
+  // matchs/modals. Même principe de stabilisation que pour les vues (Marques, Ligues, etc.).
+  const groupIntroPresentationImplRef = React.useRef(null);
+  const StableGroupIntroPresentation = React.useRef((props) => groupIntroPresentationImplRef.current ? groupIntroPresentationImplRef.current(props) : null).current;
+  const matchModalImplRef = React.useRef(null);
+  const StableMatchModal = React.useRef((props) => matchModalImplRef.current ? matchModalImplRef.current(props) : null).current;
+  const carProfileModalImplRef = React.useRef(null);
+  const StableCarProfileModal = React.useRef((props) => carProfileModalImplRef.current ? carProfileModalImplRef.current(props) : null).current;
+  const brandModalImplRef = React.useRef(null);
+  const StableBrandModal = React.useRef((props) => brandModalImplRef.current ? brandModalImplRef.current(props) : null).current;
+  const celebrationModalImplRef = React.useRef(null);
+  const StableCelebrationModal = React.useRef((props) => celebrationModalImplRef.current ? celebrationModalImplRef.current(props) : null).current;
+  const relegationModalImplRef = React.useRef(null);
+  const StableRelegationModal = React.useRef((props) => relegationModalImplRef.current ? relegationModalImplRef.current(props) : null).current;
+  const seasonTrophiesModalImplRef = React.useRef(null);
+  const StableSeasonTrophiesModal = React.useRef((props) => seasonTrophiesModalImplRef.current ? seasonTrophiesModalImplRef.current(props) : null).current;
   // Sous-vues imbriquées dans MarquesView — stabilisées de la même façon, sinon elles sont
   // redéfinies (nouvelle référence de fonction) à chaque re-render de MarquesView, donc React
   // les démonte/remonte intégralement au moindre clic (même en restant sur la même marque/pays),
@@ -3468,6 +3486,17 @@ export default function App() {
   const [ligueSubTab, setLigueSubTab] = useState('principales');
   const [succSubTab, setSuccSubTab] = useState('classement');
   const [groupOpenDay, setGroupOpenDay] = useState(null);
+  // Intro de groupe — hissée au niveau App (comme groupOpenDay/activeGroup ci-dessus) pour
+  // survivre aux remontages de GroupesView (redéfinie à chaque render, voir plus haut), sinon
+  // l'intro pouvait sembler "rejouer" depuis le début si un remontage survenait pendant qu'elle
+  // était affichée.
+  const [groupIntroVisible, setGroupIntroVisible] = useState(false);
+  const groupIntroDecidedRef = React.useRef(null);
+  // Empêche getOrCreateGroupMatches de retenter une création pour un groupe déjà traité durant
+  // cette session — utile en mode admin où l'écho Firebase (~1-1.25s après la création,
+  // suivi du rendu forcé setSyncTick) peut faire momentanément relire des données pas encore
+  // à jour et retenter une création, ce qui perturbait en cascade l'intro du groupe.
+  const groupMatchesCreatedRef = React.useRef(null);
   const [relOpenDay, setRelOpenDay] = useState(1);
   const [succOpenDay, setSuccOpenDay] = useState(null);
   const [sucSuccSubTab, setSucSuccSubTab] = useState('classement');
@@ -3651,6 +3680,7 @@ export default function App() {
       </div>
     );
   }
+  relegationModalImplRef.current = RelegationModal;
 
   function CelebrationModal() {
     if (!celebrationModal) return null;
@@ -3691,6 +3721,7 @@ export default function App() {
       </div>
     );
   }
+  celebrationModalImplRef.current = CelebrationModal;
 
 
 
@@ -3822,6 +3853,7 @@ export default function App() {
       </div>
     );
   }
+  seasonTrophiesModalImplRef.current = SeasonTrophiesModal;
 
   function getStreakBadge(carId, leagueName) {
     const league = currentSeason.leagues[leagueName];
@@ -4708,6 +4740,7 @@ export default function App() {
       </div>
     );
   }
+  brandModalImplRef.current = BrandModal;
 
   function MatchModal() {
     if (!matchModal) return null;
@@ -4897,6 +4930,7 @@ export default function App() {
       </div>
     );
   }
+  matchModalImplRef.current = MatchModal;
 
   function CarThumb({ photo, size = 52, onClick }) {
     const h = Math.round(size * 0.73);
@@ -7089,10 +7123,15 @@ export default function App() {
     const [openDay, setOpenDay] = [groupOpenDay, setGroupOpenDay];
 
     useEffect(() => {
+      const key = `${leagueTab}_G${activeGroup}_S${currentSeason.season}`;
+      if (groupMatchesCreatedRef.current === key) return; // déjà traité pour ce groupe/saison
       if (!league.groupResults[activeGroup]) {
+        groupMatchesCreatedRef.current = key;
         getOrCreateGroupMatches(leagueTab, activeGroup);
+      } else {
+        groupMatchesCreatedRef.current = key;
       }
-    }, [leagueTab, activeGroup]);
+    }, [leagueTab, activeGroup, currentSeason.season]);
 
     const totalMatches = matches.length;
     const playedMatches = matches.filter(m => m.homeGoals !== null).length;
@@ -7104,11 +7143,13 @@ export default function App() {
     // Affichée uniquement la toute première fois qu'on ouvre ce groupe pour cette saison,
     // ET seulement si aucun match n'a encore été joué (disparaît définitivement dès le 1er match).
     const introStorageKey = `groupIntroSeen_${leagueTab}_G${activeGroup}_S${currentSeason.season}`;
-    const [showGroupIntro, setShowGroupIntro] = useState(false);
+    // Alias vers l'état hissé au niveau App — survit à un remontage de GroupesView (voir
+    // commentaire à la déclaration de groupIntroVisible plus haut dans App()).
+    const [showGroupIntro, setShowGroupIntro] = [groupIntroVisible, setGroupIntroVisible];
     // La décision "faut-il l'afficher" n'est prise qu'UNE SEULE FOIS par clé groupe/saison —
     // jamais redécidée sur les re-renders suivants (écho Firebase ~1s après création des
     // matchs, resync, etc.), ce qui empêche tout redéclenchement/réapparition de l'intro.
-    const introInitializedForRef = useRef(null);
+    const introInitializedForRef = groupIntroDecidedRef;
     useEffect(() => {
       if (introInitializedForRef.current === introStorageKey) return; // déjà décidé pour cette clé
       if (totalMatches === 0) return; // matchs pas encore créés — on attend le prochain re-render
@@ -7131,7 +7172,7 @@ export default function App() {
     return (
       <div>
         {showGroupIntro && (
-          <GroupIntroPresentation
+          <StableGroupIntroPresentation
             leagueName={leagueTab}
             group={activeGroup}
             groupCars={groupCars}
@@ -7854,6 +7895,7 @@ export default function App() {
       </div>
     ), document.body);
   }
+  groupIntroPresentationImplRef.current = GroupIntroPresentation;
 
   // Présentation cinématique des voitures « en danger » (dernières de chaque groupe),
   // déclenchée automatiquement quand le barrage de relégation est généré. Même pattern
@@ -9337,6 +9379,7 @@ export default function App() {
       </div>
     );
   }
+  carProfileModalImplRef.current = CarProfileModal;
   function carDisplayName(name, leagueName) {
     return name;
   }
@@ -15805,16 +15848,16 @@ export default function App() {
         )}
 
         {/* Brand modal */}
-        <BrandModal />
+        <StableBrandModal />
 
         {/* Match modal */}
-        <MatchModal />
-      <CelebrationModal />
-      <RelegationModal />
-      <SeasonTrophiesModal />
+        <StableMatchModal />
+      <StableCelebrationModal />
+      <StableRelegationModal />
+      <StableSeasonTrophiesModal />
 
         {/* Car profile modal */}
-        <CarProfileModal />
+        <StableCarProfileModal />
 
         {showScrollTop && (
           <button
