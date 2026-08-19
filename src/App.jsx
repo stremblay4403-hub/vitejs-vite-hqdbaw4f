@@ -3354,6 +3354,25 @@ export default function App() {
   const StableDashboard = React.useRef((props) => dashboardImplRef.current ? dashboardImplRef.current(props) : null).current;
   const drawCeremonyImplRef = React.useRef(null);
   const StableDrawCeremony = React.useRef((props) => drawCeremonyImplRef.current ? drawCeremonyImplRef.current(props) : null).current;
+  const relegationDangerPresentationImplRef = React.useRef(null);
+  const StableRelegationDangerPresentation = React.useRef((props) => relegationDangerPresentationImplRef.current ? relegationDangerPresentationImplRef.current(props) : null).current;
+  // Sous-composants imbriqués de PlayoffsView — même souci que CarThumb : redéfinis à chaque
+  // fois que PlayoffsView (ou ses composants parents imbriqués) s'exécute, donc remontés à
+  // chaque match de playoffs confirmé, causant le clignotement des photos.
+  const bracketViewImplRef = React.useRef(null);
+  const StableBracketView = React.useRef((props) => bracketViewImplRef.current ? bracketViewImplRef.current(props) : null).current;
+  const carCardImplRef = React.useRef(null);
+  const StableCarCard = React.useRef((props) => carCardImplRef.current ? carCardImplRef.current(props) : null).current;
+  const matchBlockImplRef = React.useRef(null);
+  const StableMatchBlock = React.useRef((props) => matchBlockImplRef.current ? matchBlockImplRef.current(props) : null).current;
+  const halfBracketImplRef = React.useRef(null);
+  const StableHalfBracket = React.useRef((props) => halfBracketImplRef.current ? halfBracketImplRef.current(props) : null).current;
+  const poMatchCardImplRef = React.useRef(null);
+  const StablePOMatchCard = React.useRef((props) => poMatchCardImplRef.current ? poMatchCardImplRef.current(props) : null).current;
+  const teamRowImplRef = React.useRef(null);
+  const StableTeamRow = React.useRef((props) => teamRowImplRef.current ? teamRowImplRef.current(props) : null).current;
+  const roundSectionImplRef = React.useRef(null);
+  const StableRoundSection = React.useRef((props) => roundSectionImplRef.current ? roundSectionImplRef.current(props) : null).current;
   const matchModalImplRef = React.useRef(null);
   const StableMatchModal = React.useRef((props) => matchModalImplRef.current ? matchModalImplRef.current(props) : null).current;
   const carProfileModalImplRef = React.useRef(null);
@@ -8026,6 +8045,7 @@ export default function App() {
       </div>
     ), document.body);
   }
+  relegationDangerPresentationImplRef.current = RelegationDangerPresentation;
 
 
   function PlayoffsView() {
@@ -8129,6 +8149,7 @@ export default function App() {
           </div>
         );
       }
+      carCardImplRef.current = CarCard;
 
       function MatchBlock({ m, onConfirm, mirror, rIdx, i, betweenGap, isLast }) {
         if (!m) return null;
@@ -8146,8 +8167,8 @@ export default function App() {
                 homeGoals: m?.homeGoals, awayGoals: m?.awayGoals,
                 onConfirm,
               })}>
-              <CarCard carId={m?.homeId} isWinner={winnerId === m?.homeId} goals={m?.homeGoals} />
-              <CarCard carId={m?.awayId} isWinner={winnerId === m?.awayId} goals={m?.awayGoals} />
+              <StableCarCard carId={m?.homeId} isWinner={winnerId === m?.homeId} goals={m?.homeGoals} />
+              <StableCarCard carId={m?.awayId} isWinner={winnerId === m?.awayId} goals={m?.awayGoals} />
             </div>
             {!isLast && (
               <svg style={{ position:'absolute', [mirror ? 'right' : 'left']: CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
@@ -8162,6 +8183,7 @@ export default function App() {
           </div>
         );
       }
+      matchBlockImplRef.current = MatchBlock;
 
       function HalfBracket({ roundSets, labels, mirror }) {
         // mirror=false: R1 on left, SF on right (→ toward center)
@@ -8184,7 +8206,7 @@ export default function App() {
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
                     {roundMatches.map((m, i) => (
-                      <MatchBlock key={m?.id || i} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={isLast}
+                      <StableMatchBlock key={m?.id || i} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={isLast}
                         onConfirm={m ? confirmWithAnim(m, leagueTab) : undefined} />
                     ))}
                   </div>
@@ -8194,6 +8216,7 @@ export default function App() {
           </div>
         );
       }
+      halfBracketImplRef.current = HalfBracket;
 
       const leftRounds = [leftR1, leftR2, leftR3, leftQF, leftSF];
       const rightRounds = [rightR1, rightR2, rightR3, rightQF, rightSF];
@@ -8203,7 +8226,7 @@ export default function App() {
         <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch', background:'var(--dark2)', borderRadius:8, padding:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:0 }}>
             {/* Left: R1→SF (left to right) */}
-            <HalfBracket roundSets={leftRounds} labels={roundLabels} mirror={false} />
+            <StableHalfBracket roundSets={leftRounds} labels={roundLabels} mirror={false} />
 
             {/* Center: Finale */}
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', margin:`0 ${COL_GAP}px`, flexShrink:0 }}>
@@ -8218,8 +8241,8 @@ export default function App() {
                     homeGoals: fin.homeGoals, awayGoals: fin.awayGoals,
                     onConfirm: confirmWithAnim(fin, leagueTab),
                   })}>
-                  <CarCard carId={fin.homeId} isWinner={getWinnerId(fin) === fin.homeId} goals={fin.homeGoals} />
-                  <CarCard carId={fin.awayId} isWinner={getWinnerId(fin) === fin.awayId} goals={fin.awayGoals} />
+                  <StableCarCard carId={fin.homeId} isWinner={getWinnerId(fin) === fin.homeId} goals={fin.homeGoals} />
+                  <StableCarCard carId={fin.awayId} isWinner={getWinnerId(fin) === fin.awayId} goals={fin.awayGoals} />
                 </div>
               ) : (
                 <div style={{ width:CARD_W, height:MATCH_H, background:'var(--dark3)', border:'1px solid var(--gold-dim)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.4 }}>
@@ -8229,11 +8252,12 @@ export default function App() {
             </div>
 
             {/* Right: SF→R1 (mirrored, right to left) */}
-            <HalfBracket roundSets={rightRounds} labels={roundLabels} mirror={true} />
+            <StableHalfBracket roundSets={rightRounds} labels={roundLabels} mirror={true} />
           </div>
         </div>
       );
     }
+    bracketViewImplRef.current = BracketView;
 
       // Card dimensions
       const CARD_W = 110;
@@ -8326,6 +8350,7 @@ export default function App() {
           </div>
         );
       }
+      teamRowImplRef.current = TeamRow;
 
       const poMatches = Object.values(currentSeason.leagues[leagueTab]?.playoffResults || {});
       const homeStats = getGroupStatsForCar(m.homeId, leagueTab);
@@ -8339,11 +8364,12 @@ export default function App() {
             homeStats, awayStats,
             onConfirm: confirmWithAnim(m, leagueTab),
           })}>
-          <TeamRow carId={m.homeId} photo={homePhoto} car={home} seed={m.homeSeed} groupRank={m.homeGroupRank} fromGroup={m.homeGroup} goals={m.homeGoals} isWinner={hWin} />
-          <TeamRow carId={m.awayId} photo={awayPhoto} car={away} seed={m.awaySeed} groupRank={m.awayGroupRank} fromGroup={m.awayGroup} goals={m.awayGoals} isWinner={aWin} />
+          <StableTeamRow carId={m.homeId} photo={homePhoto} car={home} seed={m.homeSeed} groupRank={m.homeGroupRank} fromGroup={m.homeGroup} goals={m.homeGoals} isWinner={hWin} />
+          <StableTeamRow carId={m.awayId} photo={awayPhoto} car={away} seed={m.awaySeed} groupRank={m.awayGroupRank} fromGroup={m.awayGroup} goals={m.awayGoals} isWinner={aWin} />
         </div>
       );
     }
+    poMatchCardImplRef.current = POMatchCard;
 
     function RoundSection({ label, matches, round }) {
       const played = matches.filter(m => m.homeGoals !== null).length;
@@ -8362,12 +8388,13 @@ export default function App() {
             ref={el => { if (el) el.scrollTop = poRoundScrollRef.current[round] || 0; }}
             onScroll={e => { poRoundScrollRef.current[round] = e.currentTarget.scrollTop; }}>
             <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round === 'r1' ? 240 :round === 'r2' ? 260 :280}px,1fr))`,gap:12 }}>
-              {matches.map(m => <POMatchCard key={m.id} m={m} compact={round === 'r1'} />)}
+              {matches.map(m => <StablePOMatchCard key={m.id} m={m} compact={round === 'r1'} />)}
             </div>
           </div>
         </div>
       );
     }
+    roundSectionImplRef.current = RoundSection;
 
     return (
       <div>
@@ -8412,15 +8439,15 @@ export default function App() {
               <div className="card" style={{ marginBottom:12 }}>
                 <div className="card-header"><div className="card-title">🏆 Bracket — {leagueTab}</div></div>
                 <div className="card-body" style={{ padding:8 }}>
-                  <BracketView />
+                  <StableBracketView />
                 </div>
               </div>
             )}
-            <RoundSection label="Ronde 1 (64→32)" matches={r1} round="r1" />
-            <RoundSection label="Ronde 2 (32→16)" matches={r2} round="r2" />
-            <RoundSection label="Ronde 3 (16→8)" matches={r3} round="r3" />
-            <RoundSection label="Quarts de Finale (8→4)" matches={qf} round="qf" />
-            <RoundSection label="Demi-Finales (4→2)" matches={sf} round="sf" />
+            <StableRoundSection label="Ronde 1 (64→32)" matches={r1} round="r1" />
+            <StableRoundSection label="Ronde 2 (32→16)" matches={r2} round="r2" />
+            <StableRoundSection label="Ronde 3 (16→8)" matches={r3} round="r3" />
+            <StableRoundSection label="Quarts de Finale (8→4)" matches={qf} round="qf" />
+            <StableRoundSection label="Demi-Finales (4→2)" matches={sf} round="sf" />
             {fin && (
               <div className="card mb-16">
                 <div className="card-header">
@@ -8429,7 +8456,7 @@ export default function App() {
                   <button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRound('final'); }}>🎲 Simuler</button>
                 </div>
                 <div className="card-body" style={{ maxWidth:320 }}>
-                  <POMatchCard m={fin} compact={false} />
+                  <StablePOMatchCard m={fin} compact={false} />
                   {fin.homeGoals !== null && (
                     <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>
                       ✓ Enregistrer le Champion
@@ -15790,7 +15817,7 @@ export default function App() {
         <StableDrawCeremony data={drawCeremony} onClose={() => setDrawCeremony(null)} />
       )}
       {dangerPresentation && (
-        <RelegationDangerPresentation
+        <StableRelegationDangerPresentation
           leagueName={dangerPresentation.leagueName}
           seasonNum={dangerPresentation.seasonNum}
           cars={dangerPresentation.cars}
