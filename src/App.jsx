@@ -3373,6 +3373,13 @@ export default function App() {
   const StableTeamRow = React.useRef((props) => teamRowImplRef.current ? teamRowImplRef.current(props) : null).current;
   const roundSectionImplRef = React.useRef(null);
   const StableRoundSection = React.useRef((props) => roundSectionImplRef.current ? roundSectionImplRef.current(props) : null).current;
+  // Sous-composants imbriqués de TournoiChampionsView — même souci.
+  const tcMatchCardImplRef = React.useRef(null);
+  const StableTCMatchCard = React.useRef((props) => tcMatchCardImplRef.current ? tcMatchCardImplRef.current(props) : null).current;
+  const tcBracketCardImplRef = React.useRef(null);
+  const StableTCBracketCard = React.useRef((props) => tcBracketCardImplRef.current ? tcBracketCardImplRef.current(props) : null).current;
+  const tcMatchBlockImplRef = React.useRef(null);
+  const StableTCMatchBlock = React.useRef((props) => tcMatchBlockImplRef.current ? tcMatchBlockImplRef.current(props) : null).current;
   const matchModalImplRef = React.useRef(null);
   const StableMatchModal = React.useRef((props) => matchModalImplRef.current ? matchModalImplRef.current(props) : null).current;
   const carProfileModalImplRef = React.useRef(null);
@@ -15079,6 +15086,7 @@ export default function App() {
         </div>
       );
     }
+    tcMatchCardImplRef.current = TCMatchCard;
 
     const ALL_ROUND_LABELS = { r1:'Ronde 1', r2:'Ronde 2', r3:'Ronde 3', r4:'Ronde 4', r5:'Ronde 5', sf:'Demi-Finales', third:'🥉 Match 3e Place', final:'🏆 Finale' };
     const ROUND_ORDER = ['r1','r2','r3','r4','r5','sf','third','final'];
@@ -15218,6 +15226,7 @@ export default function App() {
                   </div>
                 );
               }
+              tcBracketCardImplRef.current = TCBracketCard;
 
               function TCMatchBlock({ m, rIdx, i, betweenGap, isLast }) {
                 if (!m) return null;
@@ -15232,8 +15241,8 @@ export default function App() {
                         homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                         onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
                       })}>
-                      <TCBracketCard carId={m.homeId} league={m.homeLeague} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
-                      <TCBracketCard carId={m.awayId} league={m.awayLeague} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
+                      <StableTCBracketCard carId={m.homeId} league={m.homeLeague} isWinner={winnerId === m.homeId} goals={m.homeGoals} />
+                      <StableTCBracketCard carId={m.awayId} league={m.awayLeague} isWinner={winnerId === m.awayId} goals={m.awayGoals} />
                     </div>
                     {!isLast && (
                       <svg style={{ position:'absolute', left:CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
@@ -15247,6 +15256,7 @@ export default function App() {
                   </div>
                 );
               }
+              tcMatchBlockImplRef.current = TCMatchBlock;
 
               const roundLabels = { r1:'R1', r2:'R2', r3:'R3', r4:'R4', r5:'R5', sf:'SF' };
 
@@ -15266,7 +15276,7 @@ export default function App() {
                               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold-dim)', letterSpacing:1, marginBottom:6, textAlign:'center', width:CARD_W }}>{label}</div>
                               <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
                                 {roundMatches.map((m, i) => (
-                                  <TCMatchBlock key={m.id} m={m} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={false} />
+                                  <StableTCMatchBlock key={m.id} m={m} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={false} />
                                 ))}
                               </div>
                             </div>
@@ -15279,8 +15289,8 @@ export default function App() {
                               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold)', letterSpacing:1, marginBottom:6 }}>🏆 FINALE</div>
                               <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
                                 onClick={() => openMatchModal({ homeName: getCarName(finalM.homeId, finalM.homeLeague), awayName: getCarName(finalM.awayId, finalM.awayLeague), homePhoto: getCarPhoto(finalM.homeId), awayPhoto: getCarPhoto(finalM.awayId), homeGoals: finalM.homeGoals, awayGoals: finalM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(finalM.id, hg, ag) })}>
-                                <TCBracketCard carId={finalM.homeId} league={finalM.homeLeague} isWinner={getWinnerId(finalM) === finalM.homeId} goals={finalM.homeGoals} />
-                                <TCBracketCard carId={finalM.awayId} league={finalM.awayLeague} isWinner={getWinnerId(finalM) === finalM.awayId} goals={finalM.awayGoals} />
+                                <StableTCBracketCard carId={finalM.homeId} league={finalM.homeLeague} isWinner={getWinnerId(finalM) === finalM.homeId} goals={finalM.homeGoals} />
+                                <StableTCBracketCard carId={finalM.awayId} league={finalM.awayLeague} isWinner={getWinnerId(finalM) === finalM.awayId} goals={finalM.awayGoals} />
                               </div>
                             </div>
                           )}
@@ -15289,8 +15299,8 @@ export default function App() {
                               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'#CD7F32', letterSpacing:1, marginBottom:6 }}>🥉 3E PLACE</div>
                               <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
                                 onClick={() => openMatchModal({ homeName: getCarName(thirdM.homeId, thirdM.homeLeague), awayName: getCarName(thirdM.awayId, thirdM.awayLeague), homePhoto: getCarPhoto(thirdM.homeId), awayPhoto: getCarPhoto(thirdM.awayId), homeGoals: thirdM.homeGoals, awayGoals: thirdM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(thirdM.id, hg, ag) })}>
-                                <TCBracketCard carId={thirdM.homeId} league={thirdM.homeLeague} isWinner={getWinnerId(thirdM) === thirdM.homeId} goals={thirdM.homeGoals} />
-                                <TCBracketCard carId={thirdM.awayId} league={thirdM.awayLeague} isWinner={getWinnerId(thirdM) === thirdM.awayId} goals={thirdM.awayGoals} />
+                                <StableTCBracketCard carId={thirdM.homeId} league={thirdM.homeLeague} isWinner={getWinnerId(thirdM) === thirdM.homeId} goals={thirdM.homeGoals} />
+                                <StableTCBracketCard carId={thirdM.awayId} league={thirdM.awayLeague} isWinner={getWinnerId(thirdM) === thirdM.awayId} goals={thirdM.awayGoals} />
                               </div>
                             </div>
                           )}
@@ -15322,7 +15332,7 @@ export default function App() {
                     onScroll={e => { tcRoundScrollRef.current[round] = e.currentTarget.scrollTop; }}
                     style={{ maxHeight:round === 'r1' ? 480 :400,overflowY:'auto' }}>
                     <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round==='r1'?220:260}px,1fr))`,gap:10 }}>
-                      {roundMatches.map(m => <TCMatchCard key={m.id} m={m} />)}
+                      {roundMatches.map(m => <StableTCMatchCard key={m.id} m={m} />)}
                     </div>
                   </div>
                 </div>
