@@ -16221,7 +16221,64 @@ export default function App() {
         {!menuOpen && (
         <>
         {/* Sous-menu Ligues — grille de choix (16 ligues/paliers) */}
-        {mainTab === 'ligues' && liguesMenuOpen && (
+        {mainTab === 'ligues' && liguesMenuOpen && (() => {
+          // Progression de chaque palier : total de matchs prévus vs joués, pour afficher une
+          // coche ✓ (terminé) ou "X/Y" (en cours) sur chaque carreau.
+          const SIMPLE_LEAGUE_NAME = {
+            successeurs: 'Successeurs',
+            sucsucc: 'Successeurs aux Successeurs',
+            remplac: 'Remplaçants des Successeurs',
+            avantdern: 'Avant-dernière chance',
+            derniere: 'Dernière chance',
+            persev: 'Persévérance',
+            deter: 'Détermination',
+            acharn: 'Acharnement',
+            obstin: 'Obstination',
+            insist: 'Insistance',
+            comeback: 'Comeback',
+            import: 'Importation',
+            oubl: 'Oubliettes',
+          };
+          const getProgress = (key) => {
+            if (SIMPLE_LEAGUE_NAME[key]) {
+              const league = currentSeason.leagues[SIMPLE_LEAGUE_NAME[key]];
+              const cars = league?.cars || [];
+              if (cars.length === 0) return { total: 0, played: 0 };
+              return { total: genRoundRobin(cars).length, played: (league?.matches || []).length };
+            }
+            if (key === 'actuelles') {
+              let total = 0, played = 0;
+              AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).forEach(name => {
+                const league = currentSeason.leagues[name];
+                const cars = league?.cars || [];
+                if (cars.length === 0) return;
+                total += genRoundRobin(cars).length;
+                played += (league?.matches || []).length;
+              });
+              return { total, played };
+            }
+            if (key === 'principales') {
+              let total = 0, played = 0;
+              LEAGUES.forEach(name => {
+                const league = currentSeason.leagues[name];
+                if (!league) return;
+                const all = [
+                  ...Object.values(league.groupResults || {}).flat(),
+                  ...Object.values(league.playoffResults || {}),
+                  ...Object.values(league.relegationResults || {}),
+                ];
+                all.forEach(m => { total++; if (m.homeGoals != null) played++; });
+              });
+              return { total, played };
+            }
+            if (key === 'champions') {
+              const matches = currentSeason.tournoiChampions?.matches || [];
+              return { total: matches.length, played: matches.filter(m => m.homeGoals != null).length };
+            }
+            return { total: 0, played: 0 };
+          };
+
+          return (
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>Ligues</div>
             <div className="menu-grid">
@@ -16242,22 +16299,42 @@ export default function App() {
                 { key: 'comeback', label: 'Comeback' },
                 { key: 'import', label: 'Importation' },
                 { key: 'oubl', label: 'Oubliettes' },
-              ].map(t => (
+              ].map(t => {
+                const { total, played } = getProgress(t.key);
+                const done = total > 0 && played === total;
+                return (
                 <button key={t.key}
                   onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); if (t.key === 'principales') { setLeagueMenuOpen(true); setSectionMenuOpen(true); } if (t.key === 'actuelles') setActuellesMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setLiguesMenuOpen(true)); }}
                   style={{
+                    position:'relative',
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
                     background: LIGUE_SUBTAB_COLORS[t.key] ? `${LIGUE_SUBTAB_COLORS[t.key]}22` : 'var(--dark2)',
                     border:`1px solid ${LIGUE_SUBTAB_COLORS[t.key] || 'var(--border)'}`, borderRadius:10,
                     color:'var(--text)', cursor:'pointer', textAlign:'center', padding:8,
                   }}>
+                  {total > 0 && (
+                    <span style={{
+                      position:'absolute', top:8, right:8,
+                      fontSize:done ? 13 : 11, fontWeight:700,
+                      color: done ? 'var(--green)' : 'var(--text-dim)',
+                      background: done ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)',
+                      borderRadius:done ? '50%' : 6,
+                      width: done ? 22 : undefined, height: done ? 22 : undefined,
+                      display:'flex', alignItems:'center', justifyContent:'center',
+                      padding: done ? 0 : '2px 6px',
+                    }}>
+                      {done ? '✓' : `${played}/${total}`}
+                    </span>
+                  )}
                   <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1 }}>{t.label}</span>
                 </button>
-              ))}
+                );
+              })}
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Barre de retour vers le sous-menu Ligues, une fois une ligue choisie */}
         {mainTab === 'ligues' && !liguesMenuOpen && (
