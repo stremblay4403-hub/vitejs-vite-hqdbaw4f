@@ -3380,6 +3380,37 @@ export default function App() {
   const StableTCBracketCard = React.useRef((props) => tcBracketCardImplRef.current ? tcBracketCardImplRef.current(props) : null).current;
   const tcMatchBlockImplRef = React.useRef(null);
   const StableTCMatchBlock = React.useRef((props) => tcMatchBlockImplRef.current ? tcMatchBlockImplRef.current(props) : null).current;
+  // Les 12 ligues auxiliaires suivantes (Succ. aux Succ., Remplaçants, Avant-dernière chance,
+  // Dernière chance, Persévérance, Détermination, Acharnement, Obstination, Insistance,
+  // Comeback, Importation, Oubliettes) + Actuelles n'étaient stabilisées à AUCUN niveau
+  // (contrairement à Successeurs/Ligues Principales) — chaque simulation de journée les
+  // remontait entièrement, causant le clignotement des photos.
+  const sucSuccViewImplRef = React.useRef(null);
+  const StableSucSuccView = React.useRef((props) => sucSuccViewImplRef.current ? sucSuccViewImplRef.current(props) : null).current;
+  const remplacViewImplRef = React.useRef(null);
+  const StableRemplacView = React.useRef((props) => remplacViewImplRef.current ? remplacViewImplRef.current(props) : null).current;
+  const avantDernViewImplRef = React.useRef(null);
+  const StableAvantDernView = React.useRef((props) => avantDernViewImplRef.current ? avantDernViewImplRef.current(props) : null).current;
+  const derniereViewImplRef = React.useRef(null);
+  const StableDerniereView = React.useRef((props) => derniereViewImplRef.current ? derniereViewImplRef.current(props) : null).current;
+  const persevViewImplRef = React.useRef(null);
+  const StablePersevView = React.useRef((props) => persevViewImplRef.current ? persevViewImplRef.current(props) : null).current;
+  const deterViewImplRef = React.useRef(null);
+  const StableDeterView = React.useRef((props) => deterViewImplRef.current ? deterViewImplRef.current(props) : null).current;
+  const acharnViewImplRef = React.useRef(null);
+  const StableAcharnView = React.useRef((props) => acharnViewImplRef.current ? acharnViewImplRef.current(props) : null).current;
+  const obstinViewImplRef = React.useRef(null);
+  const StableObstinView = React.useRef((props) => obstinViewImplRef.current ? obstinViewImplRef.current(props) : null).current;
+  const insistViewImplRef = React.useRef(null);
+  const StableInsistView = React.useRef((props) => insistViewImplRef.current ? insistViewImplRef.current(props) : null).current;
+  const comebackViewImplRef = React.useRef(null);
+  const StableComebackView = React.useRef((props) => comebackViewImplRef.current ? comebackViewImplRef.current(props) : null).current;
+  const importViewImplRef = React.useRef(null);
+  const StableImportView = React.useRef((props) => importViewImplRef.current ? importViewImplRef.current(props) : null).current;
+  const oublViewImplRef = React.useRef(null);
+  const StableOublView = React.useRef((props) => oublViewImplRef.current ? oublViewImplRef.current(props) : null).current;
+  const actuellesViewImplRef = React.useRef(null);
+  const StableActuellesView = React.useRef((props) => actuellesViewImplRef.current ? actuellesViewImplRef.current(props) : null).current;
   const matchModalImplRef = React.useRef(null);
   const StableMatchModal = React.useRef((props) => matchModalImplRef.current ? matchModalImplRef.current(props) : null).current;
   const carProfileModalImplRef = React.useRef(null);
@@ -10532,6 +10563,9 @@ export default function App() {
     );
   }
 
+  sucSuccViewImplRef.current = SucSuccView;
+
+
   function RemplacView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [remplacOpenDay, setRemplacOpenDay];
     const leagueName = 'Remplaçants des Successeurs';
@@ -10769,6 +10803,9 @@ export default function App() {
     );
   }
 
+  remplacViewImplRef.current = RemplacView;
+
+
   function AvantDernView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [avantDernOpenDay, setAvantDernOpenDay];
     const leagueName = 'Avant-dernière chance';
@@ -10980,6 +11017,9 @@ export default function App() {
       </div>
     );
   }
+
+  avantDernViewImplRef.current = AvantDernView;
+
 
   function DerniereView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [derniereOpenDay, setDerniereOpenDay];
@@ -11193,6 +11233,9 @@ export default function App() {
     );
   }
 
+  derniereViewImplRef.current = DerniereView;
+
+
   function PersevView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [persevOpenDay, setPersevOpenDay];
     const leagueName = 'Persévérance';
@@ -11404,6 +11447,9 @@ export default function App() {
       </div>
     );
   }
+
+  persevViewImplRef.current = PersevView;
+
 
   function DeterView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [deterOpenDay, setDeterOpenDay];
@@ -11617,6 +11663,9 @@ export default function App() {
     );
   }
 
+  deterViewImplRef.current = DeterView;
+
+
   function AcharnView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [acharnOpenDay, setAcharnOpenDay];
     const leagueName = 'Acharnement';
@@ -11828,6 +11877,9 @@ export default function App() {
       </div>
     );
   }
+
+  acharnViewImplRef.current = AcharnView;
+
 
   function ObstinView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [obstinOpenDay, setObstinOpenDay];
@@ -12041,6 +12093,9 @@ export default function App() {
     );
   }
 
+  obstinViewImplRef.current = ObstinView;
+
+
   function InsistView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [insistOpenDay, setInsistOpenDay];
     const leagueName = 'Insistance';
@@ -12252,6 +12307,9 @@ export default function App() {
       </div>
     );
   }
+
+  insistViewImplRef.current = InsistView;
+
 
   function ComebackView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [comebackOpenDay, setComebackOpenDay];
@@ -12465,6 +12523,9 @@ export default function App() {
     );
   }
 
+  comebackViewImplRef.current = ComebackView;
+
+
   function ImportView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [importOpenDay, setImportOpenDay];
     const leagueName = 'Importation';
@@ -12677,6 +12738,9 @@ export default function App() {
     );
   }
 
+  importViewImplRef.current = ImportView;
+
+
   function OublView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [oublOpenDay, setOublOpenDay];
     const leagueName = 'Oubliettes';
@@ -12870,6 +12934,9 @@ export default function App() {
       </div>
     );
   }
+
+  oublViewImplRef.current = OublView;
+
 
   function ActuellesView({ leagueName, subTab, setSubTab }) {
     const [openDay, setOpenDay] = [actOpenDay, setActOpenDay];
@@ -13111,6 +13178,7 @@ export default function App() {
       </div>
     );
   }
+  actuellesViewImplRef.current = ActuellesView;
 
   function AllCarsView() {
     const [search, setSearch] = useState(allCarsSearchRef.current);
@@ -16106,13 +16174,13 @@ export default function App() {
           <button
             className="btn btn-sm"
             style={{ background: (mainTab === 'dashboard' && !menuOpen) ? 'var(--gold)' : 'var(--dark3)', color: (mainTab === 'dashboard' && !menuOpen) ? '#1a1305' : 'var(--text)', fontWeight:700 }}
-            onClick={() => { setMainTab('dashboard'); setMenuOpen(false); }}>
+            onClick={() => { setMainTab('dashboard'); setMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
             🏠 Tableau de Bord
           </button>
           <button
             aria-label="Menu"
             style={{ width:40, height:32, display:'flex',alignItems:'center',justifyContent:'center', background: menuOpen ? 'var(--gold)' : 'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', gap:3, flexDirection:'column' }}
-            onClick={() => { setMenuOpen(true); navPush(() => setMenuOpen(false)); }}>
+            onClick={() => { setMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setMenuOpen(false)); }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 5px)', gridTemplateRows:'repeat(2, 5px)', gap:3 }}>
               {[0,1,2,3].map(i => <div key={i} style={{ width:5,height:5, background: menuOpen ? '#1a1305' : 'var(--text-dim)', borderRadius:1 }} />)}
             </div>
@@ -16135,7 +16203,7 @@ export default function App() {
                 { key: 'pays', label: 'Pays', icon: '🌍' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setMainTab(t.key); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); if (t.key === 'bonus') setLeagueMenuOpen(true); navPush(() => setMenuOpen(true)); }}
+                  onClick={() => { setMainTab(t.key); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); if (t.key === 'bonus') setLeagueMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -16176,7 +16244,7 @@ export default function App() {
                 { key: 'oubl', label: 'Oubliettes' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); if (t.key === 'principales') { setLeagueMenuOpen(true); setSectionMenuOpen(true); } if (t.key === 'actuelles') setActuellesMenuOpen(true); navPush(() => setLiguesMenuOpen(true)); }}
+                  onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); if (t.key === 'principales') { setLeagueMenuOpen(true); setSectionMenuOpen(true); } if (t.key === 'actuelles') setActuellesMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setLiguesMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -16209,7 +16277,7 @@ export default function App() {
             <div className="menu-grid">
               {LEAGUES.map(l => (
                 <button key={l}
-                  onClick={() => { setLeagueTab(l); setLeagueMenuOpen(false); if (mainTab === 'ligues') setSectionMenuOpen(true); navPush(() => setLeagueMenuOpen(true)); }}
+                  onClick={() => { setLeagueTab(l); setLeagueMenuOpen(false); if (mainTab === 'ligues') setSectionMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setLeagueMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -16241,7 +16309,7 @@ export default function App() {
                 { key: 'relegation', label: 'Barrage Relégation' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setSectionTab(t.key); setSectionMenuOpen(false); navPush(() => setSectionMenuOpen(true)); }}
+                  onClick={() => { setSectionTab(t.key); setSectionMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setSectionMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
@@ -16270,7 +16338,7 @@ export default function App() {
             <div className="menu-grid">
               {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
                 <button key={l}
-                  onClick={() => { setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null); setActuellesMenuOpen(false); navPush(() => setActuellesMenuOpen(true)); }}
+                  onClick={() => { setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null); setActuellesMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setActuellesMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',alignItems:'center',justifyContent:'center',
@@ -16342,18 +16410,18 @@ export default function App() {
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'relegation' && <StableRelegationView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'champions' && <StableTournoiChampionsView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'successeurs' && <StableSuccesseursView />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'sucsucc' && <SucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'remplac' && <RemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'avantdern' && <AvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'derniere' && <DerniereView subTab={derniereSubTab} setSubTab={setDerniereSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'persev' && <PersevView subTab={persevSubTab} setSubTab={setPersevSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'deter' && <DeterView subTab={deterSubTab} setSubTab={setDeterSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'acharn' && <AcharnView subTab={acharnSubTab} setSubTab={setAcharnSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'obstin' && <ObstinView subTab={obstinSubTab} setSubTab={setObstinSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'insist' && <InsistView subTab={insistSubTab} setSubTab={setInsistSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'comeback' && <ComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'import' && <ImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'oubl' && <OublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'sucsucc' && <StableSucSuccView subTab={sucSuccSubTab} setSubTab={setSucSuccSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'remplac' && <StableRemplacView subTab={remplacSubTab} setSubTab={setRemplacSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'avantdern' && <StableAvantDernView subTab={avantDernSubTab} setSubTab={setAvantDernSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'derniere' && <StableDerniereView subTab={derniereSubTab} setSubTab={setDerniereSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'persev' && <StablePersevView subTab={persevSubTab} setSubTab={setPersevSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'deter' && <StableDeterView subTab={deterSubTab} setSubTab={setDeterSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'acharn' && <StableAcharnView subTab={acharnSubTab} setSubTab={setAcharnSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'obstin' && <StableObstinView subTab={obstinSubTab} setSubTab={setObstinSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'insist' && <StableInsistView subTab={insistSubTab} setSubTab={setInsistSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'comeback' && <StableComebackView subTab={comebackSubTab} setSubTab={setComebackSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'import' && <StableImportView subTab={importSubTab} setSubTab={setImportSubTab} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'oubl' && <StableOublView subTab={oublSubTab} setSubTab={setOublSubTab} />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && !isPublicMode && (
             <div style={{ display:'flex',justifyContent:'flex-end',padding:'6px 12px',background:'var(--dark2)',borderBottom:'1px solid var(--border)' }}>
               {!confirmSimActuelles
@@ -16369,7 +16437,7 @@ export default function App() {
               }
             </div>
           )}
-          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && <ActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
+          {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && <StableActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
           {mainTab === 'bonus' && !leagueMenuOpen && <StableBonusView />}
           {mainTab === 'voitures' && <StableAllCarsView />}
           {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
