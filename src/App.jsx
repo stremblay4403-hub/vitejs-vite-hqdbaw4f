@@ -10141,6 +10141,8 @@ export default function App() {
     const [savingQueue, setSavingQueue] = React.useState(false);
 
     const [queueOpen, setQueueOpen] = React.useState(false);
+    const queueBtnRef = React.useRef(null);
+    const [queuePos, setQueuePos] = React.useState(null);
 
     const league = currentSeason.leagues[leagueName];
     const hasStarted = (league?.matches || []).length > 0;
@@ -10231,13 +10233,19 @@ export default function App() {
       <div style={{ display:'flex', gap:8, alignItems:'center', marginLeft:'auto', flexWrap:'wrap', position:'relative' }}>
         {/* File d'attente — toujours consultable, même avant qu'un match soit joué */}
         <div style={{ position:'relative' }}>
-          <button className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => setQueueOpen(o => !o)}>
+          <button ref={queueBtnRef} className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => {
+            if (!queueOpen && queueBtnRef.current) {
+              const r = queueBtnRef.current.getBoundingClientRect();
+              setQueuePos({ top: r.bottom + 6, right: window.innerWidth - r.right });
+            }
+            setQueueOpen(o => !o);
+          }}>
             🕐 File d'attente{queue.length > 0 ? ` (${queue.length})` : ''}
           </button>
-          {queueOpen && (
+          {queueOpen && queuePos && ReactDOM.createPortal((
             <>
-              <div style={{ position:'fixed', inset:0, zIndex:19 }} onClick={() => setQueueOpen(false)} />
-              <div style={{ position:'absolute', top:'110%', right:0, zIndex:20, background:'var(--dark2)', border:'1px solid var(--gold-dim)', borderRadius:6, minWidth:240, boxShadow:'var(--shadow-lg)', padding:8 }}
+              <div style={{ position:'fixed', inset:0, zIndex:2000 }} onClick={() => setQueueOpen(false)} />
+              <div style={{ position:'fixed', top:queuePos.top, right:queuePos.right, zIndex:2001, background:'var(--dark2)', border:'1px solid var(--gold-dim)', borderRadius:6, minWidth:240, maxHeight:'70vh', overflowY:'auto', boxShadow:'var(--shadow-lg)', padding:8 }}
                 onClick={e => e.stopPropagation()}>
               <div style={{ fontSize:10, color:'var(--gold-dim)', letterSpacing:1, padding:'2px 4px 6px', fontFamily:"'Bebas Neue',sans-serif" }}>ARRIVE DANS {leagueName.toUpperCase()} LA SAISON PROCHAINE</div>
               {queue.length === 0 && (
@@ -10295,7 +10303,7 @@ export default function App() {
               )}
               </div>
             </>
-          )}
+          ), document.body)}
         </div>
 
         {/* Ajout pour cette saison — bloqué dès qu'un match est joué */}
