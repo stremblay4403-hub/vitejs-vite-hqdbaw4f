@@ -2418,6 +2418,21 @@ function flushDataWrite() {
   }
 }
 
+// ── Filet de sécurité : forcer l'envoi immédiat d'une écriture en attente dès que l'app passe
+// en arrière-plan ou se ferme, plutôt que de compter sur le minuteur (setTimeout) normal.
+// Sur iOS, un minuteur planifié peut être suspendu si l'app est mise en arrière-plan avant
+// qu'il ne se déclenche (ex. ajout d'une voiture puis changement d'app immédiat) — la
+// modification restait alors seulement en local, jamais réellement envoyée à Firebase, et
+// disparaissait au rechargement suivant faute d'avoir été reçue par le serveur.
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && pendingDataWrite) flushDataWrite();
+  });
+  window.addEventListener('pagehide', () => {
+    if (pendingDataWrite) flushDataWrite();
+  });
+}
+
 // Met en file l'archivage d'une saison passée (si son contenu compressé a changé).
 // N'écrit jamais en mode public. Sérialisé via flushArchiveWrites.
 function enqueueArchiveWrite(season, { force = false } = {}) {
@@ -2553,7 +2568,14 @@ function storageSave(data) {
   }
 
   if (typeof isPublicModeRef !== 'undefined' && isPublicModeRef.current) return;
-  if (isLoadingFromFirebase.current) return;
+  if (isLoadingFromFirebase.current) {
+    // Ne JAMAIS abandonner silencieusement une écriture ici : ce garde-fou dure jusqu'à 5s après
+    // chaque synchro reçue, et une modification locale (ex. ajout de voiture) tombant dans cette
+    // fenêtre était jusqu'ici perdue sans aucune tentative de rattrapage — invisible jusqu'au
+    // rechargement suivant. On reprogramme la tentative au lieu de l'abandonner.
+    setTimeout(() => storageSave(data), 300);
+    return;
+  }
 
   // À ce stade c'est une VRAIE modification locale (admin, pas en train d'appliquer du distant) :
   // on horodate la sauvegarde locale. Sert d'arbitre au rechargement pour ne pas laisser un
@@ -3411,6 +3433,8 @@ export default function App() {
   const StableOublView = React.useRef((props) => oublViewImplRef.current ? oublViewImplRef.current(props) : null).current;
   const actuellesViewImplRef = React.useRef(null);
   const StableActuellesView = React.useRef((props) => actuellesViewImplRef.current ? actuellesViewImplRef.current(props) : null).current;
+  const addCarButtonImplRef = React.useRef(null);
+  const StableAddCarButton = React.useRef((props) => addCarButtonImplRef.current ? addCarButtonImplRef.current(props) : null).current;
   const matchModalImplRef = React.useRef(null);
   const StableMatchModal = React.useRef((props) => matchModalImplRef.current ? matchModalImplRef.current(props) : null).current;
   const carProfileModalImplRef = React.useRef(null);
@@ -10146,7 +10170,7 @@ export default function App() {
       }
       setDb(prev => {
         const next = JSON.parse(JSON.stringify(prev));
-        const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
+        const league = next.seasons[next.currentSeasonIdx].leagues[leagueName];
         if (!league) return prev;
         if (league.cars.some(c => c.name.toLowerCase() === name.toLowerCase())) return prev;
         league.cars.push({ id, name });
@@ -10177,7 +10201,7 @@ export default function App() {
       }
       setDb(prev => {
         const next = JSON.parse(JSON.stringify(prev));
-        const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
+        const league = next.seasons[next.currentSeasonIdx].leagues[leagueName];
         if (!league) return prev;
         const q = league.queue || [];
         if (q.some(c => c.name.toLowerCase() === name.toLowerCase())) return prev;
@@ -10194,7 +10218,7 @@ export default function App() {
     function removeFromQueue(id) {
       setDb(prev => {
         const next = JSON.parse(JSON.stringify(prev));
-        const league = next.seasons[next.seasons.length - 1].leagues[leagueName];
+        const league = next.seasons[next.currentSeasonIdx].leagues[leagueName];
         if (!league) return prev;
         league.queue = (league.queue || []).filter(c => c.id !== id);
         return next;
@@ -10310,6 +10334,7 @@ export default function App() {
       </div>
     );
   }
+  addCarButtonImplRef.current = AddCarButton;
 
   function SucSuccView({ subTab, setSubTab }) {
     const [openDay, setOpenDay] = [sucSuccOpenDay, setSucSuccOpenDay];
@@ -12391,6 +12416,7 @@ export default function App() {
               <div style={{ padding:'8px 12px',display:'flex',gap:12,alignItems:'center',flexWrap:'wrap' }}>
                 <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ width:220 }} />
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{cars.length} voitures · {playedCount}/{totalCount} matchs</span>
+                <StableAddCarButton leagueName={leagueName} />
               </div>
             </div>
             <div className="card">
@@ -12606,6 +12632,7 @@ export default function App() {
               <div style={{ padding:'8px 12px',display:'flex',gap:12,alignItems:'center',flexWrap:'wrap' }}>
                 <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ width:220 }} />
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{cars.length} voitures · {playedCount}/{totalCount} matchs</span>
+                <StableAddCarButton leagueName={leagueName} />
               </div>
             </div>
             <div className="card">
@@ -13028,7 +13055,7 @@ export default function App() {
               <div style={{ padding:'8px 12px',display:'flex',gap:12,alignItems:'center',flexWrap:'wrap' }}>
                 <input placeholder="🔍 Rechercher..." value={search} onChange={e => setSearch(e.target.value)} style={{ width:220 }} />
                 <span style={{ fontSize:12,color:'var(--text-dim)' }}>{cars.length} voitures · {playedCount}/{totalCount} matchs</span>
-                <AddCarButton leagueName={leagueName} />
+                <StableAddCarButton leagueName={leagueName} />
               </div>
             </div>
             <div className="card">
