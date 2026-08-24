@@ -4849,9 +4849,12 @@ export default function App() {
 
   function MatchModal() {
     if (!matchModal) return null;
-    const { homeName, awayName, homePhoto, awayPhoto, onConfirm, homeStats, awayStats,
+    const { homeName, awayName, homeId, awayId, homePhoto, awayPhoto, onConfirm, homeStats, awayStats,
             homeRank, awayRank, homePts, awayPts, homeQual, awayQual, homeProbs, awayProbs,
             homePlayoffGap, awayPlayoffGap, homePointsGap, awayPointsGap } = matchModal;
+
+    const homeFlag = homeId ? getBrandCountry(getCarBrand(homeId)) : '';
+    const awayFlag = awayId ? getBrandCountry(getCarBrand(awayId)) : '';
 
     // hg/ag vivent dans le state parent pour survivre aux re-renders des notifications
     const hg = matchHg;
@@ -4992,6 +4995,9 @@ export default function App() {
             <ProbLine probs={homeProbs} />
             {/* Home stepper */}
             <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
+              <div style={{ height:16,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                {homeFlag && <CountryFlag code={homeFlag} size={16} />}
+              </div>
               <button onClick={() => setHg(h => Math.min(9, (h??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:hWin ? 'var(--green)' :aWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:44,textAlign:'center' }}>
                 {hg ?? '—'}
@@ -5007,6 +5013,9 @@ export default function App() {
 
             {/* Away stepper */}
             <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
+              <div style={{ height:16,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                {awayFlag && <CountryFlag code={awayFlag} size={16} />}
+              </div>
               <button onClick={() => setAg(a => Math.min(9, (a??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:aWin ? 'var(--green)' :hWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:44,textAlign:'center' }}>
                 {ag ?? '—'}
@@ -8230,6 +8239,7 @@ export default function App() {
               onClick={() => openMatchModal({
                 homeName: getCar(leagueTab, m?.homeId)?.name,
                 awayName: getCar(leagueTab, m?.awayId)?.name,
+                homeId: m?.homeId, awayId: m?.awayId,
                 homePhoto: getCarPhoto(m?.homeId),
                 awayPhoto: getCarPhoto(m?.awayId),
                 homeGoals: m?.homeGoals, awayGoals: m?.awayGoals,
@@ -8304,6 +8314,7 @@ export default function App() {
                   onClick={() => openMatchModal({
                     homeName: getCar(leagueTab, fin.homeId)?.name,
                     awayName: getCar(leagueTab, fin.awayId)?.name,
+                    homeId: fin.homeId, awayId: fin.awayId,
                     homePhoto: getCarPhoto(fin.homeId),
                     awayPhoto: getCarPhoto(fin.awayId),
                     homeGoals: fin.homeGoals, awayGoals: fin.awayGoals,
@@ -8427,6 +8438,7 @@ export default function App() {
         <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:6,cursor:'pointer' }}
           onClick={() => openMatchModal({
             homeName: home?.name, awayName: away?.name,
+            homeId: m.homeId, awayId: m.awayId,
             homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
             homeStats, awayStats,
@@ -8826,6 +8838,7 @@ export default function App() {
                                 <div key={m.id}
                                   onClick={() => openMatchModal({
                                     homeName: home?.name, awayName: away?.name,
+                                    homeId: m.homeId, awayId: m.awayId,
                                     homePhoto, awayPhoto,
                                     homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                                     homeStats, awayStats,
@@ -10092,6 +10105,7 @@ export default function App() {
                               <div key={m.id}
                                 onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
+                                  homeId: m.homeId, awayId: m.awayId,
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                                   homeStats, awayStats,
@@ -10565,6 +10579,7 @@ export default function App() {
                               <div key={m.id}
                                 onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
+                                  homeId: m.homeId, awayId: m.awayId,
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                                   homeStats, awayStats,
@@ -10806,6 +10821,7 @@ export default function App() {
                               <div key={m.id}
                                 onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
+                                  homeId: m.homeId, awayId: m.awayId,
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                                   homeStats, awayStats,
@@ -11034,7 +11050,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -11250,7 +11266,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -11466,7 +11482,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -11682,7 +11698,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -11898,7 +11914,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -12114,7 +12130,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -12330,7 +12346,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -12547,7 +12563,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -12764,7 +12780,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3,transition:'background 0.1s' }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -12962,7 +12978,7 @@ export default function App() {
                             const homePts = standings.find(s => s.id === m.homeId)?.pts ?? 0;
                             const awayPts = standings.find(s => s.id === m.awayId)?.pts ?? 0;
                             return (
-                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
+                              <div key={m.id} onClick={() => openMatchModal({ homeName: getName(m.homeId), awayName: getName(m.awayId), homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto, homeGoals: m.homeGoals, awayGoals: m.awayGoals, homeStats, awayStats, homeRank, awayRank, homePts, awayPts, homeQual: null, awayQual: null, onConfirm: (hg, ag) => updateMatch(m.id, hg, ag) })}
                                 style={{ display:'flex',alignItems:'center',gap:8,padding:'8px 10px',borderBottom:'1px solid #1a1a1a',cursor:'pointer',borderLeft:isPlayed ? '3px solid var(--green)' :'3px solid transparent',background:isPlayed ? 'rgba(39,174,96,0.03)' :'transparent',borderRadius:3 }}>
                                 <div style={{ flex:1,display:'flex',alignItems:'center',gap:6,justifyContent:'flex-end' }}>
                                   <div style={{ fontSize:12,fontWeight:600,textAlign:'right',color:hWin ? 'var(--green)' :aWin ? 'var(--text-dim)' :'var(--text)',lineHeight:1.2 }}>{getName(m.homeId)}</div>
@@ -13195,6 +13211,7 @@ export default function App() {
                               <div key={m.id}
                                 onClick={() => openMatchModal({
                                   homeName: getName(m.homeId), awayName: getName(m.awayId),
+                                  homeId: m.homeId, awayId: m.awayId,
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                                   homeStats, awayStats,
@@ -14384,6 +14401,11 @@ export default function App() {
               </div>
             )}
             <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)'}}>{value.name}</div>
+            {getBrandCountry(getCarBrand(value.id)) && (
+              <div style={{display:'flex',justifyContent:'center',margin:'4px 0'}}>
+                <CountryFlag code={getBrandCountry(getCarBrand(value.id))} size={16} />
+              </div>
+            )}
             <div style={{fontSize:11,color:'var(--text-dim)',marginBottom:6}}>{value.league}</div>
             <button className="btn btn-dark btn-sm" style={{width:'100%'}} onClick={()=>setCar(null)}>Changer</button>
           </div>
@@ -15412,7 +15434,7 @@ export default function App() {
                             <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
                               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold)', letterSpacing:1, marginBottom:6 }}>🏆 FINALE</div>
                               <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
-                                onClick={() => openMatchModal({ homeName: getCarName(finalM.homeId, finalM.homeLeague), awayName: getCarName(finalM.awayId, finalM.awayLeague), homePhoto: getCarPhoto(finalM.homeId), awayPhoto: getCarPhoto(finalM.awayId), homeGoals: finalM.homeGoals, awayGoals: finalM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(finalM.id, hg, ag) })}>
+                                onClick={() => openMatchModal({ homeName: getCarName(finalM.homeId, finalM.homeLeague), awayName: getCarName(finalM.awayId, finalM.awayLeague), homeId: finalM.homeId, awayId: finalM.awayId, homePhoto: getCarPhoto(finalM.homeId), awayPhoto: getCarPhoto(finalM.awayId), homeGoals: finalM.homeGoals, awayGoals: finalM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(finalM.id, hg, ag) })}>
                                 <StableTCBracketCard carId={finalM.homeId} league={finalM.homeLeague} isWinner={getWinnerId(finalM) === finalM.homeId} goals={finalM.homeGoals} />
                                 <StableTCBracketCard carId={finalM.awayId} league={finalM.awayLeague} isWinner={getWinnerId(finalM) === finalM.awayId} goals={finalM.awayGoals} />
                               </div>
@@ -15422,7 +15444,7 @@ export default function App() {
                             <div style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
                               <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'#CD7F32', letterSpacing:1, marginBottom:6 }}>🥉 3E PLACE</div>
                               <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
-                                onClick={() => openMatchModal({ homeName: getCarName(thirdM.homeId, thirdM.homeLeague), awayName: getCarName(thirdM.awayId, thirdM.awayLeague), homePhoto: getCarPhoto(thirdM.homeId), awayPhoto: getCarPhoto(thirdM.awayId), homeGoals: thirdM.homeGoals, awayGoals: thirdM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(thirdM.id, hg, ag) })}>
+                                onClick={() => openMatchModal({ homeName: getCarName(thirdM.homeId, thirdM.homeLeague), awayName: getCarName(thirdM.awayId, thirdM.awayLeague), homeId: thirdM.homeId, awayId: thirdM.awayId, homePhoto: getCarPhoto(thirdM.homeId), awayPhoto: getCarPhoto(thirdM.awayId), homeGoals: thirdM.homeGoals, awayGoals: thirdM.awayGoals, onConfirm: (hg,ag) => updateTCMatch(thirdM.id, hg, ag) })}>
                                 <StableTCBracketCard carId={thirdM.homeId} league={thirdM.homeLeague} isWinner={getWinnerId(thirdM) === thirdM.homeId} goals={thirdM.homeGoals} />
                                 <StableTCBracketCard carId={thirdM.awayId} league={thirdM.awayLeague} isWinner={getWinnerId(thirdM) === thirdM.awayId} goals={thirdM.awayGoals} />
                               </div>
