@@ -13260,10 +13260,10 @@ export default function App() {
 
     const filteredRip = rip.filter(c => !ripSearch || c.name.toLowerCase().includes(ripSearch.toLowerCase()));
 
-    // File d'attente — regroupe les voitures en attente de toutes les ligues Actuelles
+    // File d'attente — regroupe les voitures en attente de toutes les ligues auxiliaires
     const allQueued = React.useMemo(() => {
       const out = [];
-      AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).forEach(lName => {
+      AUXILIARY_LEAGUES.forEach(lName => {
         const q = currentSeason.leagues[lName]?.queue || [];
         q.forEach(c => out.push({ ...c, league: lName }));
       });
