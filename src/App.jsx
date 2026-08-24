@@ -4995,8 +4995,8 @@ export default function App() {
             <ProbLine probs={homeProbs} />
             {/* Home stepper */}
             <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
-              <div style={{ height:16,display:'flex',alignItems:'center',justifyContent:'center' }}>
-                {homeFlag && <CountryFlag code={homeFlag} size={16} />}
+              <div style={{ height:34,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                {homeFlag && <CountryFlag code={homeFlag} size={34} />}
               </div>
               <button onClick={() => setHg(h => Math.min(9, (h??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:hWin ? 'var(--green)' :aWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:44,textAlign:'center' }}>
@@ -5013,8 +5013,8 @@ export default function App() {
 
             {/* Away stepper */}
             <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8 }}>
-              <div style={{ height:16,display:'flex',alignItems:'center',justifyContent:'center' }}>
-                {awayFlag && <CountryFlag code={awayFlag} size={16} />}
+              <div style={{ height:34,display:'flex',alignItems:'center',justifyContent:'center' }}>
+                {awayFlag && <CountryFlag code={awayFlag} size={34} />}
               </div>
               <button onClick={() => setAg(a => Math.min(9, (a??0)+1))} style={{ width:52,height:52,fontSize:28,background:'var(--dark2)',border:'1px solid var(--border)',borderRadius:8,color:'var(--gold)',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}>+</button>
               <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:52,color:aWin ? 'var(--green)' :hWin ? '#e74c3c' :'var(--gold)',lineHeight:1,minWidth:44,textAlign:'center' }}>
