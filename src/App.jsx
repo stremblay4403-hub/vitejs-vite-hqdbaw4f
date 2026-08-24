@@ -3095,7 +3095,7 @@ function CarThumb({ photo, size = 52, onClick }) {
   );
 }
 
-function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor, noStatsToggle }) {
+function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recentForm, pts, w, d, l, gf, ga, gp, bp, onClick, borderColor, noStatsToggle, flagCode }) {
   const [showStats, setShowStats] = React.useState(false);
   const diff = (gf ?? 0) - (ga ?? 0);
   const ROW_H = 98;
@@ -3143,6 +3143,11 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
       {/* Nom — flex:1 */}
       {!showStats && (
         <div style={{ flex:1, minWidth:0, display:'flex', flexDirection:'column', justifyContent:'center', padding:'0 8px', cursor:'pointer', overflow:'hidden' }} onClick={onClick}>
+          {flagCode && (
+            <div style={{ marginBottom:2 }}>
+              <CountryFlag code={flagCode} size={16} />
+            </div>
+          )}
           <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
           {badge && (
             <span style={{ display:'inline-block', marginTop:2, padding:'2px 6px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
@@ -7396,6 +7401,7 @@ export default function App() {
                               <LeaderboardRow
                               rank={i+1} rankDiff={rankDiff}
                               carId={s.id} leagueName={leagueTab}
+                              flagCode={getBrandCountry(getCarBrand(s.id))}
                               name={s.name} photo={photo} badge={badge} streakBadge={streakBadge}
                               recentForm={recentForm}
                               pts={s.pts} w={s.w} d={s.d} l={s.l}
@@ -8739,6 +8745,7 @@ export default function App() {
                           <LeaderboardRow
                           rank={i+1} rankDiff={null}
                           carId={s.id} leagueName={leagueTab}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -9998,6 +10005,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={leagueName}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -10472,6 +10480,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -10716,6 +10725,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -10955,6 +10965,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -11170,6 +11181,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -11385,6 +11397,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -11600,6 +11613,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -11815,6 +11829,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -12030,6 +12045,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -12245,6 +12261,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -12461,6 +12478,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -12677,6 +12695,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -12876,6 +12895,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
@@ -13091,6 +13111,7 @@ export default function App() {
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={leagueName}
+                          flagCode={getBrandCountry(getCarBrand(s.id))}
                           name={s.name} photo={photo} badge={badge}
                           pts={s.pts} w={s.w} d={s.d} l={s.l}
                           gf={s.gf} ga={s.ga} gp={s.gp}
