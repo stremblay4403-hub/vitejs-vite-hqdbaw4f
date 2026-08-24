@@ -7521,6 +7521,7 @@ export default function App() {
                                 });
                                 openMatchModal({
                                   homeName: home?.name, awayName: away?.name,
+                                  homeId: m.homeId, awayId: m.awayId,
                                   homePhoto, awayPhoto,
                                   homeGoals: m.homeGoals, awayGoals: m.awayGoals,
                                   homeStats, awayStats,
@@ -15198,7 +15199,7 @@ export default function App() {
       return (
         <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:4,cursor:'pointer' }}
           onClick={() => openMatchModal({
-            homeName, awayName, homePhoto, awayPhoto,
+            homeName, awayName, homeId: m.homeId, awayId: m.awayId, homePhoto, awayPhoto,
             homeGoals: m.homeGoals, awayGoals: m.awayGoals,
             homeStats, awayStats,
             onConfirm: (hg, ag) => updateTCMatch(m.id, hg, ag),
