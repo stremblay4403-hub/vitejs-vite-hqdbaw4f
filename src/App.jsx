@@ -13966,7 +13966,7 @@ export default function App() {
         // ne fait plus ensuite qu'un simple drawImage() (recadrage), sans jamais retracer
         // les 211 contours de pays ni redécouper les drapeaux à chaque frame. C'est ce
         // retraçage répété qui saturait la mémoire de WKWebView et faisait planter l'app.
-        const BAKE_W = 2400, BAKE_H = Math.round(2400 * (VB_H / VB_W));
+        const BAKE_W = 1300, BAKE_H = Math.round(1300 * (VB_H / VB_W));
 
         if (!pathsRef.current) {
           pathsRef.current = {};
@@ -14062,7 +14062,7 @@ export default function App() {
           if (!canvas || !wrap || !bakeRef.current) return;
           const rect = wrap.getBoundingClientRect();
           if (!rect.width) return;
-          const dpr = Math.min(2, window.devicePixelRatio || 1);
+          const dpr = Math.min(1.5, window.devicePixelRatio || 1);
           const pxW = Math.round(rect.width * dpr);
           const pxH = Math.round((rect.width * (VB_H / VB_W)) * dpr);
           if (canvas.width !== pxW) canvas.width = pxW;
@@ -14090,7 +14090,7 @@ export default function App() {
             const img = new Image();
             img.onload = () => scheduleBake();
             img.onerror = () => {};
-            img.src = `https://flagcdn.com/w160/${code.toLowerCase()}.png`;
+            img.src = `https://flagcdn.com/w80/${code.toLowerCase()}.png`;
             flagImgRef.current[code] = img;
           });
           bake();
@@ -14100,6 +14100,15 @@ export default function App() {
           return () => {
             ro.disconnect();
             if (bakeTimerRef.current) cancelAnimationFrame(bakeTimerRef.current);
+            if (rafRef.current) cancelAnimationFrame(rafRef.current);
+            // Libère explicitement la mémoire (grand canvas + tracés + drapeaux décodés)
+            // dès qu'on quitte la vue Carte, plutôt que d'attendre le ramasse-miettes —
+            // l'app a déjà des contraintes mémoire connues sous WKWebView.
+            bakeRef.current = null;
+            pathsRef.current = null;
+            borderRef.current = null;
+            flagImgRef.current = {};
+            bakeReadyRef.current = false;
           };
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
@@ -14111,7 +14120,9 @@ export default function App() {
 
         function dist(t0, t1) { return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY); }
 
+        const isTouchRef = useRef(false);
         function onTouchStart(e) {
+          isTouchRef.current = true;
           if (e.touches.length === 1) {
             drag.current = { mode: 'pan', x: e.touches[0].clientX, y: e.touches[0].clientY, cx: view.cx, cy: view.cy, moved: false };
           } else if (e.touches.length === 2) {
@@ -14139,35 +14150,85 @@ export default function App() {
             setView(clamp({ scale: drag.current.scale * factor, cx: drag.current.cx, cy: drag.current.cy }));
           }
         }
-        function onTouchEnd() { drag.current = null; }
+        function onTouchEnd() { drag.current = null; setTimeout(() => { isTouchRef.current = false; }, 500); }
         function onWheel(e) {
           e.preventDefault();
           zoomBy(e.deltaY < 0 ? 1.2 : 1 / 1.2);
         }
 
-        function onClick(e) {
-          if (drag.current && drag.current.moved) return;
+        // Réutilisé par le clic et le survol souris pour trouver le pays sous le curseur.
+        const hitCtxRef = useRef(null);
+        function codeAtClientPoint(clientX, clientY) {
           const wrap = wrapRef.current;
-          if (!wrap || !pathsRef.current) return;
+          if (!wrap || !pathsRef.current) return null;
           const rect = wrap.getBoundingClientRect();
+          if (!rect.width) return null;
           const w = VB_W / view.scale, h = VB_H / view.scale;
           const originX = view.cx - w / 2, originY = view.cy - h / 2;
-          const px = originX + ((e.clientX - rect.left) / rect.width) * w;
-          const py = originY + ((e.clientY - rect.top) / rect.height) * h;
-          const tmp = document.createElement('canvas').getContext('2d');
-          if (!tmp) return;
+          const px = originX + ((clientX - rect.left) / rect.width) * w;
+          const py = originY + ((clientY - rect.top) / rect.height) * h;
+          if (!hitCtxRef.current) hitCtxRef.current = document.createElement('canvas').getContext('2d');
+          const tmp = hitCtxRef.current;
+          if (!tmp) return null;
           for (const code of Object.keys(statsByCode)) {
             const p2d = pathsRef.current[code];
-            if (p2d && tmp.isPointInPath(p2d, px, py)) { goToCountry(code); break; }
+            if (p2d && tmp.isPointInPath(p2d, px, py)) return code;
+          }
+          return null;
+        }
+
+        function onClick(e) {
+          if (drag.current && drag.current.moved) return;
+          const code = codeAtClientPoint(e.clientX, e.clientY);
+          if (code) goToCountry(code);
+        }
+
+        // Souris (desktop) : glisser pour naviguer, survoler pour voir le nom du pays.
+        // Ignore les événements souris synthétiques que certains navigateurs mobiles
+        // génèrent après un geste tactile, pour éviter tout conflit avec le pan tactile.
+        const [hover, setHover] = useState(null);
+        function onMouseDown(e) {
+          if (isTouchRef.current || e.button !== 0) return;
+          drag.current = { mode: 'mousepan', x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy, moved: false };
+        }
+        function onMouseMove(e) {
+          if (isTouchRef.current) return;
+          if (drag.current && drag.current.mode === 'mousepan') {
+            const rect = wrapRef.current.getBoundingClientRect();
+            if (!rect.width) return;
+            const dx = e.clientX - drag.current.x;
+            const dy = e.clientY - drag.current.y;
+            if (Math.hypot(dx, dy) > 3) drag.current.moved = true;
+            const unitX = (VB_W / view.scale) / rect.width;
+            const unitY = (VB_H / view.scale) / rect.height;
+            setView(v => clamp({ ...v, cx: drag.current.cx - dx * unitX, cy: drag.current.cy - dy * unitY }));
+            setHover(null);
+            return;
+          }
+          const rect = wrapRef.current.getBoundingClientRect();
+          const code = codeAtClientPoint(e.clientX, e.clientY);
+          if (code) {
+            const c = statsByCode[code];
+            setHover({ name: c?.name || code, x: e.clientX - rect.left, y: e.clientY - rect.top });
+          } else {
+            setHover(null);
           }
         }
+        function onMouseUp() { if (drag.current && drag.current.mode === 'mousepan') drag.current = null; }
+        function onMouseLeave() { if (drag.current && drag.current.mode === 'mousepan') drag.current = null; setHover(null); }
 
         return (
           <div ref={wrapRef} style={{ position:'relative', borderRadius:12, overflow:'hidden', border:'1px solid var(--border)', background:'#05050a', aspectRatio:`${VB_W} / ${VB_H}` }}>
-            <canvas ref={canvasRef} style={{ width:'100%', height:'100%', display:'block', touchAction:'none' }}
+            <canvas ref={canvasRef} style={{ width:'100%', height:'100%', display:'block', touchAction:'none', cursor: hover ? 'pointer' : (drag.current && drag.current.mode === 'mousepan' ? 'grabbing' : 'grab') }}
               onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}
               onWheel={onWheel} onClick={onClick}
+              onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
             />
+            {hover && (
+              <div style={{ position:'absolute', left:hover.x + 12, top:hover.y + 12, pointerEvents:'none', background:'rgba(5,5,10,0.92)', border:'1px solid var(--border)', borderRadius:6, padding:'4px 10px', fontSize:13, fontWeight:600, color:'var(--gold)', whiteSpace:'nowrap', zIndex:2 }}>
+                {hover.name}
+              </div>
+            )}
             <div style={{ position:'absolute', right:8, bottom:8, display:'flex', flexDirection:'column', gap:6 }}>
               <button className="btn btn-dark btn-sm" style={{ width:36,height:36,padding:0,fontSize:18 }} onClick={() => zoomBy(1.5)}>+</button>
               <button className="btn btn-dark btn-sm" style={{ width:36,height:36,padding:0,fontSize:18 }} onClick={() => zoomBy(1/1.5)}>−</button>
