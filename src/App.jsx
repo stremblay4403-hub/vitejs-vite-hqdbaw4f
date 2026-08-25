@@ -13952,8 +13952,11 @@ export default function App() {
         const wrapRef = useRef(null);
         const canvasRef = useRef(null);
         const pathsRef = useRef(null);
+        const borderRef = useRef(null);
         const flagImgRef = useRef({});
+        const flagTileRef = useRef({});
         const rafRef = useRef(null);
+        const pendingFastRef = useRef(false);
         const [view, setView] = useState({ scale: 1, cx: 1000, cy: 500.5 });
         const drag = useRef(null);
         const VB_W = 2000, VB_H = 1001;
@@ -13962,10 +13965,14 @@ export default function App() {
         if (!pathsRef.current) {
           pathsRef.current = {};
           try {
+            const merged = new Path2D();
             Object.entries(WORLD_MAP_SHAPES).forEach(([code, d]) => {
-              pathsRef.current[code] = new Path2D(d);
+              const p = new Path2D(d);
+              pathsRef.current[code] = p;
+              merged.addPath(p);
             });
-          } catch (e) { pathsRef.current = {}; }
+            borderRef.current = merged;
+          } catch (e) { pathsRef.current = {}; borderRef.current = null; }
         }
 
         function safeNum(n, fallback) { return Number.isFinite(n) ? n : fallback; }
@@ -13985,7 +13992,44 @@ export default function App() {
           return { sx, originX, originY, dpr };
         }
 
-        function draw() {
+        // Construit une fois une petite image (tuile) du drapeau découpé à la forme
+        // du pays. Le drawImage() qui en résulte est ensuite très bon marché à chaque
+        // frame de zoom/déplacement — contrairement à un clip() répété sur des tracés
+        // complexes (Canada, Russie...), qui pouvait faire planter WKWebView.
+        function buildTile(code, img) {
+          const bbox = WORLD_MAP_BBOX[code];
+          const p2d = pathsRef.current[code];
+          if (!bbox || !p2d) return;
+          const [minx, miny, maxx, maxy] = bbox;
+          const bw = Math.max(0.5, maxx - minx), bh = Math.max(0.5, maxy - miny);
+          const maxDim = 220;
+          const scale = maxDim / Math.max(bw, bh);
+          const tw = Math.max(1, Math.round(bw * scale));
+          const th = Math.max(1, Math.round(bh * scale));
+          try {
+            const off = document.createElement('canvas');
+            off.width = tw; off.height = th;
+            const octx = off.getContext('2d');
+            octx.setTransform(scale, 0, 0, scale, -minx * scale, -miny * scale);
+            octx.save();
+            octx.clip(p2d);
+            const imgRatio = img.naturalWidth / img.naturalHeight;
+            const boxRatio = bw / bh;
+            let dw, dh, dx, dy;
+            if (imgRatio > boxRatio) {
+              dh = bh; dw = bh * imgRatio;
+              dx = minx - (dw - bw) / 2; dy = miny;
+            } else {
+              dw = bw; dh = bw / imgRatio;
+              dx = minx; dy = miny - (dh - bh) / 2;
+            }
+            octx.drawImage(img, dx, dy, dw, dh);
+            octx.restore();
+            flagTileRef.current[code] = { canvas: off, bbox };
+          } catch (e) {}
+        }
+
+        function draw(fast) {
           const canvas = canvasRef.current;
           const wrap = wrapRef.current;
           if (!canvas || !wrap) return;
@@ -14004,25 +14048,9 @@ export default function App() {
           ctx.setTransform(sx, 0, 0, sx, -originX * sx, -originY * sx);
           Object.entries(pathsRef.current).forEach(([code, p2d]) => {
             const has = !!statsByCode[code];
-            const img = has ? flagImgRef.current[code] : null;
-            const bbox = WORLD_MAP_BBOX[code];
-            if (has && img && img.complete && img.naturalWidth && bbox) {
-              ctx.save();
-              ctx.clip(p2d);
-              const [minx, miny, maxx, maxy] = bbox;
-              const bw = Math.max(0.5, maxx - minx), bh = Math.max(0.5, maxy - miny);
-              const imgRatio = img.naturalWidth / img.naturalHeight;
-              const boxRatio = bw / bh;
-              let dw, dh, dx, dy;
-              if (imgRatio > boxRatio) {
-                dh = bh; dw = bh * imgRatio;
-                dx = minx - (dw - bw) / 2; dy = miny;
-              } else {
-                dw = bw; dh = bw / imgRatio;
-                dx = minx; dy = miny - (dh - bh) / 2;
-              }
-              try { ctx.drawImage(img, dx, dy, dw, dh); } catch (e) {}
-              ctx.restore();
+            const tile = has ? flagTileRef.current[code] : null;
+            if (tile) {
+              try { ctx.drawImage(tile.canvas, tile.bbox[0], tile.bbox[1], tile.bbox[2] - tile.bbox[0], tile.bbox[3] - tile.bbox[1]); } catch (e) {}
             } else {
               ctx.fillStyle = has ? '#e0b13a' : '#1c1c22';
               ctx.globalAlpha = has ? 1 : 0.8;
@@ -14030,21 +14058,30 @@ export default function App() {
               ctx.globalAlpha = 1;
             }
           });
-          ctx.lineWidth = 0.6 / sx;
-          ctx.strokeStyle = '#05050a';
-          Object.values(pathsRef.current).forEach(p2d => ctx.stroke(p2d));
+          // Le contour de tous les pays fusionné en un seul tracé est déjà bon marché,
+          // mais on l'ignore pendant un geste actif (pincement/glissement) pour rester
+          // fluide sur les appareils moins puissants ; il revient dès que le geste s'arrête.
+          if (borderRef.current && !fast) {
+            ctx.lineWidth = 0.6 / sx;
+            ctx.strokeStyle = '#05050a';
+            ctx.stroke(borderRef.current);
+          }
         }
 
-        function scheduleDraw() {
+        function scheduleDraw(fast) {
+          pendingFastRef.current = fast;
           if (rafRef.current) return;
-          rafRef.current = requestAnimationFrame(() => { rafRef.current = null; draw(); });
+          rafRef.current = requestAnimationFrame(() => {
+            rafRef.current = null;
+            draw(pendingFastRef.current);
+          });
         }
 
         useEffect(() => {
           Object.keys(statsByCode).forEach(code => {
             if (flagImgRef.current[code]) return;
             const img = new Image();
-            img.onload = () => scheduleDraw();
+            img.onload = () => { buildTile(code, img); scheduleDraw(); };
             img.onerror = () => {};
             img.src = `https://flagcdn.com/w160/${code.toLowerCase()}.png`;
             flagImgRef.current[code] = img;
@@ -14056,7 +14093,8 @@ export default function App() {
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
-        useEffect(() => { scheduleDraw(); }, [view]);
+        useEffect(() => { scheduleDraw(!!drag.current); }, [view]);
+
 
         function zoomBy(factor) { setView(v => clamp({ ...v, scale: v.scale * factor })); }
         function resetView() { setView({ scale: 1, cx: 1000, cy: 500.5 }); }
@@ -14091,7 +14129,7 @@ export default function App() {
             setView(clamp({ scale: drag.current.scale * factor, cx: drag.current.cx, cy: drag.current.cy }));
           }
         }
-        function onTouchEnd() { drag.current = null; }
+        function onTouchEnd() { drag.current = null; scheduleDraw(false); }
         function onWheel(e) {
           e.preventDefault();
           zoomBy(e.deltaY < 0 ? 1.2 : 1 / 1.2);
