@@ -3383,6 +3383,8 @@ export default function App() {
   const StableAllCarsView = React.useRef((props) => allCarsViewImplRef.current ? allCarsViewImplRef.current(props) : null).current;
   const marquesViewImplRef = React.useRef(null);
   const StableMarquesView = React.useRef((props) => marquesViewImplRef.current ? marquesViewImplRef.current(props) : null).current;
+  const worldMapViewImplRef = React.useRef(null);
+  const StableWorldMapView = React.useRef((props) => worldMapViewImplRef.current ? worldMapViewImplRef.current(props) : null).current;
   // Modals — mêmes remontages intempestifs que les vues sans ce wrapper : redéfinis à chaque
   // render de App(), donc React les démonte/remonte en boucle (chaque simulation de match,
   // chaque tick de synchro Firebase...), ce qui causait le clignotement des photos dans les
@@ -14271,6 +14273,7 @@ export default function App() {
           </div>
         );
       }
+      worldMapViewImplRef.current = WorldMapView;
 
       return (
         <div>
@@ -14295,7 +14298,7 @@ export default function App() {
           </div>
           {paysViewMode === 'carte' && (
             <div style={{ padding:'0 12px 12px' }}>
-              <WorldMapView />
+              <StableWorldMapView />
               <div style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center',marginTop:8 }}>
                 Pincez pour zoomer, glissez pour naviguer, appuyez sur un pays doré pour voir ses marques.
               </div>
