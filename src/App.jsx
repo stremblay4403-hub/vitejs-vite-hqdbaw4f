@@ -13974,7 +13974,7 @@ export default function App() {
         // ne fait plus ensuite qu'un simple drawImage() (recadrage), sans jamais retracer
         // les 211 contours de pays ni redécouper les drapeaux à chaque frame. C'est ce
         // retraçage répété qui saturait la mémoire de WKWebView et faisait planter l'app.
-        const BAKE_W = 1300, BAKE_H = Math.round(1300 * (VB_H / VB_W));
+        const BAKE_W = 2800, BAKE_H = Math.round(2800 * (VB_H / VB_W));
 
         if (!pathsRef.current) {
           pathsRef.current = {};
@@ -14012,6 +14012,8 @@ export default function App() {
             }
             const bctx = bc.getContext('2d');
             if (!bctx) return;
+            bctx.imageSmoothingEnabled = true;
+            bctx.imageSmoothingQuality = 'high';
             const s = BAKE_W / VB_W;
             bctx.setTransform(s, 0, 0, s, 0, 0);
             bctx.clearRect(0, 0, VB_W, VB_H);
@@ -14070,7 +14072,7 @@ export default function App() {
           if (!canvas || !wrap || !bakeRef.current) return;
           const rect = wrap.getBoundingClientRect();
           if (!rect.width) return;
-          const dpr = Math.min(1.5, window.devicePixelRatio || 1);
+          const dpr = Math.min(2, window.devicePixelRatio || 1);
           const pxW = Math.round(rect.width * dpr);
           const pxH = Math.round((rect.width * (VB_H / VB_W)) * dpr);
           if (canvas.width !== pxW) canvas.width = pxW;
@@ -14083,6 +14085,7 @@ export default function App() {
           const sxPx = originX * s, syPx = originY * s;
           const swPx = w * s, shPx = h * s;
           ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
           ctx.clearRect(0, 0, pxW, pxH);
           try { ctx.drawImage(bakeRef.current, sxPx, syPx, swPx, shPx, 0, 0, pxW, pxH); } catch (e) {}
         }
@@ -14098,7 +14101,7 @@ export default function App() {
             const img = new Image();
             img.onload = () => scheduleBake();
             img.onerror = () => {};
-            img.src = `https://flagcdn.com/w80/${code.toLowerCase()}.png`;
+            img.src = `https://flagcdn.com/w320/${code.toLowerCase()}.png`;
             flagImgRef.current[code] = img;
           });
           bake();
