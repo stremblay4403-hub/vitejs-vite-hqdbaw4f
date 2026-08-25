@@ -7,6 +7,34 @@ import { getFirestore, doc, getDoc, getDocFromServer, setDoc, onSnapshot, collec
 
 const PublicModeContext = React.createContext(false);
 
+// Filet de sécurité : si un composant plante avec une exception, on isole l'erreur
+// à cet endroit plutôt que de laisser React démonter tout l'arbre (écran blanc total
+// obligeant à redémarrer l'app). Affiche un état de repli avec bouton pour réessayer.
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    try { console.error('[ErrorBoundary]', this.props.label || '', error, info); } catch (e) {}
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding:24, textAlign:'center', color:'var(--text-dim)', border:'1px solid var(--border)', borderRadius:12, background:'var(--dark3)' }}>
+          <div style={{ fontSize:28, marginBottom:8 }}>⚠️</div>
+          <div style={{ marginBottom:12 }}>Un problème est survenu dans cette section{this.props.label ? ` (${this.props.label})` : ''}.</div>
+          <button className="btn btn-dark" onClick={() => this.setState({ hasError: false, error: null })}>Réessayer</button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const LEAGUES = ["Voitures 1", "Voitures 2", "Voitures 3", "Voitures 4"];
 const MAIN_LEAGUE_COLORS = { 'Voitures 1': '#e74c3c', 'Voitures 2': '#f1c40f', 'Voitures 3': '#2ecc71', 'Voitures 4': '#3498db' };
 // Couleurs des sous-onglets de ligues — reprend le système de couleurs utilisé dans l'onglet Voitures
@@ -13966,7 +13994,12 @@ export default function App() {
         const bakeReadyRef = useRef(false);
         const bakeTimerRef = useRef(null);
         const rafRef = useRef(null);
-        const [view, setView] = useState({ scale: 1, cx: 1000, cy: 500.5 });
+        const [viewRaw, setView] = useState({ scale: 1, cx: 1000, cy: 500.5 });
+        // Filet supplémentaire : ne jamais laisser une valeur invalide se propager,
+        // même si son origine exacte reste incertaine.
+        const view = (viewRaw && Number.isFinite(viewRaw.scale) && Number.isFinite(viewRaw.cx) && Number.isFinite(viewRaw.cy))
+          ? viewRaw
+          : { scale: 1, cx: 1000, cy: 500.5 };
         const drag = useRef(null);
         const VB_W = 2000, VB_H = 1001;
         const MIN_SCALE = 1, MAX_SCALE = 8;
@@ -14301,7 +14334,9 @@ export default function App() {
           </div>
           {paysViewMode === 'carte' && (
             <div style={{ padding:'0 12px 12px' }}>
-              <StableWorldMapView />
+              <ErrorBoundary label="Carte du monde">
+                <StableWorldMapView />
+              </ErrorBoundary>
               <div style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center',marginTop:8 }}>
                 Pincez pour zoomer, glissez pour naviguer, appuyez sur un pays doré pour voir ses marques.
               </div>
