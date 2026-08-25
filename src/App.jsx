@@ -14045,12 +14045,12 @@ export default function App() {
         }
 
         function scheduleBake() {
-          if (bakeTimerRef.current) clearTimeout(bakeTimerRef.current);
-          bakeTimerRef.current = setTimeout(() => {
+          if (bakeTimerRef.current) return;
+          bakeTimerRef.current = requestAnimationFrame(() => {
             bakeTimerRef.current = null;
             bake();
-            scheduleDraw();
-          }, 200);
+            draw();
+          });
         }
 
         // Rendu par frame : un unique drawImage recadré depuis l'image déjà cuite —
@@ -14099,7 +14099,7 @@ export default function App() {
           if (wrapRef.current) ro.observe(wrapRef.current);
           return () => {
             ro.disconnect();
-            if (bakeTimerRef.current) clearTimeout(bakeTimerRef.current);
+            if (bakeTimerRef.current) cancelAnimationFrame(bakeTimerRef.current);
           };
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
