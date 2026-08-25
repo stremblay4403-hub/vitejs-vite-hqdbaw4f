@@ -1525,11 +1525,17 @@ const css = `
     --radius: 6px;
   }
 
+  html {
+    background: var(--black);
+    overscroll-behavior: none;
+  }
+
   body {
     background: var(--black);
     color: var(--text);
     font-family: 'Rajdhani', sans-serif;
     overflow-x: clip;
+    overscroll-behavior: none;
     background-image:
       radial-gradient(ellipse 900px 500px at 50% -10%, rgba(212,175,55,0.06), transparent 60%),
       repeating-linear-gradient(-45deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 10px),
@@ -14217,11 +14223,39 @@ export default function App() {
         function onMouseUp() { if (drag.current && drag.current.mode === 'mousepan') drag.current = null; }
         function onMouseLeave() { if (drag.current && drag.current.mode === 'mousepan') drag.current = null; setHover(null); }
 
+        // React attache ses écouteurs tactiles délégués en mode "passive" par défaut ;
+        // dans ce mode, un e.preventDefault() dans onTouchMove est silencieusement ignoré,
+        // ce qui laissait la PAGE elle-même se mettre à défiler/rebondir (effet "rubber-band"
+        // iOS) pendant qu'on pince/glisse sur la carte — d'où l'écran blanc au bord. On
+        // attache donc ces écouteurs nous-mêmes en { passive:false } pour garantir que le
+        // blocage du défilement de la page fonctionne vraiment.
+        const latestRef = useRef({});
+        latestRef.current = { onTouchStart, onTouchMove, onTouchEnd, onWheel };
+        useEffect(() => {
+          const el = canvasRef.current;
+          if (!el) return;
+          const ts = e => latestRef.current.onTouchStart(e);
+          const tm = e => latestRef.current.onTouchMove(e);
+          const te = e => latestRef.current.onTouchEnd(e);
+          const wh = e => latestRef.current.onWheel(e);
+          el.addEventListener('touchstart', ts, { passive: true });
+          el.addEventListener('touchmove', tm, { passive: false });
+          el.addEventListener('touchend', te, { passive: true });
+          el.addEventListener('touchcancel', te, { passive: true });
+          el.addEventListener('wheel', wh, { passive: false });
+          return () => {
+            el.removeEventListener('touchstart', ts);
+            el.removeEventListener('touchmove', tm);
+            el.removeEventListener('touchend', te);
+            el.removeEventListener('touchcancel', te);
+            el.removeEventListener('wheel', wh);
+          };
+        }, []);
+
         return (
-          <div ref={wrapRef} style={{ position:'relative', borderRadius:12, overflow:'hidden', border:'1px solid var(--border)', background:'#05050a', aspectRatio:`${VB_W} / ${VB_H}` }}>
+          <div ref={wrapRef} style={{ position:'relative', borderRadius:12, overflow:'hidden', border:'1px solid var(--border)', background:'#05050a', aspectRatio:`${VB_W} / ${VB_H}`, overscrollBehavior:'none', touchAction:'none' }}>
             <canvas ref={canvasRef} style={{ width:'100%', height:'100%', display:'block', touchAction:'none', cursor: hover ? 'pointer' : (drag.current && drag.current.mode === 'mousepan' ? 'grabbing' : 'grab') }}
-              onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd} onTouchCancel={onTouchEnd}
-              onWheel={onWheel} onClick={onClick}
+              onClick={onClick}
               onMouseDown={onMouseDown} onMouseMove={onMouseMove} onMouseUp={onMouseUp} onMouseLeave={onMouseLeave}
             />
             {hover && (
