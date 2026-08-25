@@ -13954,13 +13954,19 @@ export default function App() {
         const pathsRef = useRef(null);
         const borderRef = useRef(null);
         const flagImgRef = useRef({});
-        const flagTileRef = useRef({});
+        const bakeRef = useRef(null);
+        const bakeReadyRef = useRef(false);
+        const bakeTimerRef = useRef(null);
         const rafRef = useRef(null);
-        const pendingFastRef = useRef(false);
         const [view, setView] = useState({ scale: 1, cx: 1000, cy: 500.5 });
         const drag = useRef(null);
         const VB_W = 2000, VB_H = 1001;
         const MIN_SCALE = 1, MAX_SCALE = 8;
+        // Résolution fixe de l'image "cuite" une fois pour toutes — le zoom/déplacement
+        // ne fait plus ensuite qu'un simple drawImage() (recadrage), sans jamais retracer
+        // les 211 contours de pays ni redécouper les drapeaux à chaque frame. C'est ce
+        // retraçage répété qui saturait la mémoire de WKWebView et faisait planter l'app.
+        const BAKE_W = 2400, BAKE_H = Math.round(2400 * (VB_H / VB_W));
 
         if (!pathsRef.current) {
           pathsRef.current = {};
@@ -13985,54 +13991,75 @@ export default function App() {
           return { scale, cx, cy };
         }
 
-        function getTransform(view2, rect, dpr) {
-          const w = VB_W / view2.scale, h = VB_H / view2.scale;
-          const originX = view2.cx - w / 2, originY = view2.cy - h / 2;
-          const sx = (rect.width * dpr) / w;
-          return { sx, originX, originY, dpr };
-        }
-
-        // Construit une fois une petite image (tuile) du drapeau découpé à la forme
-        // du pays. Le drawImage() qui en résulte est ensuite très bon marché à chaque
-        // frame de zoom/déplacement — contrairement à un clip() répété sur des tracés
-        // complexes (Canada, Russie...), qui pouvait faire planter WKWebView.
-        function buildTile(code, img) {
-          const bbox = WORLD_MAP_BBOX[code];
-          const p2d = pathsRef.current[code];
-          if (!bbox || !p2d) return;
-          const [minx, miny, maxx, maxy] = bbox;
-          const bw = Math.max(0.5, maxx - minx), bh = Math.max(0.5, maxy - miny);
-          const maxDim = 220;
-          const scale = maxDim / Math.max(bw, bh);
-          const tw = Math.max(1, Math.round(bw * scale));
-          const th = Math.max(1, Math.round(bh * scale));
+        // Dessine la carte complète (fonds + drapeaux découpés + frontières) UNE FOIS
+        // dans un canvas hors écran à résolution fixe.
+        function bake() {
+          if (!pathsRef.current) return;
           try {
-            const off = document.createElement('canvas');
-            off.width = tw; off.height = th;
-            const octx = off.getContext('2d');
-            octx.setTransform(scale, 0, 0, scale, -minx * scale, -miny * scale);
-            octx.save();
-            octx.clip(p2d);
-            const imgRatio = img.naturalWidth / img.naturalHeight;
-            const boxRatio = bw / bh;
-            let dw, dh, dx, dy;
-            if (imgRatio > boxRatio) {
-              dh = bh; dw = bh * imgRatio;
-              dx = minx - (dw - bw) / 2; dy = miny;
-            } else {
-              dw = bw; dh = bw / imgRatio;
-              dx = minx; dy = miny - (dh - bh) / 2;
+            let bc = bakeRef.current;
+            if (!bc) {
+              bc = document.createElement('canvas');
+              bc.width = BAKE_W; bc.height = BAKE_H;
+              bakeRef.current = bc;
             }
-            octx.drawImage(img, dx, dy, dw, dh);
-            octx.restore();
-            flagTileRef.current[code] = { canvas: off, bbox };
+            const bctx = bc.getContext('2d');
+            if (!bctx) return;
+            const s = BAKE_W / VB_W;
+            bctx.setTransform(s, 0, 0, s, 0, 0);
+            bctx.clearRect(0, 0, VB_W, VB_H);
+            Object.entries(pathsRef.current).forEach(([code, p2d]) => {
+              const has = !!statsByCode[code];
+              const img = has ? flagImgRef.current[code] : null;
+              const bbox = has ? WORLD_MAP_BBOX[code] : null;
+              if (has && img && img.complete && img.naturalWidth && bbox) {
+                bctx.save();
+                bctx.clip(p2d);
+                const [minx, miny, maxx, maxy] = bbox;
+                const bw = Math.max(0.5, maxx - minx), bh = Math.max(0.5, maxy - miny);
+                const imgRatio = img.naturalWidth / img.naturalHeight;
+                const boxRatio = bw / bh;
+                let dw, dh, dx, dy;
+                if (imgRatio > boxRatio) {
+                  dh = bh; dw = bh * imgRatio;
+                  dx = minx - (dw - bw) / 2; dy = miny;
+                } else {
+                  dw = bw; dh = bw / imgRatio;
+                  dx = minx; dy = miny - (dh - bh) / 2;
+                }
+                try { bctx.drawImage(img, dx, dy, dw, dh); } catch (e) {}
+                bctx.restore();
+              } else {
+                bctx.fillStyle = has ? '#e0b13a' : '#1c1c22';
+                bctx.globalAlpha = has ? 1 : 0.8;
+                bctx.fill(p2d);
+                bctx.globalAlpha = 1;
+              }
+            });
+            if (borderRef.current) {
+              bctx.lineWidth = 0.7;
+              bctx.strokeStyle = '#05050a';
+              bctx.stroke(borderRef.current);
+            }
+            bakeReadyRef.current = true;
           } catch (e) {}
         }
 
-        function draw(fast) {
+        function scheduleBake() {
+          if (bakeTimerRef.current) clearTimeout(bakeTimerRef.current);
+          bakeTimerRef.current = setTimeout(() => {
+            bakeTimerRef.current = null;
+            bake();
+            scheduleDraw();
+          }, 200);
+        }
+
+        // Rendu par frame : un unique drawImage recadré depuis l'image déjà cuite —
+        // aucune manipulation de tracé vectoriel ici, donc coût constant quel que soit
+        // le niveau de zoom ou la complexité des pays visibles.
+        function draw() {
           const canvas = canvasRef.current;
           const wrap = wrapRef.current;
-          if (!canvas || !wrap) return;
+          if (!canvas || !wrap || !bakeRef.current) return;
           const rect = wrap.getBoundingClientRect();
           if (!rect.width) return;
           const dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -14042,59 +14069,42 @@ export default function App() {
           if (canvas.height !== pxH) canvas.height = pxH;
           const ctx = canvas.getContext('2d');
           if (!ctx) return;
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          const w = VB_W / view.scale, h = VB_H / view.scale;
+          const originX = view.cx - w / 2, originY = view.cy - h / 2;
+          const s = BAKE_W / VB_W;
+          const sxPx = originX * s, syPx = originY * s;
+          const swPx = w * s, shPx = h * s;
+          ctx.imageSmoothingEnabled = true;
           ctx.clearRect(0, 0, pxW, pxH);
-          const { sx, originX, originY } = getTransform(view, rect, dpr);
-          ctx.setTransform(sx, 0, 0, sx, -originX * sx, -originY * sx);
-          Object.entries(pathsRef.current).forEach(([code, p2d]) => {
-            const has = !!statsByCode[code];
-            const tile = has ? flagTileRef.current[code] : null;
-            if (tile) {
-              try { ctx.drawImage(tile.canvas, tile.bbox[0], tile.bbox[1], tile.bbox[2] - tile.bbox[0], tile.bbox[3] - tile.bbox[1]); } catch (e) {}
-            } else {
-              ctx.fillStyle = has ? '#e0b13a' : '#1c1c22';
-              ctx.globalAlpha = has ? 1 : 0.8;
-              ctx.fill(p2d);
-              ctx.globalAlpha = 1;
-            }
-          });
-          // Le contour de tous les pays fusionné en un seul tracé est déjà bon marché,
-          // mais on l'ignore pendant un geste actif (pincement/glissement) pour rester
-          // fluide sur les appareils moins puissants ; il revient dès que le geste s'arrête.
-          if (borderRef.current && !fast) {
-            ctx.lineWidth = 0.6 / sx;
-            ctx.strokeStyle = '#05050a';
-            ctx.stroke(borderRef.current);
-          }
+          try { ctx.drawImage(bakeRef.current, sxPx, syPx, swPx, shPx, 0, 0, pxW, pxH); } catch (e) {}
         }
 
-        function scheduleDraw(fast) {
-          pendingFastRef.current = fast;
+        function scheduleDraw() {
           if (rafRef.current) return;
-          rafRef.current = requestAnimationFrame(() => {
-            rafRef.current = null;
-            draw(pendingFastRef.current);
-          });
+          rafRef.current = requestAnimationFrame(() => { rafRef.current = null; draw(); });
         }
 
         useEffect(() => {
           Object.keys(statsByCode).forEach(code => {
             if (flagImgRef.current[code]) return;
             const img = new Image();
-            img.onload = () => { buildTile(code, img); scheduleDraw(); };
+            img.onload = () => scheduleBake();
             img.onerror = () => {};
             img.src = `https://flagcdn.com/w160/${code.toLowerCase()}.png`;
             flagImgRef.current[code] = img;
           });
+          bake();
           scheduleDraw();
           const ro = new ResizeObserver(() => scheduleDraw());
           if (wrapRef.current) ro.observe(wrapRef.current);
-          return () => ro.disconnect();
+          return () => {
+            ro.disconnect();
+            if (bakeTimerRef.current) clearTimeout(bakeTimerRef.current);
+          };
           // eslint-disable-next-line react-hooks/exhaustive-deps
         }, []);
 
-        useEffect(() => { scheduleDraw(!!drag.current); }, [view]);
-
+        useEffect(() => { scheduleDraw(); }, [view]);
 
         function zoomBy(factor) { setView(v => clamp({ ...v, scale: v.scale * factor })); }
         function resetView() { setView({ scale: 1, cx: 1000, cy: 500.5 }); }
@@ -14129,7 +14139,7 @@ export default function App() {
             setView(clamp({ scale: drag.current.scale * factor, cx: drag.current.cx, cy: drag.current.cy }));
           }
         }
-        function onTouchEnd() { drag.current = null; scheduleDraw(false); }
+        function onTouchEnd() { drag.current = null; }
         function onWheel(e) {
           e.preventDefault();
           zoomBy(e.deltaY < 0 ? 1.2 : 1 / 1.2);
@@ -14137,21 +14147,19 @@ export default function App() {
 
         function onClick(e) {
           if (drag.current && drag.current.moved) return;
-          const canvas = canvasRef.current;
           const wrap = wrapRef.current;
-          if (!canvas || !wrap) return;
+          if (!wrap || !pathsRef.current) return;
           const rect = wrap.getBoundingClientRect();
-          const dpr = Math.min(2, window.devicePixelRatio || 1);
-          const { sx, originX, originY } = getTransform(view, rect, dpr);
-          const ctx = canvas.getContext('2d');
-          ctx.setTransform(sx, 0, 0, sx, -originX * sx, -originY * sx);
-          const px = (e.clientX - rect.left) * dpr;
-          const py = (e.clientY - rect.top) * dpr;
+          const w = VB_W / view.scale, h = VB_H / view.scale;
+          const originX = view.cx - w / 2, originY = view.cy - h / 2;
+          const px = originX + ((e.clientX - rect.left) / rect.width) * w;
+          const py = originY + ((e.clientY - rect.top) / rect.height) * h;
+          const tmp = document.createElement('canvas').getContext('2d');
+          if (!tmp) return;
           for (const code of Object.keys(statsByCode)) {
             const p2d = pathsRef.current[code];
-            if (p2d && ctx.isPointInPath(p2d, px, py)) { goToCountry(code); break; }
+            if (p2d && tmp.isPointInPath(p2d, px, py)) { goToCountry(code); break; }
           }
-          ctx.setTransform(1, 0, 0, 1, 0, 0);
         }
 
         return (
