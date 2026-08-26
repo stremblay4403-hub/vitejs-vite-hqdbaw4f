@@ -214,6 +214,15 @@ function RankBadge({ rank, size = 16 }) {
     </span>
   );
 }
+function RankDiffBadge({ diff }) {
+  if (diff === null || diff === undefined) return null;
+  if (diff === 0) return <div style={{ fontSize:9, color:'var(--text-dim)', lineHeight:1 }}>—</div>;
+  return (
+    <div style={{ fontSize:9, fontWeight:700, color: diff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, background: diff > 0 ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', borderRadius:2, padding:'0 2px' }}>
+      {diff > 0 ? `▲${diff}` : `▼${Math.abs(diff)}`}
+    </div>
+  );
+}
 
 function shuffle(arr) {
   const a = [...arr];
@@ -4412,21 +4421,8 @@ export default function App() {
 
   // Recherche rapide — cherche une voiture par nom dans TOUTES les ligues (principales + auxiliaires)
   // et permet d'ouvrir son profil directement, sans naviguer dans la hiérarchie des onglets.
-  const globalSearchResults = React.useMemo(() => {
-    const q = globalSearchQuery.trim().toLowerCase();
-    if (q.length < 2) return [];
-    const out = [];
-    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
-      const cars = currentSeason.leagues[l]?.cars || [];
-      for (const c of cars) {
-        if (c.name && c.name.toLowerCase().includes(q)) {
-          out.push({ id: c.id, name: c.name, league: l, photo: getCarPhoto ? getCarPhoto(c.id) : null });
-        }
-      }
-      if (out.length >= 30) break;
-    }
-    return out.slice(0, 20);
-  }, [globalSearchQuery, currentSeason]);
+  // (globalSearchResults est défini plus bas, après brandStats/countryStats
+  // dont il dépend — voir juste après la déclaration de countryStats.)
 
 
   const prevSeason = db.currentSeasonIdx > 0 ? db.seasons[db.currentSeasonIdx - 1] : null;
@@ -6838,6 +6834,132 @@ export default function App() {
     return Object.values(stats).map(s => ({ ...s, name: COUNTRY_LIST.find(c => c.code === s.code)?.name || s.code }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [brandStats, db.brandCountries]);
+
+  // Doit venir après brandStats/countryStats, dont il dépend.
+  const globalSearchResults = React.useMemo(() => {
+    const q = globalSearchQuery.trim().toLowerCase();
+    if (q.length < 2) return [];
+    const out = [];
+    for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+      const cars = currentSeason.leagues[l]?.cars || [];
+      for (const c of cars) {
+        if (c.name && c.name.toLowerCase().includes(q)) {
+          out.push({ type:'car', id: c.id, name: c.name, league: l, photo: getCarPhoto ? getCarPhoto(c.id) : null });
+        }
+      }
+      if (out.length >= 30) break;
+    }
+    const carResults = out.slice(0, 20);
+
+    const brandResults = brandStats
+      .filter(b => b.brand.toLowerCase().includes(q))
+      .slice(0, 10)
+      .map(b => ({ type:'brand', brand: b.brand, totalPts: b.totalPts, titles: b.titles, carCount: b.carCount, countryCode: getBrandCountry(b.brand) }));
+
+    const countryResults = countryStats
+      .filter(c => c.name.toLowerCase().includes(q))
+      .slice(0, 10)
+      .map(c => ({ type:'country', code: c.code, name: c.name, totalPts: c.totalPts, titles: c.titles, brandCount: c.brandCount }));
+
+    return [...carResults, ...brandResults, ...countryResults];
+  }, [globalSearchQuery, currentSeason, brandStats, countryStats]);
+
+  // Version bornée de brandStats — mêmes règles d'agrégation, mais limitée aux
+  // saisons <= maxSeasonNum. Sert à calculer les flèches de progression (▲/▼) par
+  // comparaison avec la saison précédente, pour les marques, voitures et pays.
+  const brandStatsUpTo = React.useCallback((maxSeasonNum) => {
+    const perId = {};
+    const allAppLeagues = [...LEAGUES, ...AUXILIARY_LEAGUES];
+    allAppLeagues.forEach(lName => {
+      const league = currentSeason.leagues[lName];
+      if (!league) return;
+      league.cars.forEach(car => { if (!car.id) return; perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0 }; });
+      (league.queue || []).forEach(car => { if (!car.id) return; perId[car.id] = { id: car.id, name: car.name, total: 0, titles: 0 }; });
+    });
+    RIP_CARS.forEach(c => { perId[c.photoKey] = { id: c.photoKey, name: c.name, total: 0, titles: 0 }; });
+
+    allAppLeagues.forEach(lName => {
+      db.seasons.forEach(s => {
+        if (s.season > maxSeasonNum) return;
+        const league = s.leagues[lName];
+        if (!league) return;
+        const bp = computeBonusPoints(s, lName);
+        const champId = s.champions?.[lName];
+        league.cars.forEach(car => {
+          if (!perId[car.id]) return;
+          perId[car.id].total += bp[car.id] || 0;
+          if (champId === car.id) perId[car.id].titles += 1;
+        });
+      });
+    });
+
+    LEAGUES.forEach(l => {
+      const histLeagueData = getHistLeague(l);
+      const nameMap = db.nameMap?.[l] || {};
+      Object.values(perId).forEach(car => {
+        const histLookupName = nameMap[car.id] || car.name;
+        const found = histLeagueData.find(c => namesMatch(c.name, histLookupName) || namesMatch(c.name, car.name));
+        if (found) {
+          car.total += found.total || 0;
+          car.titles += (found.champions || []).length;
+        }
+      });
+    });
+
+    const stats = {};
+    Object.values(perId).forEach(car => {
+      const brand = getCarBrand(car.id);
+      if (!brand) return;
+      if (!stats[brand]) stats[brand] = { brand, totalPts: 0, titles: 0, cars: {} };
+      stats[brand].totalPts += car.total;
+      stats[brand].titles += car.titles;
+      stats[brand].cars[car.id] = { total: car.total, titles: car.titles };
+    });
+    return stats;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [db.seasons, db.brands, db.nameMap, db.histOverrides, currentSeason]);
+
+  // Cartes {clé -> rang} pour la saison précédente, une pour les marques (par nom de
+  // marque), une pour les voitures au sein d'une marque (id -> rang), une pour les pays.
+  const prevSeasonRanks = React.useMemo(() => {
+    const prevNum = currentSeason.season - 1;
+    const prevBrandStats = brandStatsUpTo(prevNum);
+    const brandList = Object.entries(prevBrandStats)
+      .map(([brand, v]) => ({ brand, totalPts: v.totalPts, titles: v.titles }));
+    const brandByPts = [...brandList].sort((a, b) => b.totalPts - a.totalPts || a.brand.localeCompare(b.brand));
+    const brandByTitles = [...brandList].sort((a, b) => b.titles - a.titles || a.brand.localeCompare(b.brand));
+    const brandRankPts = {}, brandRankTitles = {};
+    withRanks(brandByPts, e => e.totalPts).forEach(e => { brandRankPts[e.brand] = e.rank; });
+    withRanks(brandByTitles, e => e.titles).forEach(e => { brandRankTitles[e.brand] = e.rank; });
+
+    // Voitures au sein de chaque marque
+    const carRankPts = {}, carRankTitles = {};
+    Object.entries(prevBrandStats).forEach(([brand, v]) => {
+      const carsList = Object.entries(v.cars).map(([id, c]) => ({ id, total: c.total, titles: c.titles }));
+      const byPts = [...carsList].sort((a, b) => b.total - a.total);
+      const byTitles = [...carsList].sort((a, b) => b.titles - a.titles);
+      withRanks(byPts, e => e.total).forEach(e => { carRankPts[e.id] = e.rank; });
+      withRanks(byTitles, e => e.titles).forEach(e => { carRankTitles[e.id] = e.rank; });
+    });
+
+    // Pays — agrège les marques par pays
+    const countryAgg = {};
+    brandList.forEach(b => {
+      const code = getBrandCountry(b.brand);
+      if (!code) return;
+      if (!countryAgg[code]) countryAgg[code] = { code, totalPts: 0, titles: 0 };
+      countryAgg[code].totalPts += b.totalPts;
+      countryAgg[code].titles += b.titles;
+    });
+    const countryList = Object.values(countryAgg);
+    const countryByPts = [...countryList].sort((a, b) => b.totalPts - a.totalPts || a.code.localeCompare(b.code));
+    const countryByTitles = [...countryList].sort((a, b) => b.titles - a.titles || a.code.localeCompare(b.code));
+    const countryRankPts = {}, countryRankTitles = {};
+    withRanks(countryByPts, e => e.totalPts).forEach(e => { countryRankPts[e.code] = e.rank; });
+    withRanks(countryByTitles, e => e.titles).forEach(e => { countryRankTitles[e.code] = e.rank; });
+
+    return { brandRankPts, brandRankTitles, carRankPts, carRankTitles, countryRankPts, countryRankTitles, hasPrev: currentSeason.season > 1 };
+  }, [brandStatsUpTo, currentSeason.season]);
 
   function Dashboard() {
     return (
@@ -13728,7 +13850,14 @@ export default function App() {
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
-                  <RankBadge rank={b.rank} />
+                  <div style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
+                    <RankBadge rank={b.rank} />
+                    {prevSeasonRanks.hasPrev && (() => {
+                      const prevRank = (detailSort === 'titres' ? prevSeasonRanks.brandRankTitles : prevSeasonRanks.brandRankPts)[b.brand];
+                      const diff = prevRank != null ? prevRank - b.rank : null;
+                      return <RankDiffBadge diff={diff} />;
+                    })()}
+                  </div>
                   <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:16,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                   {b.titles > 0 && <span style={{ fontSize:12,color:'var(--gold)' }}>🏆 {b.titles}</span>}
                   <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--text)',minWidth:44,textAlign:'right' }}>
@@ -13833,9 +13962,14 @@ export default function App() {
               </div>
 
               <div className="card" style={{ padding:0,overflow:'hidden' }}>
-                {sorted.map((c, i) => (
+                {sorted.map((c, i) => {
+                  const prevRank = prevSeasonRanks.hasPrev
+                    ? (brandDetailSort === 'titres' ? prevSeasonRanks.carRankTitles : prevSeasonRanks.carRankPts)[c.id]
+                    : null;
+                  const rankDiff = prevRank != null ? prevRank - (i + 1) : null;
+                  return (
                   <LeaderboardRow key={c.id}
-                    rank={i + 1} rankDiff={null}
+                    rank={i + 1} rankDiff={rankDiff}
                     name={c.name} photo={getCarPhoto(c.id)}
                     badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
                     streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
@@ -13846,7 +13980,8 @@ export default function App() {
                       openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
                     }}
                   />
-                ))}
+                  );
+                })}
               </div>
             </>
           ) : brandLeagueTab === 'titres' ? (
@@ -13858,9 +13993,12 @@ export default function App() {
                 </div>
 
               )}
-              {b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles).map((c, i) => (
+              {b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles).map((c, i) => {
+                const prevRank = prevSeasonRanks.hasPrev ? prevSeasonRanks.carRankTitles[c.id] : null;
+                const rankDiff = prevRank != null ? prevRank - (i + 1) : null;
+                return (
                 <LeaderboardRow key={c.id}
-                  rank={i + 1} rankDiff={null}
+                  rank={i + 1} rankDiff={rankDiff}
                   name={c.name} photo={getCarPhoto(c.id)}
                   badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
                   pts={c.titles}
@@ -13870,7 +14008,8 @@ export default function App() {
                     openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
                   }}
                 />
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div style={{ padding:'0 12px 12px' }}>
@@ -13941,7 +14080,14 @@ export default function App() {
               <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                  <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
+                  <span className="mq-rank" style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
+                    <RankBadge rank={b.rank} size={22} />
+                    {prevSeasonRanks.hasPrev && (() => {
+                      const prevRank = prevSeasonRanks.brandRankTitles[b.brand];
+                      const diff = prevRank != null ? prevRank - b.rank : null;
+                      return <RankDiffBadge diff={diff} />;
+                    })()}
+                  </span>
                   {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
                   <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                   <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
@@ -14392,7 +14538,14 @@ export default function App() {
               <div key={c.code} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setCountryDetail(c.code); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setCountryDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                  <span className="mq-rank"><RankBadge rank={c.rank} size={22} /></span>
+                  <span className="mq-rank" style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
+                    <RankBadge rank={c.rank} size={22} />
+                    {prevSeasonRanks.hasPrev && (() => {
+                      const prevRank = (paysSubTab === 'titres' ? prevSeasonRanks.countryRankTitles : prevSeasonRanks.countryRankPts)[c.code];
+                      const diff = prevRank != null ? prevRank - c.rank : null;
+                      return <RankDiffBadge diff={diff} />;
+                    })()}
+                  </span>
                   <span className="mq-flag"><CountryFlag code={c.code} size={28} /></span>
                   <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{c.name}</span>
                   <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)',display:'flex',alignItems:'center',gap:4 }}>
@@ -14520,7 +14673,14 @@ export default function App() {
             <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
               onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
               <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
-                <span className="mq-rank"><RankBadge rank={b.rank} size={22} /></span>
+                <span className="mq-rank" style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
+                  <RankBadge rank={b.rank} size={22} />
+                  {prevSeasonRanks.hasPrev && (() => {
+                    const prevRank = prevSeasonRanks.brandRankPts[b.brand];
+                    const diff = prevRank != null ? prevRank - b.rank : null;
+                    return <RankDiffBadge diff={diff} />;
+                  })()}
+                </span>
                 {getBrandCountry(b.brand) && <span className="mq-flag"><CountryFlag code={getBrandCountry(b.brand)} size={28} /></span>}
                 <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{b.brand}</span>
                 <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{b.totalPts} <span style={{ fontSize:14,color:'var(--text-dim)' }}>pts</span></span>
@@ -16494,7 +16654,7 @@ export default function App() {
                 <input
                   autoFocus
                   type="text"
-                  placeholder="Rechercher une voiture..."
+                  placeholder="Rechercher une voiture, une marque ou un pays..."
                   value={globalSearchQuery}
                   onChange={e => setGlobalSearchQuery(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Escape') closeGlobalSearch(); }}
@@ -16505,18 +16665,54 @@ export default function App() {
                 {globalSearchQuery.trim().length < 2 && (
                   <div className="empty-state" style={{ padding:28 }}>
                     <div className="empty-icon">🔍</div>
-                    <div className="empty-sub">Tape au moins 2 lettres pour chercher parmi toutes les ligues.</div>
+                    <div className="empty-sub">Tape au moins 2 lettres pour chercher parmi les voitures, marques et pays.</div>
                   </div>
                 )}
                 {globalSearchQuery.trim().length >= 2 && globalSearchResults.length === 0 && (
                   <div className="empty-state" style={{ padding:28 }}>
                     <div className="empty-icon">🚫</div>
-                    <div className="empty-sub">Aucune voiture ne correspond à "{globalSearchQuery}".</div>
+                    <div className="empty-sub">Rien ne correspond à "{globalSearchQuery}".</div>
                   </div>
                 )}
                 {globalSearchResults.length > 0 && (
                   <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:8 }}>
                     {globalSearchResults.map(r => {
+                      if (r.type === 'brand') {
+                        return (
+                          <div key={`brand-${r.brand}`}
+                            style={{ borderRadius:8, border:'1px solid var(--gold-dim)', background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
+                            onClick={() => { closeGlobalSearch(); setMainTab('marques'); setMarquesSubTab('points'); setBrandDetail(r.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setBrandDetail(null)); }}>
+                            <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                              {r.countryCode && <CountryFlag code={r.countryCode} size={22} />}
+                              <span style={{ fontSize:11, color:'var(--text-dim)' }}>🏷️ Marque</span>
+                            </div>
+                            <div style={{ padding:'6px 8px', borderTop:'1px solid var(--gold-dim)55' }}>
+                              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--gold)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                {r.brand}
+                              </div>
+                              <div style={{ fontSize:10, color:'var(--text-dim)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.totalPts} pts{r.titles > 0 ? ` · 🏆 ${r.titles}` : ''}</div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      if (r.type === 'country') {
+                        return (
+                          <div key={`country-${r.code}`}
+                            style={{ borderRadius:8, border:'1px solid var(--gold-dim)', background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
+                            onClick={() => { closeGlobalSearch(); setMainTab('pays'); setCountryDetail(r.code); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setCountryDetail(null)); }}>
+                            <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                              <CountryFlag code={r.code} size={26} />
+                              <span style={{ fontSize:11, color:'var(--text-dim)' }}>🌍 Pays</span>
+                            </div>
+                            <div style={{ padding:'6px 8px', borderTop:'1px solid var(--gold-dim)55' }}>
+                              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--gold)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                                {r.name}
+                              </div>
+                              <div style={{ fontSize:10, color:'var(--text-dim)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{r.brandCount} marque{r.brandCount > 1 ? 's' : ''}{r.titles > 0 ? ` · 🏆 ${r.titles}` : ''}</div>
+                            </div>
+                          </div>
+                        );
+                      }
                       const borderColor = MAIN_LEAGUE_COLORS[r.league] || 'var(--border)';
                       return (
                         <div key={`${r.league}-${r.id}`}
