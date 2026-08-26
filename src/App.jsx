@@ -14000,6 +14000,8 @@ export default function App() {
         const view = (viewRaw && Number.isFinite(viewRaw.scale) && Number.isFinite(viewRaw.cx) && Number.isFinite(viewRaw.cy))
           ? viewRaw
           : { scale: 1, cx: 1000, cy: 500.5 };
+        const viewRef = useRef(view);
+        viewRef.current = view;
         const drag = useRef(null);
         const VB_W = 2000, VB_H = 1001;
         const MIN_SCALE = 1, MAX_SCALE = 8;
@@ -14159,7 +14161,7 @@ export default function App() {
 
         useEffect(() => { scheduleDraw(); }, [view]);
 
-        function zoomBy(factor) { setView(v => clamp({ ...v, scale: v.scale * factor })); }
+        function zoomBy(factor) { const v = viewRef.current; setView(clamp({ scale: v.scale * factor, cx: v.cx, cy: v.cy })); }
         function resetView() { setView({ scale: 1, cx: 1000, cy: 500.5 }); }
 
         function dist(t0, t1) { return Math.hypot(t0.clientX - t1.clientX, t0.clientY - t1.clientY); }
@@ -14167,37 +14169,56 @@ export default function App() {
         const isTouchRef = useRef(false);
         function onTouchStart(e) {
           isTouchRef.current = true;
-          if (e.touches.length === 1) {
-            drag.current = { mode: 'pan', x: e.touches[0].clientX, y: e.touches[0].clientY, cx: view.cx, cy: view.cy, moved: false };
-          } else if (e.touches.length === 2) {
-            const d0 = dist(e.touches[0], e.touches[1]);
-            if (d0 < 1) return;
-            drag.current = { mode: 'pinch', d: d0, scale: view.scale, cx: view.cx, cy: view.cy };
-          }
+          try {
+            const v = viewRef.current;
+            if (e.touches.length === 1) {
+              drag.current = { mode: 'pan', x: e.touches[0].clientX, y: e.touches[0].clientY, cx: v.cx, cy: v.cy, moved: false };
+            } else if (e.touches.length >= 2) {
+              const d0 = dist(e.touches[0], e.touches[1]);
+              if (d0 < 1) { drag.current = null; return; }
+              drag.current = { mode: 'pinch', d: d0, scale: v.scale, cx: v.cx, cy: v.cy };
+            }
+          } catch (err) { drag.current = null; }
         }
         function onTouchMove(e) {
           if (!drag.current) return;
           e.preventDefault();
-          const rect = wrapRef.current.getBoundingClientRect();
-          if (!rect.width) return;
-          if (drag.current.mode === 'pan' && e.touches.length === 1) {
-            const dx = e.touches[0].clientX - drag.current.x;
-            const dy = e.touches[0].clientY - drag.current.y;
-            if (Math.hypot(dx, dy) > 4) drag.current.moved = true;
-            const unitX = (VB_W / view.scale) / rect.width;
-            const unitY = (VB_H / view.scale) / rect.height;
-            setView(v => clamp({ ...v, cx: drag.current.cx - dx * unitX, cy: drag.current.cy - dy * unitY }));
-          } else if (drag.current.mode === 'pinch' && e.touches.length === 2) {
-            const d1 = dist(e.touches[0], e.touches[1]);
-            if (d1 < 1 || drag.current.d < 1) return;
-            const factor = d1 / drag.current.d;
-            setView(clamp({ scale: drag.current.scale * factor, cx: drag.current.cx, cy: drag.current.cy }));
-          }
+          try {
+            const rect = wrapRef.current && wrapRef.current.getBoundingClientRect();
+            if (!rect || !rect.width) return;
+            const v = viewRef.current;
+            if (drag.current.mode === 'pan' && e.touches.length === 1) {
+              const dx = e.touches[0].clientX - drag.current.x;
+              const dy = e.touches[0].clientY - drag.current.y;
+              if (Math.hypot(dx, dy) > 4) drag.current.moved = true;
+              const unitX = (VB_W / v.scale) / rect.width;
+              const unitY = (VB_H / v.scale) / rect.height;
+              setView(clamp({ scale: v.scale, cx: drag.current.cx - dx * unitX, cy: drag.current.cy - dy * unitY }));
+            } else if (drag.current.mode === 'pinch' && e.touches.length >= 2) {
+              const d1 = dist(e.touches[0], e.touches[1]);
+              if (d1 < 1 || drag.current.d < 1) return;
+              const factor = d1 / drag.current.d;
+              setView(clamp({ scale: drag.current.scale * factor, cx: drag.current.cx, cy: drag.current.cy }));
+            } else if (e.touches.length === 1 && drag.current.mode === 'pinch') {
+              // Un doigt vient d'être levé pendant un pincement : on repart d'un
+              // panoramique propre plutôt que de garder un état de geste périmé.
+              drag.current = { mode: 'pan', x: e.touches[0].clientX, y: e.touches[0].clientY, cx: v.cx, cy: v.cy, moved: false };
+            } else if (e.touches.length >= 2 && drag.current.mode === 'pan') {
+              const d0 = dist(e.touches[0], e.touches[1]);
+              if (d0 >= 1) drag.current = { mode: 'pinch', d: d0, scale: v.scale, cx: v.cx, cy: v.cy };
+            }
+          } catch (err) { drag.current = null; }
         }
-        function onTouchEnd() { drag.current = null; setTimeout(() => { isTouchRef.current = false; }, 500); }
+        function onTouchEnd(e) {
+          try {
+            const remaining = e && e.touches ? e.touches.length : 0;
+            if (remaining === 0) drag.current = null;
+          } catch (err) { drag.current = null; }
+          setTimeout(() => { isTouchRef.current = false; }, 500);
+        }
         function onWheel(e) {
           e.preventDefault();
-          zoomBy(e.deltaY < 0 ? 1.2 : 1 / 1.2);
+          try { zoomBy(e.deltaY < 0 ? 1.2 : 1 / 1.2); } catch (err) {}
         }
 
         // Réutilisé par le clic et le survol souris pour trouver le pays sous le curseur.
@@ -14233,30 +14254,35 @@ export default function App() {
         const [hover, setHover] = useState(null);
         function onMouseDown(e) {
           if (isTouchRef.current || e.button !== 0) return;
-          drag.current = { mode: 'mousepan', x: e.clientX, y: e.clientY, cx: view.cx, cy: view.cy, moved: false };
+          const v = viewRef.current;
+          drag.current = { mode: 'mousepan', x: e.clientX, y: e.clientY, cx: v.cx, cy: v.cy, moved: false };
         }
         function onMouseMove(e) {
           if (isTouchRef.current) return;
-          if (drag.current && drag.current.mode === 'mousepan') {
-            const rect = wrapRef.current.getBoundingClientRect();
-            if (!rect.width) return;
-            const dx = e.clientX - drag.current.x;
-            const dy = e.clientY - drag.current.y;
-            if (Math.hypot(dx, dy) > 3) drag.current.moved = true;
-            const unitX = (VB_W / view.scale) / rect.width;
-            const unitY = (VB_H / view.scale) / rect.height;
-            setView(v => clamp({ ...v, cx: drag.current.cx - dx * unitX, cy: drag.current.cy - dy * unitY }));
-            setHover(null);
-            return;
-          }
-          const rect = wrapRef.current.getBoundingClientRect();
-          const code = codeAtClientPoint(e.clientX, e.clientY);
-          if (code) {
-            const c = statsByCode[code];
-            setHover({ name: c?.name || code, x: e.clientX - rect.left, y: e.clientY - rect.top });
-          } else {
-            setHover(null);
-          }
+          try {
+            if (drag.current && drag.current.mode === 'mousepan') {
+              const rect = wrapRef.current && wrapRef.current.getBoundingClientRect();
+              if (!rect || !rect.width) return;
+              const v = viewRef.current;
+              const dx = e.clientX - drag.current.x;
+              const dy = e.clientY - drag.current.y;
+              if (Math.hypot(dx, dy) > 3) drag.current.moved = true;
+              const unitX = (VB_W / v.scale) / rect.width;
+              const unitY = (VB_H / v.scale) / rect.height;
+              setView(clamp({ scale: v.scale, cx: drag.current.cx - dx * unitX, cy: drag.current.cy - dy * unitY }));
+              setHover(null);
+              return;
+            }
+            const rect = wrapRef.current && wrapRef.current.getBoundingClientRect();
+            if (!rect) return;
+            const code = codeAtClientPoint(e.clientX, e.clientY);
+            if (code) {
+              const c = statsByCode[code];
+              setHover({ name: c?.name || code, x: e.clientX - rect.left, y: e.clientY - rect.top });
+            } else {
+              setHover(null);
+            }
+          } catch (err) { drag.current = null; }
         }
         function onMouseUp() { if (drag.current && drag.current.mode === 'mousepan') drag.current = null; }
         function onMouseLeave() { if (drag.current && drag.current.mode === 'mousepan') drag.current = null; setHover(null); }
