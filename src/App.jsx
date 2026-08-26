@@ -6921,44 +6921,59 @@ export default function App() {
 
   // Cartes {clé -> rang} pour la saison précédente, une pour les marques (par nom de
   // marque), une pour les voitures au sein d'une marque (id -> rang), une pour les pays.
-  const prevSeasonRanks = React.useMemo(() => {
-    const prevNum = currentSeason.season - 1;
-    const prevBrandStats = brandStatsUpTo(prevNum);
-    const brandList = Object.entries(prevBrandStats)
-      .map(([brand, v]) => ({ brand, totalPts: v.totalPts, titles: v.titles }));
-    const brandByPts = [...brandList].sort((a, b) => b.totalPts - a.totalPts || a.brand.localeCompare(b.brand));
-    const brandByTitles = [...brandList].sort((a, b) => b.titles - a.titles || a.brand.localeCompare(b.brand));
-    const brandRankPts = {}, brandRankTitles = {};
-    withRanks(brandByPts, e => e.totalPts).forEach(e => { brandRankPts[e.brand] = e.rank; });
-    withRanks(brandByTitles, e => e.titles).forEach(e => { brandRankTitles[e.brand] = e.rank; });
+  // Calculé en dehors du rendu initial (via useEffect + différé), car cette
+  // agrégation reparcourt toutes les saisons/ligues et peut être coûteuse — on ne
+  // veut jamais qu'elle bloque le premier affichage de l'app.
+  const EMPTY_PREV_RANKS = { brandRankPts:{}, brandRankTitles:{}, carRankPts:{}, carRankTitles:{}, countryRankPts:{}, countryRankTitles:{}, hasPrev:false };
+  const [prevSeasonRanks, setPrevSeasonRanks] = useState(EMPTY_PREV_RANKS);
+  useEffect(() => {
+    let cancelled = false;
+    const compute = () => {
+      if (cancelled) return;
+      const prevNum = currentSeason.season - 1;
+      const prevBrandStats = brandStatsUpTo(prevNum);
+      const brandList = Object.entries(prevBrandStats)
+        .map(([brand, v]) => ({ brand, totalPts: v.totalPts, titles: v.titles }));
+      const brandByPts = [...brandList].sort((a, b) => b.totalPts - a.totalPts || a.brand.localeCompare(b.brand));
+      const brandByTitles = [...brandList].sort((a, b) => b.titles - a.titles || a.brand.localeCompare(b.brand));
+      const brandRankPts = {}, brandRankTitles = {};
+      withRanks(brandByPts, e => e.totalPts).forEach(e => { brandRankPts[e.brand] = e.rank; });
+      withRanks(brandByTitles, e => e.titles).forEach(e => { brandRankTitles[e.brand] = e.rank; });
 
-    // Voitures au sein de chaque marque
-    const carRankPts = {}, carRankTitles = {};
-    Object.entries(prevBrandStats).forEach(([brand, v]) => {
-      const carsList = Object.entries(v.cars).map(([id, c]) => ({ id, total: c.total, titles: c.titles }));
-      const byPts = [...carsList].sort((a, b) => b.total - a.total);
-      const byTitles = [...carsList].sort((a, b) => b.titles - a.titles);
-      withRanks(byPts, e => e.total).forEach(e => { carRankPts[e.id] = e.rank; });
-      withRanks(byTitles, e => e.titles).forEach(e => { carRankTitles[e.id] = e.rank; });
-    });
+      const carRankPts = {}, carRankTitles = {};
+      Object.entries(prevBrandStats).forEach(([brand, v]) => {
+        const carsList = Object.entries(v.cars).map(([id, c]) => ({ id, total: c.total, titles: c.titles }));
+        const byPts = [...carsList].sort((a, b) => b.total - a.total);
+        const byTitles = [...carsList].sort((a, b) => b.titles - a.titles);
+        withRanks(byPts, e => e.total).forEach(e => { carRankPts[e.id] = e.rank; });
+        withRanks(byTitles, e => e.titles).forEach(e => { carRankTitles[e.id] = e.rank; });
+      });
 
-    // Pays — agrège les marques par pays
-    const countryAgg = {};
-    brandList.forEach(b => {
-      const code = getBrandCountry(b.brand);
-      if (!code) return;
-      if (!countryAgg[code]) countryAgg[code] = { code, totalPts: 0, titles: 0 };
-      countryAgg[code].totalPts += b.totalPts;
-      countryAgg[code].titles += b.titles;
-    });
-    const countryList = Object.values(countryAgg);
-    const countryByPts = [...countryList].sort((a, b) => b.totalPts - a.totalPts || a.code.localeCompare(b.code));
-    const countryByTitles = [...countryList].sort((a, b) => b.titles - a.titles || a.code.localeCompare(b.code));
-    const countryRankPts = {}, countryRankTitles = {};
-    withRanks(countryByPts, e => e.totalPts).forEach(e => { countryRankPts[e.code] = e.rank; });
-    withRanks(countryByTitles, e => e.titles).forEach(e => { countryRankTitles[e.code] = e.rank; });
+      const countryAgg = {};
+      brandList.forEach(b => {
+        const code = getBrandCountry(b.brand);
+        if (!code) return;
+        if (!countryAgg[code]) countryAgg[code] = { code, totalPts: 0, titles: 0 };
+        countryAgg[code].totalPts += b.totalPts;
+        countryAgg[code].titles += b.titles;
+      });
+      const countryList = Object.values(countryAgg);
+      const countryByPts = [...countryList].sort((a, b) => b.totalPts - a.totalPts || a.code.localeCompare(b.code));
+      const countryByTitles = [...countryList].sort((a, b) => b.titles - a.titles || a.code.localeCompare(b.code));
+      const countryRankPts = {}, countryRankTitles = {};
+      withRanks(countryByPts, e => e.totalPts).forEach(e => { countryRankPts[e.code] = e.rank; });
+      withRanks(countryByTitles, e => e.titles).forEach(e => { countryRankTitles[e.code] = e.rank; });
 
-    return { brandRankPts, brandRankTitles, carRankPts, carRankTitles, countryRankPts, countryRankTitles, hasPrev: currentSeason.season > 1 };
+      if (!cancelled) {
+        setPrevSeasonRanks({ brandRankPts, brandRankTitles, carRankPts, carRankTitles, countryRankPts, countryRankTitles, hasPrev: currentSeason.season > 1 });
+      }
+    };
+    // requestIdleCallback si dispo (laisse le navigateur peindre/appliquer le CSS
+    // en priorité), sinon un léger setTimeout en secours.
+    const ric = window.requestIdleCallback || (cb => setTimeout(cb, 200));
+    const cic = window.cancelIdleCallback || clearTimeout;
+    const handle = ric(compute);
+    return () => { cancelled = true; cic(handle); };
   }, [brandStatsUpTo, currentSeason.season]);
 
   function Dashboard() {
