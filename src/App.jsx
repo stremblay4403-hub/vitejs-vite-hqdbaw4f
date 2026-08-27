@@ -3162,7 +3162,7 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
 
   return (
     <div className={rank === 1 ? 'row-gold' : rank === 2 ? 'row-silver' : rank === 3 ? 'row-bronze' : ''}
-      style={{ display:'flex', alignItems:'stretch', height:ROW_H,
+      style={{ display:'flex', alignItems:'stretch', height:ROW_H, overflow:'hidden',
       borderLeft:`4px solid ${borderColor || 'transparent'}`,
       borderBottom: rank > 3 ? '1px solid #1a1a1a' : undefined,
       boxShadow: rank <= 3 ? `inset 0 0 40px rgba(${rank===1?'201,168,76':rank===2?'180,180,195':'160,100,60'},0.05)` : 'none',
@@ -3198,12 +3198,16 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
             </div>
           )}
           <div style={{ fontWeight:700, fontSize: name.length > 14 ? (name.length > 18 ? 14 : 16) : 22, color:'var(--text)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', lineHeight:1.2 }}>{name}</div>
-          {badge && (
-            <span style={{ display:'inline-block', marginTop:2, padding:'2px 6px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
-          )}
-          {streakBadge && (
-            <span className={streakBadge.color === '#5dade2' ? 'badge-ice' : 'badge-fire'}
-              style={{ display:'inline-block', marginTop:2, marginLeft: badge ? 3 : 0, padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
+          {(badge || streakBadge) && (
+            <div style={{ display:'flex', alignItems:'center', gap:3, marginTop:2, flexWrap:'nowrap', overflow:'hidden' }}>
+              {badge && (
+                <span style={{ display:'inline-block', flexShrink:0, padding:'2px 6px', borderRadius:3, fontSize:11, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:badge.bg, color:badge.color }}>{badge.label}</span>
+              )}
+              {streakBadge && (
+                <span className={streakBadge.color === '#5dade2' ? 'badge-ice' : 'badge-fire'}
+                  style={{ display:'inline-block', flexShrink:1, minWidth:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', padding:'1px 5px', borderRadius:3, fontSize:9, fontFamily:"'Bebas Neue',sans-serif", letterSpacing:1, background:`${streakBadge.color}22`, color:streakBadge.color }}>{streakBadge.icon} {streakBadge.label}</span>
+              )}
+            </div>
           )}
           {recentForm && recentForm.length > 0 && (
             <div style={{ display:'flex', gap:2, marginTop:3 }}>
@@ -3342,6 +3346,15 @@ function launchConfetti() {
 }
 
 export default function App() {
+  // Filet contre le flash de contenu non stylé (FOUC) au tout premier chargement :
+  // useLayoutEffect s'exécute de façon synchrone AVANT que le navigateur peigne
+  // l'écran, donc le fond sombre est posé immédiatement, sans attendre que la
+  // balise <style> injectée par React soit parsée.
+  React.useLayoutEffect(() => {
+    document.documentElement.style.background = '#060606';
+    document.body.style.background = '#060606';
+    document.body.style.color = '#ece4d3';
+  }, []);
   const dbRef = React.useRef(null);
   // Saisons archivées lues depuis Firestore (docs tournois/season_<N>), gardées pour
   // reconstituer le tableau complet à chaque snapshot de main (qui ne porte que la live).
@@ -16500,8 +16513,8 @@ export default function App() {
     <>
       <style>{css}</style>
       {showSplash && (
-        <div className="splash-screen">
-          <div className="splash-content">
+        <div className="splash-screen" style={{ position:'fixed', inset:0, zIndex:9999, background:'#060606', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div className="splash-content" style={{ display:'flex', flexDirection:'column', alignItems:'center' }}>
             <svg className="splash-rpm" viewBox="0 0 100 100" width="220" height="220" style={{ maxWidth:'62vw', maxHeight:'62vw' }}>
               <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(212,175,55,0.28)" strokeWidth="2.5" />
               <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(212,175,55,0.14)" strokeWidth="1" />
