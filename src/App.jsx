@@ -6937,7 +6937,7 @@ export default function App() {
   // Calculé en dehors du rendu initial (via useEffect + différé), car cette
   // agrégation reparcourt toutes les saisons/ligues et peut être coûteuse — on ne
   // veut jamais qu'elle bloque le premier affichage de l'app.
-  const EMPTY_PREV_RANKS = { brandRankPts:{}, brandRankTitles:{}, carRankPts:{}, carRankTitles:{}, countryRankPts:{}, countryRankTitles:{}, hasPrev:false };
+  const EMPTY_PREV_RANKS = { brandRankPts:{}, brandRankTitles:{}, brandRankPtsByCountry:{}, brandRankTitlesByCountry:{}, carRankPts:{}, carRankTitles:{}, countryRankPts:{}, countryRankTitles:{}, hasPrev:false };
   const [prevSeasonRanks, setPrevSeasonRanks] = useState(EMPTY_PREV_RANKS);
   useEffect(() => {
     let cancelled = false;
@@ -6953,6 +6953,25 @@ export default function App() {
       withRanks(brandByPts, e => e.totalPts).forEach(e => { brandRankPts[e.brand] = e.rank; });
       withRanks(brandByTitles, e => e.titles).forEach(e => { brandRankTitles[e.brand] = e.rank; });
 
+      // Classement des marques AU SEIN DE CHAQUE PAYS (saison précédente) — nécessaire
+      // pour les flèches sur la fiche détail d'un pays, où le rang affiché est parmi les
+      // marques de ce pays, pas parmi toutes les marques du jeu.
+      const brandsByCountry = {};
+      brandList.forEach(b => {
+        const code = getBrandCountry(b.brand);
+        if (!code) return;
+        (brandsByCountry[code] = brandsByCountry[code] || []).push(b);
+      });
+      const brandRankPtsByCountry = {}, brandRankTitlesByCountry = {};
+      Object.entries(brandsByCountry).forEach(([code, list]) => {
+        const byPts = [...list].sort((a, b) => b.totalPts - a.totalPts || a.brand.localeCompare(b.brand));
+        const byTitles = [...list].sort((a, b) => b.titles - a.titles || a.brand.localeCompare(b.brand));
+        const rp = {}, rt = {};
+        withRanks(byPts, e => e.totalPts).forEach(e => { rp[e.brand] = e.rank; });
+        withRanks(byTitles, e => e.titles).forEach(e => { rt[e.brand] = e.rank; });
+        brandRankPtsByCountry[code] = rp;
+        brandRankTitlesByCountry[code] = rt;
+      });
       const carRankPts = {}, carRankTitles = {};
       Object.entries(prevBrandStats).forEach(([brand, v]) => {
         const carsList = Object.entries(v.cars).map(([id, c]) => ({ id, total: c.total, titles: c.titles }));
@@ -6978,7 +6997,7 @@ export default function App() {
       withRanks(countryByTitles, e => e.titles).forEach(e => { countryRankTitles[e.code] = e.rank; });
 
       if (!cancelled) {
-        setPrevSeasonRanks({ brandRankPts, brandRankTitles, carRankPts, carRankTitles, countryRankPts, countryRankTitles, hasPrev: currentSeason.season > 1 });
+        setPrevSeasonRanks({ brandRankPts, brandRankTitles, brandRankPtsByCountry, brandRankTitlesByCountry, carRankPts, carRankTitles, countryRankPts, countryRankTitles, hasPrev: currentSeason.season > 1 });
       }
     };
     // requestIdleCallback si dispo (laisse le navigateur peindre/appliquer le CSS
@@ -13881,7 +13900,8 @@ export default function App() {
                   <div style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
                     <RankBadge rank={b.rank} />
                     {prevSeasonRanks.hasPrev && (() => {
-                      const prevRank = (detailSort === 'titres' ? prevSeasonRanks.brandRankTitles : prevSeasonRanks.brandRankPts)[b.brand];
+                      const countryPrevRanks = detailSort === 'titres' ? prevSeasonRanks.brandRankTitlesByCountry[code] : prevSeasonRanks.brandRankPtsByCountry[code];
+                      const prevRank = countryPrevRanks ? countryPrevRanks[b.brand] : null;
                       const diff = prevRank != null ? prevRank - b.rank : null;
                       return <RankDiffBadge diff={diff} />;
                     })()}
@@ -13990,26 +14010,30 @@ export default function App() {
               </div>
 
               <div className="card" style={{ padding:0,overflow:'hidden' }}>
-                {sorted.map((c, i) => {
-                  const prevRank = prevSeasonRanks.hasPrev
-                    ? (brandDetailSort === 'titres' ? prevSeasonRanks.carRankTitles : prevSeasonRanks.carRankPts)[c.id]
-                    : null;
-                  const rankDiff = prevRank != null ? prevRank - (i + 1) : null;
-                  return (
-                  <LeaderboardRow key={c.id}
-                    rank={i + 1} rankDiff={rankDiff}
-                    name={c.name} photo={getCarPhoto(c.id)}
-                    badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
-                    streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
-                    pts={brandDetailSort === 'titres' ? c.titles : c.total}
-                    noStatsToggle
-                    onClick={() => {
-                      if (String(c.id).startsWith('hist-')) return;
-                      openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
-                    }}
-                  />
-                  );
-                })}
+                {(() => {
+                  const valueFn = brandDetailSort === 'titres' ? (c => c.titles) : (c => c.total);
+                  const rankedCars = withRanks(sorted, valueFn);
+                  return rankedCars.map(c => {
+                    const prevRank = prevSeasonRanks.hasPrev
+                      ? (brandDetailSort === 'titres' ? prevSeasonRanks.carRankTitles : prevSeasonRanks.carRankPts)[c.id]
+                      : null;
+                    const rankDiff = prevRank != null ? prevRank - c.rank : null;
+                    return (
+                    <LeaderboardRow key={c.id}
+                      rank={c.rank} rankDiff={rankDiff}
+                      name={c.name} photo={getCarPhoto(c.id)}
+                      badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                      streakBadge={c.titles > 0 ? { icon:'🏆', label:`${c.titles}`, color:'#f1c40f' } : null}
+                      pts={brandDetailSort === 'titres' ? c.titles : c.total}
+                      noStatsToggle
+                      onClick={() => {
+                        if (String(c.id).startsWith('hist-')) return;
+                        openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
+                      }}
+                    />
+                    );
+                  });
+                })()}
               </div>
             </>
           ) : brandLeagueTab === 'titres' ? (
@@ -14021,23 +14045,27 @@ export default function App() {
                 </div>
 
               )}
-              {b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles).map((c, i) => {
-                const prevRank = prevSeasonRanks.hasPrev ? prevSeasonRanks.carRankTitles[c.id] : null;
-                const rankDiff = prevRank != null ? prevRank - (i + 1) : null;
-                return (
-                <LeaderboardRow key={c.id}
-                  rank={i + 1} rankDiff={rankDiff}
-                  name={c.name} photo={getCarPhoto(c.id)}
-                  badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
-                  pts={c.titles}
-                  noStatsToggle
-                  onClick={() => {
-                    if (String(c.id).startsWith('hist-')) return;
-                    openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
-                  }}
-                />
-                );
-              })}
+              {(() => {
+                const titledCars = b.cars.filter(c => c.titles > 0).sort((x, y) => y.titles - x.titles);
+                const rankedCars = withRanks(titledCars, c => c.titles);
+                return rankedCars.map(c => {
+                  const prevRank = prevSeasonRanks.hasPrev ? prevSeasonRanks.carRankTitles[c.id] : null;
+                  const rankDiff = prevRank != null ? prevRank - c.rank : null;
+                  return (
+                  <LeaderboardRow key={c.id}
+                    rank={c.rank} rankDiff={rankDiff}
+                    name={c.name} photo={getCarPhoto(c.id)}
+                    badge={c.retired ? { label: 'RIP', bg:'rgba(231,76,60,0.15)', color:'#e74c3c' } : c.league ? { label: c.pending ? `${c.league} (attente)` : c.league, bg:'rgba(155,89,182,0.15)', color:'#9b59b6' } : null}
+                    pts={c.titles}
+                    noStatsToggle
+                    onClick={() => {
+                      if (String(c.id).startsWith('hist-')) return;
+                      openProfileCar({ leagueName: c.retired ? LEAGUES[0] : (c.league || LEAGUES[0]), carId: c.id, histName: c.name });
+                    }}
+                  />
+                  );
+                });
+              })()}
             </div>
           ) : (
             <div style={{ padding:'0 12px 12px' }}>
