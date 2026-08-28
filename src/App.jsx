@@ -217,6 +217,7 @@ function RankBadge({ rank, size = 16 }) {
 function RankDiffBadge({ diff }) {
   if (diff === null || diff === undefined) return null;
   if (diff === 0) return <div style={{ fontSize:9, color:'var(--text-dim)', lineHeight:1 }}>—</div>;
+  if (diff === 'new') return <div style={{ fontSize:8, fontWeight:700, color:'var(--gold)', lineHeight:1, background:'rgba(212,175,55,0.15)', borderRadius:2, padding:'0 2px' }}>NEW</div>;
   return (
     <div style={{ fontSize:9, fontWeight:700, color: diff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, background: diff > 0 ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', borderRadius:2, padding:'0 2px' }}>
       {diff > 0 ? `▲${diff}` : `▼${Math.abs(diff)}`}
@@ -3174,12 +3175,13 @@ function LeaderboardRow({ rank, rankDiff, name, photo, badge, streakBadge, recen
           color: rank === 1 ? '#f1c40f' : rank === 2 ? '#bdc3c7' : rank === 3 ? '#cd7f32' : borderColor && borderColor !== 'transparent' ? borderColor : 'var(--gold-dim)',
           textShadow: rank <= 3 ? `0 0 8px ${rank===1?'rgba(241,196,15,0.6)':rank===2?'rgba(189,195,199,0.4)':'rgba(205,127,50,0.4)'}` : 'none',
         }}>{rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : rank}</div>
-        {rankDiff !== null && rankDiff !== undefined && rankDiff !== 0 && (
+        {rankDiff !== null && rankDiff !== undefined && rankDiff !== 0 && rankDiff !== 'new' && (
           <div style={{ fontSize:9, fontWeight:700, color: rankDiff > 0 ? 'var(--green)' : '#e74c3c', lineHeight:1, background: rankDiff > 0 ? 'rgba(39,174,96,0.15)' : 'rgba(192,57,43,0.15)', borderRadius:2, padding:'0 2px' }}>
             {rankDiff > 0 ? `▲${rankDiff}` : `▼${Math.abs(rankDiff)}`}
           </div>
         )}
         {rankDiff === 0 && <div style={{ fontSize:9, color:'var(--text-dim)', lineHeight:1 }}>—</div>}
+        {rankDiff === 'new' && <div style={{ fontSize:8, fontWeight:700, color:'var(--gold)', lineHeight:1, background:'rgba(212,175,55,0.15)', borderRadius:2, padding:'0 2px' }}>NEW</div>}
       </div>
 
       {/* Image */}
@@ -6184,7 +6186,7 @@ export default function App() {
 
   function simAllActuelles() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       for (let i = 1; i <= 12; i++) {
         const lName = `Actuelles ${i}`;
@@ -6206,7 +6208,7 @@ export default function App() {
 
   function simSucSucc() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Successeurs aux Successeurs'];
       if (!league) return d;
@@ -6224,7 +6226,7 @@ export default function App() {
 
   function simRemplac() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Remplaçants des Successeurs'];
       if (!league) return d;
@@ -6242,7 +6244,7 @@ export default function App() {
 
   function simAvantDern() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Avant-dernière chance'];
       if (!league) return d;
@@ -6260,7 +6262,7 @@ export default function App() {
 
   function simDerniere() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Dernière chance'];
       if (!league) return d;
@@ -6278,7 +6280,7 @@ export default function App() {
 
   function simPersev() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Persévérance'];
       if (!league) return d;
@@ -6296,7 +6298,7 @@ export default function App() {
 
   function simDeter() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Détermination'];
       if (!league) return d;
@@ -6314,7 +6316,7 @@ export default function App() {
 
   function simAcharn() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Acharnement'];
       if (!league) return d;
@@ -6332,7 +6334,7 @@ export default function App() {
 
   function simObstin() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Obstination'];
       if (!league) return d;
@@ -6350,7 +6352,7 @@ export default function App() {
 
   function simInsist() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Insistance'];
       if (!league) return d;
@@ -6368,7 +6370,7 @@ export default function App() {
 
   function simComeback() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Comeback'];
       if (!league) return d;
@@ -6387,7 +6389,7 @@ export default function App() {
   function simImport() {
     isLoadingFromFirebase.current = true;
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Importation'];
       if (!league) return d;
@@ -6405,7 +6407,7 @@ export default function App() {
 
   function simTout() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
 
       LEAGUES.forEach(lName => {
@@ -6551,7 +6553,7 @@ export default function App() {
 
   function simOubl() {
     setDb(d => {
-      const next = JSON.parse(JSON.stringify(d));
+      const next = { ...d, seasons: d.seasons.map((s, i) => i === d.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       const s = next.seasons[next.currentSeasonIdx];
       const league = s.leagues['Oubliettes'];
       if (!league) return d;
@@ -6577,7 +6579,7 @@ export default function App() {
     newName = newName.trim();
 
     setDb(prev => {
-      const next = JSON.parse(JSON.stringify(prev));
+      const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
       next.seasons.forEach(s => {
         const league = s.leagues[leagueName];
         if (!league) return;
@@ -10124,7 +10126,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues['Successeurs'].matches = played;
         return next;
       });
@@ -10406,7 +10408,7 @@ export default function App() {
         catch (e) { console.warn('Upload photo échoué:', e); }
       }
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         const league = next.seasons[next.currentSeasonIdx].leagues[leagueName];
         if (!league) return prev;
         if (league.cars.some(c => c.name.toLowerCase() === name.toLowerCase())) return prev;
@@ -10437,7 +10439,7 @@ export default function App() {
         catch (e) { console.warn('Upload photo échoué:', e); }
       }
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         const league = next.seasons[next.currentSeasonIdx].leagues[leagueName];
         if (!league) return prev;
         const q = league.queue || [];
@@ -10454,7 +10456,7 @@ export default function App() {
 
     function removeFromQueue(id) {
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         const league = next.seasons[next.currentSeasonIdx].leagues[leagueName];
         if (!league) return prev;
         league.queue = (league.queue || []).filter(c => c.id !== id);
@@ -10622,7 +10624,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -10879,7 +10881,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -11120,7 +11122,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -11336,7 +11338,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -11552,7 +11554,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -11768,7 +11770,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -11984,7 +11986,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -12200,7 +12202,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -12416,7 +12418,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -12632,7 +12634,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -12849,7 +12851,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -13067,7 +13069,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -13264,7 +13266,7 @@ export default function App() {
         homeId: m.homeId, awayId: m.awayId, homeGoals: m.homeGoals, awayGoals: m.awayGoals
       }));
       setDb(prev => {
-        const next = JSON.parse(JSON.stringify(prev));
+        const next = { ...prev, seasons: prev.seasons.map((s, i) => i === prev.currentSeasonIdx ? JSON.parse(JSON.stringify(s)) : s) };
         next.seasons[next.currentSeasonIdx].leagues[leagueName].matches = played;
         return next;
       });
@@ -13902,7 +13904,7 @@ export default function App() {
                     {prevSeasonRanks.hasPrev && (() => {
                       const countryPrevRanks = detailSort === 'titres' ? prevSeasonRanks.brandRankTitlesByCountry[code] : prevSeasonRanks.brandRankPtsByCountry[code];
                       const prevRank = countryPrevRanks ? countryPrevRanks[b.brand] : null;
-                      const diff = prevRank != null ? prevRank - b.rank : null;
+                      const diff = prevRank != null ? prevRank - b.rank : 'new';
                       return <RankDiffBadge diff={diff} />;
                     })()}
                   </div>
@@ -14017,7 +14019,7 @@ export default function App() {
                     const prevRank = prevSeasonRanks.hasPrev
                       ? (brandDetailSort === 'titres' ? prevSeasonRanks.carRankTitles : prevSeasonRanks.carRankPts)[c.id]
                       : null;
-                    const rankDiff = prevRank != null ? prevRank - c.rank : null;
+                    const rankDiff = prevRank != null ? prevRank - c.rank : 'new';
                     return (
                     <LeaderboardRow key={c.id}
                       rank={c.rank} rankDiff={rankDiff}
@@ -14050,7 +14052,7 @@ export default function App() {
                 const rankedCars = withRanks(titledCars, c => c.titles);
                 return rankedCars.map(c => {
                   const prevRank = prevSeasonRanks.hasPrev ? prevSeasonRanks.carRankTitles[c.id] : null;
-                  const rankDiff = prevRank != null ? prevRank - c.rank : null;
+                  const rankDiff = prevRank != null ? prevRank - c.rank : 'new';
                   return (
                   <LeaderboardRow key={c.id}
                     rank={c.rank} rankDiff={rankDiff}
@@ -14140,7 +14142,7 @@ export default function App() {
                     <RankBadge rank={b.rank} size={22} />
                     {prevSeasonRanks.hasPrev && (() => {
                       const prevRank = prevSeasonRanks.brandRankTitles[b.brand];
-                      const diff = prevRank != null ? prevRank - b.rank : null;
+                      const diff = prevRank != null ? prevRank - b.rank : 'new';
                       return <RankDiffBadge diff={diff} />;
                     })()}
                   </span>
@@ -14598,7 +14600,7 @@ export default function App() {
                     <RankBadge rank={c.rank} size={22} />
                     {prevSeasonRanks.hasPrev && (() => {
                       const prevRank = (paysSubTab === 'titres' ? prevSeasonRanks.countryRankTitles : prevSeasonRanks.countryRankPts)[c.code];
-                      const diff = prevRank != null ? prevRank - c.rank : null;
+                      const diff = prevRank != null ? prevRank - c.rank : 'new';
                       return <RankDiffBadge diff={diff} />;
                     })()}
                   </span>
@@ -14733,7 +14735,7 @@ export default function App() {
                   <RankBadge rank={b.rank} size={22} />
                   {prevSeasonRanks.hasPrev && (() => {
                     const prevRank = prevSeasonRanks.brandRankPts[b.brand];
-                    const diff = prevRank != null ? prevRank - b.rank : null;
+                    const diff = prevRank != null ? prevRank - b.rank : 'new';
                     return <RankDiffBadge diff={diff} />;
                   })()}
                 </span>
