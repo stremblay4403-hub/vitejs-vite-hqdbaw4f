@@ -16978,7 +16978,9 @@ export default function App() {
         {!menuOpen && (
         <>
         {/* Sous-menu Ligues — grille de choix (16 ligues/paliers) */}
-        {mainTab === 'ligues' && liguesMenuOpen && (() => {
+        {mainTab === 'ligues' && liguesMenuOpen && (
+          <ErrorBoundary label="Menu Ligues">
+            {(() => {
           // Progression de chaque palier : total de matchs prévus vs joués, pour afficher une
           // coche ✓ (terminé) ou "X/Y" (en cours) sur chaque carreau.
           const SIMPLE_LEAGUE_NAME = {
@@ -17092,7 +17094,9 @@ export default function App() {
             </div>
           </div>
           );
-        })()}
+            })()}
+          </ErrorBoundary>
+        )}
 
         {/* Barre de retour vers le sous-menu Ligues, une fois une ligue choisie */}
         {mainTab === 'ligues' && !liguesMenuOpen && (
@@ -17239,6 +17243,7 @@ export default function App() {
 
         {/* Content */}
         <div className="content tab-content tab-content-fade" key={mainTab + ligueSubTab + sectionTab} style={{ position:'relative', userSelect: isPublicMode ? 'none' : 'auto' }}>
+        <ErrorBoundary label={`Onglet ${mainTab}`} key={mainTab + ligueSubTab + sectionTab}>
           {mainTab === 'dashboard' && <StableDashboard />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'groupes' && <StableGroupesView />}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && sectionTab === 'playoffs' && <StablePlayoffsView />}
@@ -17281,6 +17286,7 @@ export default function App() {
           {mainTab === 'historique' && histSubTab === 'mouvements' && <StableVoituresView />}
           {mainTab === 'historique' && histSubTab === 'records' && <StableRecordsView />}
           {mainTab === 'historique' && histSubTab === 'comparaison' && <StableComparaisonView />}
+        </ErrorBoundary>
         </div>
         </>
         )}
