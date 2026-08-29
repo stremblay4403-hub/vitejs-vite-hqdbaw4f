@@ -3347,7 +3347,50 @@ function launchConfetti() {
   setTimeout(() => { container.remove(); style.remove(); }, 5000);
 }
 
+// Filet de sécurité global — capture TOUTE erreur survenant n'importe où dans AppInner
+// (y compris avant le JSX, dans les calculs/hooks) et affiche le détail à l'écran au lieu
+// d'un écran noir. Le bouton "Réessayer" retente sans recharger toute l'app.
+class RootErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, info: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, info) {
+    this.setState({ info });
+    try { console.error('[RootErrorBoundary]', error, info); } catch (e) {}
+  }
+  render() {
+    if (this.state.hasError) {
+      const err = this.state.error;
+      return (
+        <div style={{ minHeight:'100vh', background:'#060606', color:'#eee', padding:20, fontFamily:'monospace', fontSize:13, whiteSpace:'pre-wrap', wordBreak:'break-word' }}>
+          <div style={{ fontSize:20, marginBottom:12 }}>⚠️ Erreur de l'application</div>
+          <button
+            onClick={() => this.setState({ hasError: false, error: null, info: null })}
+            style={{ background:'#d4af37', color:'#000', border:'none', borderRadius:6, padding:'10px 16px', fontWeight:700, marginBottom:16, cursor:'pointer' }}
+          >Réessayer</button>
+          <div style={{ marginBottom:10, color:'#ff6b6b' }}>{String(err && err.message ? err.message : err)}</div>
+          <div style={{ opacity:0.7 }}>{err && err.stack}</div>
+          <div style={{ opacity:0.5, marginTop:10 }}>{this.state.info && this.state.info.componentStack}</div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export default function App() {
+  return (
+    <RootErrorBoundary>
+      <AppInner />
+    </RootErrorBoundary>
+  );
+}
+
+function AppInner() {
   // Filet contre le flash de contenu non stylé (FOUC) au tout premier chargement :
   // useLayoutEffect s'exécute de façon synchrone AVANT que le navigateur peigne
   // l'écran, donc le fond sombre est posé immédiatement, sans attendre que la
