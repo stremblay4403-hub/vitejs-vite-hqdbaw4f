@@ -6165,12 +6165,15 @@ function AppInner() {
       let newComebackCars = comebackStandings.slice(16, 76).map(c => ({ id: c.id, name: c.name }));
       insistStandings.slice(16, 32).forEach(c => newComebackCars.push({ id: c.id, name: c.name }));
       importStandings.slice(0, 16).forEach(c => newComebackCars.push({ id: c.id, name: c.name }));
-      ns.leagues['Comeback'] = { cars: newComebackCars, matches: [], completed: false };
+      // File d'attente — les voitures ajoutées en cours de saison rejoignent la ligue maintenant
+      (prev.leagues['Comeback']?.queue || []).forEach(c => newComebackCars.push({ id: c.id, name: c.name }));
+      ns.leagues['Comeback'] = { cars: newComebackCars, matches: [], completed: false, queue: [] };
 
       let newImportCars = importStandings.slice(16, 82).map(c => ({ id: c.id, name: c.name }));
       comebackStandings.slice(76, 92).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
       oublStandings.slice(0, 4).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
-      ns.leagues['Importation'] = { cars: newImportCars, matches: [], completed: false };
+      (prev.leagues['Importation']?.queue || []).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
+      ns.leagues['Importation'] = { cars: newImportCars, matches: [], completed: false, queue: [] };
 
       const newOublCars = importStandings.slice(82, 86).map(c => ({ id: c.id, name: c.name }));
       ns.leagues['Oubliettes'] = { cars: newOublCars, matches: [], completed: false };
@@ -7111,10 +7114,6 @@ function AppInner() {
                         {getCarBrand(champId) && (
                           <span style={{ fontSize:13,color:'var(--text-dim)',textAlign:'center',marginTop:2 }}>{getCarBrand(champId)}</span>
                         )}
-                        <button className="btn btn-dark btn-sm" style={{ marginTop:8,fontSize:11 }}
-                          onClick={() => setBrandModal({ carId: champId, carName: champ.name, photo: getCarPhoto(champId) })}>
-                          {!isPublicMode && <>✏️ {getCarBrand(champId) ? 'Modifier' : 'Ajouter la marque'}</>}
-                        </button>
                       </>
                     ) : (
                       <>
