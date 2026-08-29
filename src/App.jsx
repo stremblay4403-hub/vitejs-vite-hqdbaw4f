@@ -2029,21 +2029,14 @@ const css = `
   .car-stat-item:nth-child(9) { animation-delay: 1.75s; }
   .car-stat-item .val { font-family: 'Bebas Neue', sans-serif; font-size: 22px; color: var(--gold); }
   .car-stat-item .lbl { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-  /* Section "performance" — dernière rangée (% de points, différence, playoffs) séparée
-     visuellement des rangées "volume" (matchs/V/N/D/buts) au-dessus */
-  .car-stat-item:nth-child(7), .car-stat-item:nth-child(8), .car-stat-item:nth-child(9) {
-    border-top: 2px solid rgba(212,175,55,0.35);
-    margin-top: 4px;
-  }
-  /* Stat vedette — "% de points" à l'intérieur de cette section, mise en avant */
-  .car-stat-item:nth-child(7) {
+  /* Stat vedette — "% de points" au centre de la grille, mise en avant */
+  .car-stat-item:nth-child(5) {
     background: linear-gradient(180deg, rgba(212,175,55,0.16), rgba(212,175,55,0.03));
     border: 1px solid var(--gold-dim);
-    border-top: 2px solid var(--gold-dim);
     box-shadow: var(--shadow-sm), 0 0 18px rgba(212,175,55,0.14);
   }
-  .car-stat-item:nth-child(7) .val { font-size: 30px; text-shadow: 0 0 14px rgba(212,175,55,0.4); }
-  .car-stat-item:nth-child(7) .lbl { color: var(--gold-dim); font-weight: 600; }
+  .car-stat-item:nth-child(5) .val { font-size: 30px; text-shadow: 0 0 14px rgba(212,175,55,0.4); }
+  .car-stat-item:nth-child(5) .lbl { color: var(--gold-dim); font-weight: 600; }
 
   /* Trophée cliquable → révèle les saisons remportées */
   .trophy-badge { cursor: pointer; transition: transform 0.12s ease; }
@@ -9482,16 +9475,11 @@ export default function App() {
                   const allBonus = computeAllSeasonsBonus(leagueName);
                   const rank = allBonus.findIndex(e => e.name.toLowerCase() === effectiveName.toLowerCase());
                   const total = histTotalPts + totalBonusPts;
-                  if (total <= 0) return null;
-                  const hasStatusBadge = (champCount + histChampions.length) > 0 || (relCount + histRelegated.length) > 0;
-                  return (
-                    <>
-                      {hasStatusBadge && <span style={{ width:1, height:16, background:'var(--border)', margin:'0 2px' }} />}
-                      <span className="badge badge-blue">
-                        🏁 #{rank + 1} · {total} pts annexes
-                      </span>
-                    </>
-                  );
+                  return total > 0 ? (
+                    <span className="badge badge-blue">
+                      #{rank + 1} · {total} pts annexes
+                    </span>
+                  ) : null;
                 })()}
               </div>
             </div>
@@ -9518,9 +9506,9 @@ export default function App() {
               { val: totalW, lbl: 'Victoires', raw: totalW },
               { val: totalD, lbl: 'Nuls', raw: totalD },
               { val: totalL, lbl: 'Défaites', raw: totalL },
+              { val: ptsRatio.toFixed(3), lbl: '% de points', raw: ptsRatio, decimals: 3 },
               { val: totalGF, lbl: 'Buts pour', raw: totalGF },
               { val: totalGA, lbl: 'Buts contre', raw: totalGA },
-              { val: ptsRatio.toFixed(3), lbl: '% de points', raw: ptsRatio, decimals: 3 },
               { val: diff >= 0 ? `+${diff}` : `${diff}`, lbl: 'Différence', raw: diff, signed: true },
               { val: playoffsCount, lbl: 'Participations playoffs', raw: playoffsCount },
             ].map((st, i) => (
