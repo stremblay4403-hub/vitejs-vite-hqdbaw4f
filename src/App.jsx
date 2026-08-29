@@ -16997,6 +16997,7 @@ export default function App() {
             oubl: 'Oubliettes',
           };
           const getProgress = (key) => {
+            if (!currentSeason || !currentSeason.leagues) return { total: 0, played: 0 };
             if (SIMPLE_LEAGUE_NAME[key]) {
               const league = currentSeason.leagues[SIMPLE_LEAGUE_NAME[key]];
               const cars = league?.cars || [];
@@ -17023,7 +17024,7 @@ export default function App() {
                   ...Object.values(league.groupResults || {}).flat(),
                   ...Object.values(league.playoffResults || {}),
                   ...Object.values(league.relegationResults || {}),
-                ];
+                ].filter(Boolean);
                 all.forEach(m => { total++; if (m.homeGoals != null) played++; });
               });
               return { total, played };
