@@ -17075,7 +17075,7 @@ function AppInner() {
               return { total, played };
             }
             if (key === 'champions') {
-              const matches = currentSeason.tournoiChampions?.matches || [];
+              const matches = Object.values(currentSeason.tournoiChampions?.matches || {});
               return { total: matches.length, played: matches.filter(m => m.homeGoals != null).length };
             }
             return { total: 0, played: 0 };
