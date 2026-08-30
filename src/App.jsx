@@ -5213,11 +5213,160 @@ function AppInner() {
   }
 
   function updateGroupMatch(leagueName, group, matchId, homeGoals, awayGoals) {
+    if (homeGoals !== null && homeGoals !== undefined && awayGoals !== null && awayGoals !== undefined && LEAGUES.includes(leagueName)) {
+      const league = currentSeason.leagues[leagueName];
+      const match = league?.groupResults?.[group]?.find(m => m.id === matchId);
+      if (match) {
+        checkLiveRecords(leagueName, group, matchId, +homeGoals, +awayGoals, match.homeId, match.awayId);
+        checkSeasonEndRecords(leagueName, group, matchId, +homeGoals, +awayGoals);
+      }
+    }
     updateLeague(leagueName, l => {
       const matches = (l.groupResults[group] || []).map(m =>
         m.id === matchId ? { ...m, homeGoals: homeGoals === null ? null : +homeGoals, awayGoals: awayGoals === null ? null : +awayGoals } : m
       );
       return { ...l, groupResults: { ...l.groupResults, [group]: matches } };
+    });
+  }
+
+  // Records battus en direct — meilleure saison régulière (points / buts marqués / différentiel positif),
+  // détecté à la FIN de la saison régulière d'un groupe, càd quand le dernier match du groupe est confirmé
+  // (même périmètre que les catégories 🏁 / ⚽ / 📈 de l'onglet Records).
+  function computeAllTimeSeasonRecords() {
+    let bestPts = 0, bestGF = 0, bestDiff = -Infinity;
+    LEAGUES.forEach(l => {
+      db.seasons.forEach(s => {
+        const league = s.leagues[l];
+        if (!league?.cars) return;
+        league.cars.forEach(car => {
+          const allM = (league.groupResults ? Object.values(league.groupResults).flat() : []).filter(m => m.homeId === car.id || m.awayId === car.id);
+          let pts = 0, gf = 0, ga = 0;
+          allM.forEach(m => {
+            if (m.homeGoals === null) return;
+            const isHome = m.homeId === car.id;
+            const f = isHome ? m.homeGoals : m.awayGoals;
+            const a = isHome ? m.awayGoals : m.homeGoals;
+            gf += f; ga += a;
+            if (f > a) pts += 3; else if (f === a) pts += 1;
+          });
+          if (allM.length > 0 && pts > 0) {
+            if (pts > bestPts) bestPts = pts;
+            if (gf > bestGF) bestGF = gf;
+            const diff = gf - ga;
+            if (diff > bestDiff) bestDiff = diff;
+          }
+        });
+      });
+    });
+    return { pts: bestPts, gf: bestGF, diff: bestDiff };
+  }
+
+  function checkSeasonEndRecords(leagueName, group, matchId, homeGoals, awayGoals) {
+    const league = currentSeason.leagues[leagueName];
+    if (!league) return;
+    const groupMatches = (league.groupResults[group] || []).map(m => m.id === matchId ? { ...m, homeGoals, awayGoals } : m);
+    if (!groupMatches.length || !groupMatches.every(m => m.homeGoals !== null)) return; // groupe pas encore terminé
+
+    const { pts: recPts, gf: recGF, diff: recDiff } = computeAllTimeSeasonRecords();
+    const groupCars = league.cars.filter(c => c.group === group);
+    groupCars.forEach(car => {
+      let pts = 0, gf = 0, ga = 0;
+      groupMatches.forEach(m => {
+        if (m.homeId !== car.id && m.awayId !== car.id) return;
+        const isHome = m.homeId === car.id;
+        const f = isHome ? m.homeGoals : m.awayGoals;
+        const a = isHome ? m.awayGoals : m.homeGoals;
+        gf += f; ga += a;
+        if (f > a) pts += 3; else if (f === a) pts += 1;
+      });
+      const diff = gf - ga;
+      const photo = getCarPhoto(car.id);
+      if (recPts > 0 && pts > recPts) {
+        pushNotif(`🏅 NOUVEAU RECORD ! Meilleure saison régulière : ${pts} pts (ancien record : ${recPts})`, 'gold', photo, car.name);
+      }
+      if (recGF > 0 && gf > recGF) {
+        pushNotif(`🏅 NOUVEAU RECORD ! ${gf} buts marqués en une saison (ancien record : ${recGF})`, 'gold', photo, car.name);
+      }
+      if (recDiff > 0 && diff > recDiff) {
+        pushNotif(`🏅 NOUVEAU RECORD ! Différentiel de +${diff} sur une saison (ancien record : +${recDiff})`, 'gold', photo, car.name);
+      }
+    });
+  }
+
+  // Records battus en direct — séries de victoires / invincibilité (ligues principales V1-V4 uniquement,
+  // même périmètre que les catégories "🔥 Plus Longue Série" de l'onglet Records).
+  function computeAllTimeStreakRecords() {
+    let maxWin = 0, maxUnbeaten = 0;
+    LEAGUES.forEach(l => {
+      const carTimelines = {};
+      db.seasons.forEach(s => {
+        const league = s.leagues[l];
+        if (!league?.cars) return;
+        const allM = league.groupResults ? Object.values(league.groupResults).flat() : [];
+        allM.forEach(m => {
+          if (m.homeGoals === null) return;
+          [[m.homeId, m.homeGoals, m.awayGoals], [m.awayId, m.awayGoals, m.homeGoals]].forEach(([id, f, a]) => {
+            if (!carTimelines[id]) carTimelines[id] = [];
+            carTimelines[id].push({ season: s.season, day: m.day || 0, result: f > a ? 'W' : f === a ? 'D' : 'L' });
+          });
+        });
+      });
+      Object.values(carTimelines).forEach(matches => {
+        const sorted = [...matches].sort((a, b) => a.season - b.season || a.day - b.day);
+        let curWin = 0, bestWin = 0, curUnb = 0, bestUnb = 0, prevSeason = null;
+        sorted.forEach(m => {
+          if (m.season !== prevSeason) { curWin = 0; curUnb = 0; }
+          prevSeason = m.season;
+          if (m.result === 'W') { curWin++; if (curWin > bestWin) bestWin = curWin; } else curWin = 0;
+          if (m.result !== 'L') { curUnb++; if (curUnb > bestUnb) bestUnb = curUnb; } else curUnb = 0;
+        });
+        if (bestWin > maxWin) maxWin = bestWin;
+        if (bestUnb > maxUnbeaten) maxUnbeaten = bestUnb;
+      });
+    });
+    return { winStreak: maxWin, unbeaten: maxUnbeaten };
+  }
+
+  function checkLiveRecords(leagueName, group, matchId, homeGoals, awayGoals, homeId, awayId) {
+    const league = currentSeason.leagues[leagueName];
+    if (!league) return;
+    const results = homeGoals > awayGoals ? [[homeId, 'W'], [awayId, 'L']]
+      : homeGoals < awayGoals ? [[homeId, 'L'], [awayId, 'W']]
+      : [[homeId, 'D'], [awayId, 'D']];
+
+    const existingMatches = (league.groupResults[group] || []).filter(m => m.id !== matchId && m.homeGoals !== null);
+    function carResultTimeline(carId) {
+      return existingMatches
+        .filter(m => m.homeId === carId || m.awayId === carId)
+        .sort((a, b) => (a.day || 0) - (b.day || 0))
+        .map(m => {
+          const isHome = m.homeId === carId;
+          const f = isHome ? m.homeGoals : m.awayGoals;
+          const a = isHome ? m.awayGoals : m.homeGoals;
+          return f > a ? 'W' : f === a ? 'D' : 'L';
+        });
+    }
+    function trailingStreak(timeline, isGood) {
+      let streak = 0;
+      for (let i = timeline.length - 1; i >= 0; i--) {
+        if (isGood(timeline[i])) streak++; else break;
+      }
+      return streak;
+    }
+
+    const { winStreak: recWin, unbeaten: recUnbeaten } = computeAllTimeStreakRecords();
+
+    results.forEach(([carId, res]) => {
+      const car = league.cars.find(c => c.id === carId);
+      if (!car) return;
+      const timeline = [...carResultTimeline(carId), res];
+      const winStreak = trailingStreak(timeline, r => r === 'W');
+      const unbeatenStreak = trailingStreak(timeline, r => r !== 'L');
+      if (res === 'W' && winStreak > recWin && recWin > 0) {
+        pushNotif(`🏅 NOUVEAU RECORD ! ${winStreak} victoires consécutives (ancien record : ${recWin})`, 'gold', getCarPhoto(carId), car.name);
+      } else if (res !== 'L' && unbeatenStreak > recUnbeaten && recUnbeaten > 0) {
+        pushNotif(`🏅 NOUVEAU RECORD ! ${unbeatenStreak} matchs sans défaite (ancien record : ${recUnbeaten})`, 'gold', getCarPhoto(carId), car.name);
+      }
     });
   }
 
