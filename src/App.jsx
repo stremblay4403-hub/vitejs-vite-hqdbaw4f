@@ -9214,6 +9214,13 @@ function AppInner() {
     let totalBonusPts = 0, champCount = 0, relCount = 0;
     const champSeasons = [];
     const relSeasons = [];
+    // Bête noire / Souffre-douleur — agrégation des résultats par adversaire, toutes saisons/ligues confondues
+    const oppStats = {}; // oppId -> { name, w, d, l }
+    function recordOpp(oppId, oppName, res) {
+      if (!oppId || !oppName) return;
+      if (!oppStats[oppId]) oppStats[oppId] = { name: oppName, w: 0, d: 0, l: 0 };
+      oppStats[oppId][res]++;
+    }
     const ALL_PROFILE_LEAGUES = [...LEAGUES, ...AUXILIARY_LEAGUES];
     db.seasons.forEach(s => {
       // Retrouver la ligue de la voiture CETTE saison (elle peut changer de ligue via promotion/relégation)
@@ -9226,17 +9233,18 @@ function AppInner() {
       }
       if (!foundLn) return;
       const l = s.leagues[foundLn];
+      const getOppName = oid => l.cars.find(c => c.id === oid)?.name;
       Object.values(l.groupResults || {}).forEach(matches => {
         matches.forEach(m => {
           if (m.homeGoals === null) return;
-          if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
-          if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
+          if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) { totalW++; recordOpp(m.awayId, getOppName(m.awayId), 'w'); } else if (m.homeGoals < m.awayGoals) { totalL++; recordOpp(m.awayId, getOppName(m.awayId), 'l'); } else { totalD++; recordOpp(m.awayId, getOppName(m.awayId), 'd'); } }
+          if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) { totalW++; recordOpp(m.homeId, getOppName(m.homeId), 'w'); } else if (m.awayGoals < m.homeGoals) { totalL++; recordOpp(m.homeId, getOppName(m.homeId), 'l'); } else { totalD++; recordOpp(m.homeId, getOppName(m.homeId), 'd'); } }
         });
       });
       (l.matches || []).forEach(m => {
         if (m.homeGoals === null) return;
-        if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
-        if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
+        if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) { totalW++; recordOpp(m.awayId, getOppName(m.awayId), 'w'); } else if (m.homeGoals < m.awayGoals) { totalL++; recordOpp(m.awayId, getOppName(m.awayId), 'l'); } else { totalD++; recordOpp(m.awayId, getOppName(m.awayId), 'd'); } }
+        if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) { totalW++; recordOpp(m.homeId, getOppName(m.homeId), 'w'); } else if (m.awayGoals < m.homeGoals) { totalL++; recordOpp(m.homeId, getOppName(m.homeId), 'l'); } else { totalD++; recordOpp(m.homeId, getOppName(m.homeId), 'd'); } }
       });
       if (s.champions[foundLn] === lid) { champCount++; champSeasons.push(s.season); }
       if (s.relegated[foundLn] === lid) { relCount++; relSeasons.push(s.season); }
@@ -9244,6 +9252,17 @@ function AppInner() {
       totalBonusPts += bp[lid] || 0;
     });
     const winPct = totalGP > 0 ? Math.round(totalW / totalGP * 100) : 0;
+    // Bête noire (pire adversaire) / Souffre-douleur (meilleur adversaire) — min. 3 confrontations
+    let nemesis = null, victim = null;
+    Object.values(oppStats).forEach(o => {
+      const played = o.w + o.d + o.l;
+      if (played < 3) return;
+      const rate = (o.w - o.l) / played; // >0 favorable, <0 défavorable
+      if (!nemesis || rate < nemesis.rate) nemesis = { ...o, played, rate };
+      if (!victim || rate > victim.rate) victim = { ...o, played, rate };
+    });
+    if (nemesis && nemesis.rate >= 0) nemesis = null; // pas de bête noire si jamais perdant net
+    if (victim && victim.rate <= 0) victim = null; // pas de souffre-douleur si jamais gagnant net
     const totalPtsRatio = totalW * 3 + totalD; // points obtenus (3 par victoire, 1 par nul)
     const ptsRatio = totalGP > 0 ? totalPtsRatio / (totalGP * 3) : 0; // ratio /1.000 façon football
     const diff = totalGF - totalGA;
@@ -9562,6 +9581,26 @@ function AppInner() {
               </div>
             ))}
           </div>
+
+          {/* Bête noire / Souffre-douleur */}
+          {(nemesis || victim) && (
+            <div style={{ padding:'10px 16px', display:'flex', gap:8, flexWrap:'wrap' }}>
+              {nemesis && (
+                <div style={{ background:'rgba(192,57,43,0.12)', border:'1px solid rgba(192,57,43,0.3)', borderRadius:6, padding:'6px 12px' }}>
+                  <div style={{ fontSize:9, color:'#e74c3c', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>😈 BÊTE NOIRE</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'var(--text)', lineHeight:1.3 }}>{nemesis.name}</div>
+                  <div style={{ fontSize:10, color:'var(--text-dim)' }}>{nemesis.w}V · {nemesis.d}N · {nemesis.l}D sur {nemesis.played}</div>
+                </div>
+              )}
+              {victim && (
+                <div style={{ background:'rgba(39,174,96,0.12)', border:'1px solid rgba(39,174,96,0.3)', borderRadius:6, padding:'6px 12px' }}>
+                  <div style={{ fontSize:9, color:'var(--green)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>🎯 SOUFFRE-DOULEUR</div>
+                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'var(--text)', lineHeight:1.3 }}>{victim.name}</div>
+                  <div style={{ fontSize:10, color:'var(--text-dim)' }}>{victim.w}V · {victim.d}N · {victim.l}D sur {victim.played}</div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Évolution du classement — saison en cours, ligues principales uniquement */}
           {showRankChart && rankEvolutionData && (
