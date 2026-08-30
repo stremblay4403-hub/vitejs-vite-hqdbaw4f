@@ -9254,12 +9254,12 @@ function AppInner() {
     const winPct = totalGP > 0 ? Math.round(totalW / totalGP * 100) : 0;
     // Bête noire (pire adversaire) / Souffre-douleur (meilleur adversaire) — min. 3 confrontations
     let nemesis = null, victim = null;
-    Object.values(oppStats).forEach(o => {
+    Object.entries(oppStats).forEach(([oppId, o]) => {
       const played = o.w + o.d + o.l;
       if (played < 3) return;
       const rate = (o.w - o.l) / played; // >0 favorable, <0 défavorable
-      if (!nemesis || rate < nemesis.rate) nemesis = { ...o, played, rate };
-      if (!victim || rate > victim.rate) victim = { ...o, played, rate };
+      if (!nemesis || rate < nemesis.rate) nemesis = { ...o, id: oppId, played, rate };
+      if (!victim || rate > victim.rate) victim = { ...o, id: oppId, played, rate };
     });
     if (nemesis && nemesis.rate >= 0) nemesis = null; // pas de bête noire si jamais perdant net
     if (victim && victim.rate <= 0) victim = null; // pas de souffre-douleur si jamais gagnant net
@@ -9582,26 +9582,6 @@ function AppInner() {
             ))}
           </div>
 
-          {/* Bête noire / Souffre-douleur */}
-          {(nemesis || victim) && (
-            <div style={{ padding:'10px 16px', display:'flex', gap:8, flexWrap:'wrap' }}>
-              {nemesis && (
-                <div style={{ background:'rgba(192,57,43,0.12)', border:'1px solid rgba(192,57,43,0.3)', borderRadius:6, padding:'6px 12px' }}>
-                  <div style={{ fontSize:9, color:'#e74c3c', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>😈 BÊTE NOIRE</div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'var(--text)', lineHeight:1.3 }}>{nemesis.name}</div>
-                  <div style={{ fontSize:10, color:'var(--text-dim)' }}>{nemesis.w}V · {nemesis.d}N · {nemesis.l}D sur {nemesis.played}</div>
-                </div>
-              )}
-              {victim && (
-                <div style={{ background:'rgba(39,174,96,0.12)', border:'1px solid rgba(39,174,96,0.3)', borderRadius:6, padding:'6px 12px' }}>
-                  <div style={{ fontSize:9, color:'var(--green)', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>🎯 SOUFFRE-DOULEUR</div>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, color:'var(--text)', lineHeight:1.3 }}>{victim.name}</div>
-                  <div style={{ fontSize:10, color:'var(--text-dim)' }}>{victim.w}V · {victim.d}N · {victim.l}D sur {victim.played}</div>
-                </div>
-              )}
-            </div>
-          )}
-
           {/* Évolution du classement — saison en cours, ligues principales uniquement */}
           {showRankChart && rankEvolutionData && (
             <RankEvolutionChart points={rankEvolutionData.points} groupSize={rankEvolutionData.groupSize} />
@@ -9640,6 +9620,32 @@ function AppInner() {
                   <div style={{ fontSize:9, color:'#e74c3c', letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>RELÉGATIONS CONSÉCUTIVES</div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Bête noire / Souffre-douleur */}
+          {(nemesis || victim) && (
+            <div style={{ padding:'10px 16px', display:'flex', gap:10, flexWrap:'wrap' }}>
+              {[
+                nemesis && { data: nemesis, label: '😈 BÊTE NOIRE', color: '#e74c3c', bg: 'rgba(192,57,43,0.12)', border: 'rgba(192,57,43,0.3)' },
+                victim && { data: victim, label: '🎯 SOUFFRE-DOULEUR', color: 'var(--green)', bg: 'rgba(39,174,96,0.12)', border: 'rgba(39,174,96,0.3)' },
+              ].filter(Boolean).map((entry, i) => {
+                const oppPhoto = getCarPhoto(entry.data.id) || getCarPhotoByName(entry.data.name);
+                return (
+                  <div key={i} style={{ flex:'1 1 160px', minWidth:150, display:'flex', alignItems:'stretch', background:entry.bg, border:`1px solid ${entry.border}`, borderRadius:8, overflow:'hidden' }}>
+                    <div style={{ width:64, flexShrink:0, background:'var(--dark3)', overflow:'hidden' }}>
+                      {oppPhoto
+                        ? <img src={oppPhoto} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
+                        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>🚗</div>}
+                    </div>
+                    <div style={{ flex:1, minWidth:0, padding:'6px 10px', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+                      <div style={{ fontSize:9, color:entry.color, letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>{entry.label}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'var(--text)', lineHeight:1.2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{entry.data.name}</div>
+                      <div style={{ fontSize:10, color:'var(--text-dim)' }}>{entry.data.w}V · {entry.data.d}N · {entry.data.l}D sur {entry.data.played}</div>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
