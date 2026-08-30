@@ -9774,23 +9774,23 @@ function AppInner() {
 
           {/* Bête noire / Souffre-douleur */}
           {(nemesis || victim) && (
-            <div style={{ padding:'10px 16px', display:'flex', gap:10, flexWrap:'wrap' }}>
+            <div style={{ padding:'10px 16px', display:'grid', gridTemplateColumns:'repeat(2, 1fr)', gap:10 }}>
               {[
-                nemesis && { data: nemesis, label: '😈 BÊTE NOIRE', color: '#e74c3c', bg: 'rgba(192,57,43,0.12)', border: 'rgba(192,57,43,0.3)' },
-                victim && { data: victim, label: '🎯 SOUFFRE-DOULEUR', color: 'var(--green)', bg: 'rgba(39,174,96,0.12)', border: 'rgba(39,174,96,0.3)' },
+                nemesis && { data: nemesis, label: '😈 BÊTE NOIRE', color: '#e74c3c', border: 'rgba(192,57,43,0.5)' },
+                victim && { data: victim, label: '🎯 SOUFFRE-DOULEUR', color: 'var(--green)', border: 'rgba(39,174,96,0.5)' },
               ].filter(Boolean).map((entry, i) => {
                 const oppPhoto = getCarPhoto(entry.data.id) || getCarPhotoByName(entry.data.name);
                 return (
-                  <div key={i} style={{ flex:'1 1 160px', minWidth:150, display:'flex', alignItems:'stretch', background:entry.bg, border:`1px solid ${entry.border}`, borderRadius:8, overflow:'hidden' }}>
-                    <div style={{ width:64, flexShrink:0, background:'var(--dark3)', overflow:'hidden' }}>
+                  <div key={i} style={{ borderRadius:8, border:`2px solid ${entry.border}`, background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column' }}>
+                    <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       {oppPhoto
-                        ? <img src={oppPhoto} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', display:'block' }} />
-                        : <div style={{ width:'100%', height:'100%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22 }}>🚗</div>}
+                        ? <img src={oppPhoto} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                        : <span style={{ fontSize:36 }}>🚗</span>}
                     </div>
-                    <div style={{ flex:1, minWidth:0, padding:'6px 10px', display:'flex', flexDirection:'column', justifyContent:'center' }}>
+                    <div style={{ padding:'6px 8px', borderTop:`1px solid ${entry.border}` }}>
                       <div style={{ fontSize:9, color:entry.color, letterSpacing:1, fontFamily:"'Bebas Neue',sans-serif" }}>{entry.label}</div>
-                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, color:'var(--text)', lineHeight:1.2, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{entry.data.name}</div>
-                      <div style={{ fontSize:10, color:'var(--text-dim)' }}>{entry.data.w}V · {entry.data.d}N · {entry.data.l}D sur {entry.data.played}</div>
+                      <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:16, letterSpacing:1, color:'var(--text)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{entry.data.name}</div>
+                      <div style={{ fontSize:10, color:'var(--text-dim)', marginTop:2 }}>{entry.data.w}V · {entry.data.d}N · {entry.data.l}D sur {entry.data.played}</div>
                     </div>
                   </div>
                 );
