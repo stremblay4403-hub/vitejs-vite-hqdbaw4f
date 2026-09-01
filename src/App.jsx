@@ -6162,20 +6162,24 @@ function AppInner() {
       comebackStandings.slice(0, 16).forEach(c => newInsistCars.push({ id: c.id, name: c.name }));
       ns.leagues['Insistance'] = { cars: newInsistCars, matches: [], completed: false };
 
-      let newComebackCars = comebackStandings.slice(16, 76).map(c => ({ id: c.id, name: c.name }));
+      // Comeback : 16 premiers promus, 16 derniers relégués — toujours, quel que soit le total de voitures
+      const cbRelStart = Math.max(16, comebackStandings.length - 16);
+      let newComebackCars = comebackStandings.slice(16, cbRelStart).map(c => ({ id: c.id, name: c.name }));
       insistStandings.slice(16, 32).forEach(c => newComebackCars.push({ id: c.id, name: c.name }));
       importStandings.slice(0, 16).forEach(c => newComebackCars.push({ id: c.id, name: c.name }));
       // File d'attente — les voitures ajoutées en cours de saison rejoignent la ligue maintenant
       (prev.leagues['Comeback']?.queue || []).forEach(c => newComebackCars.push({ id: c.id, name: c.name }));
       ns.leagues['Comeback'] = { cars: newComebackCars, matches: [], completed: false, queue: [] };
 
-      let newImportCars = importStandings.slice(16, 82).map(c => ({ id: c.id, name: c.name }));
-      comebackStandings.slice(76, 92).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
+      // Importation : 16 premiers promus, 4 derniers relégués — toujours, quel que soit le total de voitures
+      const imRelStart = Math.max(16, importStandings.length - 4);
+      let newImportCars = importStandings.slice(16, imRelStart).map(c => ({ id: c.id, name: c.name }));
+      comebackStandings.slice(cbRelStart, comebackStandings.length).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
       oublStandings.slice(0, 4).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
       (prev.leagues['Importation']?.queue || []).forEach(c => newImportCars.push({ id: c.id, name: c.name }));
       ns.leagues['Importation'] = { cars: newImportCars, matches: [], completed: false, queue: [] };
 
-      const newOublCars = importStandings.slice(82, 86).map(c => ({ id: c.id, name: c.name }));
+      const newOublCars = importStandings.slice(imRelStart, importStandings.length).map(c => ({ id: c.id, name: c.name }));
       ns.leagues['Oubliettes'] = { cars: newOublCars, matches: [], completed: false };
       const bonusSnapshot = {};
       LEAGUES.forEach(l => {
@@ -12720,20 +12724,22 @@ function AppInner() {
             <div className="card">
               <div>
                     {filteredStandings.map(s => {
+                      const numPromoCB = 16, numRelCB = 16;
+                      const relBoundaryCB = cars.length - numRelCB; // dernier rang "safe"
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 76;
+                      const inZonePromo = rank <= numPromoCB;
+                      const inZoneRel = rank > relBoundaryCB;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
                       const promoted = inZonePromo && (() => {
                         // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
+                        const firstOut = standings[numPromoCB];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
                         if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[76 - 1];
+                        const lastSafe = standings[relBoundaryCB - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
                         if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
@@ -12746,8 +12752,8 @@ function AppInner() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 17 && <div className="zone-separator" />}
-                        {rank === 77 && <div className="zone-separator" />}
+                        {rank === numPromoCB + 1 && <div className="zone-separator" />}
+                        {rank === relBoundaryCB + 1 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
@@ -12763,8 +12769,8 @@ function AppInner() {
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Insistance</span>
-                <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-76 → Restent</span>
-                <span><span style={{ color:'#e74c3c',marginRight:3 }}>■</span>77-92 → Importation</span>
+                <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-{cars.length - 16} → Restent</span>
+                <span><span style={{ color:'#e74c3c',marginRight:3 }}>■</span>{cars.length - 15}-{cars.length} → Importation</span>
               </div>
             </div>
           </div>
@@ -12937,20 +12943,22 @@ function AppInner() {
             <div className="card">
               <div>
                     {filteredStandings.map(s => {
+                      const numPromoIM = 16, numRelIM = 4;
+                      const relBoundaryIM = cars.length - numRelIM; // dernier rang "safe"
                       const rank = standings.findIndex(c => c.id === s.id) + 1;
-                      const inZonePromo = rank <= 16;
-                      const inZoneRel = rank > 82;
+                      const inZonePromo = rank <= numPromoIM;
+                      const inZoneRel = rank > relBoundaryIM;
                       // Mathématiquement assuré : son score actuel est inaccessible pour le challenger
                       const promoted = inZonePromo && (() => {
                         // Le premier hors zone (index=numPromoted) ne peut plus rattraper
-                        const firstOut = standings[16];
+                        const firstOut = standings[numPromoIM];
                         if (!firstOut) return true;
                         const firstOutRemain = allMatches.filter(m => (m.homeId === firstOut.id || m.awayId === firstOut.id) && m.homeGoals === null).length;
                         if (firstOutRemain === 0) return s.pts >= firstOut.pts; return s.pts > firstOut.pts + firstOutRemain * 3;
                       })();
                       const relegated = inZoneRel && (() => {
                         // Le dernier en zone safe (index=numSafe-1) ne peut plus être rattrapé par cette voiture
-                        const lastSafe = standings[82 - 1];
+                        const lastSafe = standings[relBoundaryIM - 1];
                         if (!lastSafe) return true;
                         const myRemain = allMatches.filter(m => (m.homeId === s.id || m.awayId === s.id) && m.homeGoals === null).length;
                         if (myRemain === 0) return s.pts <= lastSafe.pts; return s.pts + myRemain * 3 < lastSafe.pts;
@@ -12963,8 +12971,8 @@ function AppInner() {
                                             const badge = promoted ? { label:'▲ PROMU', bg:'rgba(39,174,96,0.25)', color:'var(--green)' } : relegated ? { label:'⬇ RELÉGUÉ', bg:'rgba(192,57,43,0.25)', color:'#e74c3c' } : inZonePromo ? { label:'▲', bg:'rgba(39,174,96,0.12)', color:'var(--green)' } : inZoneRel ? { label:'⬇', bg:'rgba(192,57,43,0.12)', color:'#e74c3c' } : null;
                       return (
                         <React.Fragment key={s.id}>
-                        {rank === 17 && <div className="zone-separator" />}
-                        {rank === 83 && <div className="zone-separator" />}
+                        {rank === numPromoIM + 1 && <div className="zone-separator" />}
+                        {rank === relBoundaryIM + 1 && <div className="zone-separator" />}
                         <LeaderboardRow
                           rank={rank} rankDiff={null}
                           carId={s.id} leagueName={'Successeurs'}
@@ -12980,8 +12988,8 @@ function AppInner() {
                     })})              </div>
               <div style={{ padding:'8px 12px',fontSize:11,display:'flex',gap:12,flexWrap:'wrap',color:'var(--text-dim)' }}>
                 <span><span style={{ color:'var(--green)',marginRight:3 }}>■</span>Top 16 → Comeback</span>
-                <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-82 → Restent</span>
-                <span><span style={{ color:'#e74c3c',marginRight:3 }}>■</span>83-86 → Oubliettes</span>
+                <span><span style={{ color:'var(--text-dim)',marginRight:3 }}>■</span>17-{cars.length - 4} → Restent</span>
+                <span><span style={{ color:'#e74c3c',marginRight:3 }}>■</span>{cars.length - 3}-{cars.length} → Oubliettes</span>
               </div>
             </div>
           </div>
