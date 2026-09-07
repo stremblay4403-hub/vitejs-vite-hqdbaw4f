@@ -13908,7 +13908,8 @@ function AppInner() {
     }
 
     function CountryDetailPage({ code }) {
-      const [detailSort, setDetailSort] = useState(paysSubTab);
+      const [detailSort, setDetailSort] = useState(paysSubTab === 'titres' ? 'titres' : 'points');
+      const [countryLeagueTab, setCountryLeagueTab] = useState(paysSubTab === 'principales' ? 'principales' : 'toutes');
       const stats = countryStats.find(c => c.code === code);
       const name = COUNTRY_LIST.find(c => c.code === code)?.name || code;
       if (!stats) {
@@ -13924,6 +13925,16 @@ function AppInner() {
       const sorted = [...brandsHere].sort((a, b) => valueFn(b) - valueFn(a) || a.brand.localeCompare(b.brand));
       const ranked = withRanks(sorted, valueFn);
       const maxValue = ranked[0] ? valueFn(ranked[0]) : 1;
+
+      // Voitures (tous profils, toutes marques du pays confondues) filtrées par ligue —
+      // affichage "par profil" identique à celui des Ligues Principales dans une fiche Marque.
+      const allCarsHere = brandsHere.flatMap(b => b.cars.map(c => ({ ...c, brand: b.brand })));
+      const leagueCars = countryLeagueTab === 'principales'
+        ? allCarsHere.filter(c => LEAGUES.includes(c.league))
+        : countryLeagueTab !== 'toutes'
+          ? allCarsHere.filter(c => c.league === countryLeagueTab)
+          : [];
+      const sortedLeagueCars = [...leagueCars].sort((a, b) => (b.total - a.total) || a.brand.localeCompare(b.brand) || a.name.localeCompare(b.name));
 
       return (
         <div>
@@ -13941,6 +13952,21 @@ function AppInner() {
               {stats.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {stats.titles} titre{stats.titles > 1 ? 's' : ''}</span>}
             </div>
           </div>
+          <div style={{ display:'flex',gap:6,padding:'0 12px 10px',flexWrap:'wrap' }}>
+            <button className={`btn btn-xs ${countryLeagueTab === 'toutes' ? 'btn-gold' : 'btn-dark'}`} onClick={() => setCountryLeagueTab('toutes')}>
+              Marques
+            </button>
+            <button className={`btn btn-xs ${countryLeagueTab === 'principales' ? 'btn-gold' : 'btn-dark'}`} onClick={() => setCountryLeagueTab('principales')}>
+              Toutes les ligues principales
+            </button>
+            {LEAGUES.map(l => (
+              <button key={l} className={`btn btn-xs ${countryLeagueTab === l ? 'btn-gold' : 'btn-dark'}`} onClick={() => setCountryLeagueTab(l)}>
+                {l.replace('Voitures ', 'V')}
+              </button>
+            ))}
+          </div>
+          {countryLeagueTab === 'toutes' ? (
+            <>
           <div style={{ display:'flex',gap:8,padding:'0 12px 10px' }}>
             <button className={`btn btn-sm ${detailSort === 'points' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setDetailSort('points')}>Trier par Points</button>
             <button className={`btn btn-sm ${detailSort === 'titres' ? 'btn-gold' : 'btn-dark'}`} style={{ flex:1 }} onClick={() => setDetailSort('titres')}>Trier par Titres</button>
@@ -13972,6 +13998,41 @@ function AppInner() {
               </div>
             ))}
           </div>
+            </>
+          ) : (
+            <div style={{ padding:'0 12px 12px' }}>
+              {sortedLeagueCars.length === 0 ? (
+                <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>
+                  Aucune voiture de {name} dans {countryLeagueTab === 'principales' ? 'les ligues principales' : countryLeagueTab} pour l'instant.
+                </div>
+              ) : (
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
+                  {sortedLeagueCars.map(c => {
+                    const photo = getCarPhoto(c.id);
+                    const borderColor = MAIN_LEAGUE_COLORS[c.league] || 'var(--border)';
+                    return (
+                      <div key={`${c.brand}-${c.id}`} style={{ borderRadius:8,border:`2px solid ${borderColor}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                        <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }}
+                          onClick={() => !String(c.id).startsWith('hist-') && openProfileCar({ leagueName: c.league, carId: c.id, histName: c.name })}>
+                          {photo
+                            ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
+                            : <span style={{ fontSize:36 }}>🚗</span>}
+                        </div>
+                        <div style={{ padding:'6px 8px',borderTop:`1px solid ${borderColor}22` }}>
+                          <div style={{ fontSize:10,letterSpacing:0.5,color:'var(--text-dim)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.brand}</div>
+                          <div className="car-grid-name" style={{ fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{c.name}</div>
+                          <div style={{ display:'flex',justifyContent:'space-between',fontSize:11,color:'var(--text-dim)',marginTop:2 }}>
+                            <span>{c.total} pts</span>
+                            {c.titles > 0 && <span style={{ color:'var(--gold)' }}>🏆 {c.titles}</span>}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       );
     }
