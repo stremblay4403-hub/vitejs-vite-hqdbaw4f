@@ -3661,6 +3661,7 @@ function AppInner() {
   const allCarsActiveLetterRef = React.useRef('TOUS');
   const allCarsSearchRef = React.useRef('');
   const [confirmReset, setConfirmReset] = useState(false);
+  const [resetConfirmText, setResetConfirmText] = useState('');
   const [confirmResetSeason, setConfirmResetSeason] = useState(false);
   const [confirmSimTout, setConfirmSimTout] = useState(false);
   const [confirmSimActuelles, setConfirmSimActuelles] = useState(false);
@@ -14230,6 +14231,46 @@ function AppInner() {
       const statsByCode = {};
       countryStats.forEach(c => { statsByCode[c.code] = c; });
 
+      // Représentation des pays dans les 4 ligues principales (Voitures 1-2-3-4, 144 voitures
+      // chacune) — recalculée à partir de la ligue actuelle de chaque voiture (currentSeason via
+      // brandStats), donc se met à jour automatiquement à chaque saison avec les promotions/relégations.
+      const principalesByCountry = {};
+      brandStats.forEach(b => {
+        const code = getBrandCountry(b.brand);
+        if (!code) return;
+        if (!principalesByCountry[code]) principalesByCountry[code] = { code, counts: {}, total: 0, brandSet: new Set() };
+        b.cars.forEach(c => {
+          if (LEAGUES.includes(c.league)) {
+            principalesByCountry[code].counts[c.league] = (principalesByCountry[code].counts[c.league] || 0) + 1;
+            principalesByCountry[code].total += 1;
+            principalesByCountry[code].brandSet.add(b.brand);
+          }
+        });
+      });
+      const principalesData = Object.values(principalesByCountry)
+        .map(p => ({ code: p.code, name: COUNTRY_LIST.find(cc => cc.code === p.code)?.name || p.code, counts: p.counts, total: p.total, brandCount: p.brandSet.size }))
+        .filter(p => p.total > 0)
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
+      const maxPrincipalesTotal = principalesData[0]?.total || 1;
+      const perLeagueTotalsPays = {};
+      let grandTotalPays = 0;
+      LEAGUES.forEach(l => { perLeagueTotalsPays[l] = 0; });
+      principalesData.forEach(p => {
+        LEAGUES.forEach(l => { perLeagueTotalsPays[l] += p.counts[l] || 0; });
+        grandTotalPays += p.total;
+      });
+      const maxGrandTotalPays = TOTAL_CARS * LEAGUES.length;
+      const rankedPrincipalesData = withRanks(principalesData, x => x.total);
+      const displayedPrincipalesData = paysSearch.trim()
+        ? rankedPrincipalesData.filter(p => p.name.toLowerCase().includes(paysSearch.trim().toLowerCase()))
+        : rankedPrincipalesData;
+
+      // En mode "Ligues Principales", la carte ne doit montrer que les pays représentés
+      // dans Voitures 1-2-3-4 — pas l'ensemble des pays taggés sur toute la carrière.
+      const mapStatsByCode = paysSubTab === 'principales'
+        ? Object.fromEntries(principalesData.map(p => [p.code, { code: p.code, name: p.name }]))
+        : statsByCode;
+
       function goToCountry(code) {
         if (!statsByCode[code]) return;
         saveScrollForTab(); setCountryDetail(code); requestAnimationFrame(() => window.scrollTo(0, 0));
@@ -14307,7 +14348,7 @@ function AppInner() {
             bctx.setTransform(s, 0, 0, s, 0, 0);
             bctx.clearRect(0, 0, VB_W, VB_H);
             Object.entries(pathsRef.current).forEach(([code, p2d]) => {
-              const has = !!statsByCode[code];
+              const has = !!mapStatsByCode[code];
               const img = has ? flagImgRef.current[code] : null;
               const bbox = has ? WORLD_MAP_BBOX[code] : null;
               if (has && img && img.complete && img.naturalWidth && bbox) {
@@ -14385,7 +14426,7 @@ function AppInner() {
         }
 
         useEffect(() => {
-          Object.keys(statsByCode).forEach(code => {
+          Object.keys(mapStatsByCode).forEach(code => {
             if (flagImgRef.current[code]) return;
             const img = new Image();
             img.onload = () => scheduleBake();
@@ -14489,7 +14530,7 @@ function AppInner() {
           if (!hitCtxRef.current) hitCtxRef.current = document.createElement('canvas').getContext('2d');
           const tmp = hitCtxRef.current;
           if (!tmp) return null;
-          for (const code of Object.keys(statsByCode)) {
+          for (const code of Object.keys(mapStatsByCode)) {
             const p2d = pathsRef.current[code];
             if (p2d && tmp.isPointInPath(p2d, px, py)) return code;
           }
@@ -14531,7 +14572,7 @@ function AppInner() {
             if (!rect) return;
             const code = codeAtClientPoint(e.clientX, e.clientY);
             if (code) {
-              const c = statsByCode[code];
+              const c = mapStatsByCode[code];
               setHover({ name: c?.name || code, x: e.clientX - rect.left, y: e.clientY - rect.top });
             } else {
               setHover(null);
@@ -14611,14 +14652,21 @@ function AppInner() {
               setPaysSubTab('titres');
               requestAnimationFrame(() => { if (mainBar) mainBar.scrollLeft = mainSl; });
             }}>🏆 Titres</button>
+            <button className={`tab ${paysSubTab === 'principales' ? 'active' : ''}`} onClick={() => {
+              const mainBar = document.getElementById('tabs-main');
+              const mainSl = mainBar ? mainBar.scrollLeft : 0;
+              setPaysSubTab('principales');
+              requestAnimationFrame(() => { if (mainBar) mainBar.scrollLeft = mainSl; });
+            }}>Ligues Principales</button>
           </div>
           {paysViewMode === 'carte' && (
             <div style={{ padding:'0 12px 12px' }}>
               <ErrorBoundary label="Carte du monde">
-                <StableWorldMapView />
+                <StableWorldMapView key={paysSubTab === 'principales' ? 'principales' : 'toutes'} />
               </ErrorBoundary>
               <div style={{ fontSize:11,color:'var(--text-dim)',textAlign:'center',marginTop:8 }}>
                 Pincez pour zoomer, glissez pour naviguer, appuyez sur un pays doré pour voir ses marques.
+                {paysSubTab === 'principales' && <> Seuls les pays présents dans Voitures 1-2-3-4 sont affichés.</>}
               </div>
             </div>
           )}
@@ -14630,7 +14678,58 @@ function AppInner() {
             style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
           />
           )}
-          {paysViewMode === 'liste' && (
+          {paysViewMode === 'liste' && paysSubTab === 'principales' && (
+          <div className="card mq-list" style={{ padding:8 }}>
+            {principalesData.length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">🌍</div>
+                <div className="empty-title">Aucun pays représenté dans Voitures 1-2-3-4 pour l'instant</div>
+                <div className="empty-sub">Ajoute des drapeaux depuis la fiche d'une marque.</div>
+              </div>
+            )}
+            {principalesData.length > 0 && displayedPrincipalesData.length === 0 && (
+              <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun pays ne correspond à "{paysSearch}".</div>
+            )}
+            {displayedPrincipalesData.map(p => (
+              <div key={p.code} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
+                onClick={() => goToCountry(p.code)}>
+                <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
+                  <span className="mq-rank"><RankBadge rank={p.rank} size={22} /></span>
+                  <span className="mq-flag"><CountryFlag code={p.code} size={28} /></span>
+                  <span className="mq-name" style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:22,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>{p.name}</span>
+                  <span className="mq-value" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:30,color:'var(--text)' }}>{p.total}</span>
+                  <span className="mq-chevron" style={{ color:'var(--text-dim)',fontSize:16 }}>›</span>
+                </div>
+                <div className="mq-subrow" style={{ padding:'6px 14px 10px',borderTop:'1px solid var(--border)',display:'flex',gap:14,flexWrap:'wrap',fontSize:13,color:'var(--text-dim)' }}>
+                  <span>{p.brandCount} marque{p.brandCount > 1 ? 's' : ''}</span>
+                  {LEAGUES.map(l => p.counts[l] ? (
+                    <span key={l}>{l.replace('Voitures ', 'V')}: {p.counts[l]}</span>
+                  ) : null)}
+                </div>
+                <div style={{ height:4,background:'var(--dark2)' }}>
+                  <div style={{ height:'100%',width:`${Math.max(4, (p.total / maxPrincipalesTotal) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+              </div>
+            ))}
+            {principalesData.length > 0 && (
+              <div style={{ borderRadius:8,border:'1px solid var(--gold-dim)',background:'var(--dark2)',marginTop:10,padding:'10px 12px' }}>
+                <div style={{ display:'flex',alignItems:'center',gap:10,marginBottom:6 }}>
+                  <span style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:14,letterSpacing:0.5,color:'var(--gold)',flex:1 }}>Total taguées</span>
+                  <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--text)' }}>{grandTotalPays} <span style={{ fontSize:12,color:'var(--text-dim)' }}>/ {maxGrandTotalPays}</span></span>
+                </div>
+                <div style={{ display:'flex',gap:12,flexWrap:'wrap',fontSize:11,color:'var(--text-dim)' }}>
+                  {LEAGUES.map(l => (
+                    <span key={l}>{l.replace('Voitures ', 'V')}: {perLeagueTotalsPays[l]}/{TOTAL_CARS}</span>
+                  ))}
+                </div>
+                <div style={{ height:4,background:'var(--dark3)',borderRadius:2,marginTop:8,overflow:'hidden' }}>
+                  <div style={{ height:'100%',width:`${Math.min(100, (grandTotalPays / maxGrandTotalPays) * 100)}%`,background:'var(--gold)' }} />
+                </div>
+              </div>
+            )}
+          </div>
+          )}
+          {paysViewMode === 'liste' && paysSubTab !== 'principales' && (
           <div className="card mq-list" style={{ padding:8 }}>
             {sortedCountries.length === 0 && (
               <div className="empty-state">
@@ -16922,17 +17021,35 @@ function AppInner() {
                 .catch(e => alert('❌ Erreur: ' + e.message));
             }}>☁️ Sync Firebase</button>
             {!confirmReset
-              ? <button className="btn btn-dark btn-sm" style={{ color:'#e74c3c',borderColor:'#c0392b',whiteSpace:'nowrap',flexShrink:0 }} onClick={() => setConfirmReset(true)}>🗑 Reset</button>
-              : <div style={{ display:'flex',gap:6,alignItems:'center' }}>
-                  <span style={{ fontSize:12,color:'#e74c3c' }}>Confirmer ?</span>
-                  <button className="btn btn-sm" style={{ background:'#c0392b',color:'#fff',fontSize:12 }} onClick={() => { resetData(); setConfirmReset(false); }}>✓ Oui</button>
-                  <button className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => setConfirmReset(false)}>✕ Non</button>
-                </div>
+              ? <button className="btn btn-dark btn-sm" style={{ color:'#e74c3c',borderColor:'#c0392b',whiteSpace:'nowrap',flexShrink:0 }} onClick={() => { setResetConfirmText(''); setConfirmReset(true); }}>🗑 Reset</button>
+              : null
             }
             </React.Fragment>
             )}
           </div>
         </div>
+        {confirmReset && (
+          <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,0.75)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:20 }}
+            onClick={() => setConfirmReset(false)}>
+            <div className="card" style={{ maxWidth:420,width:'100%',padding:20,border:'2px solid #c0392b' }} onClick={e => e.stopPropagation()}>
+              <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'#e74c3c',letterSpacing:1,marginBottom:10 }}>⚠️ Suppression définitive</div>
+              <div style={{ fontSize:13,color:'var(--text)',marginBottom:14,lineHeight:1.5 }}>
+                Cette action va <b>supprimer TOUTES les saisons</b>, y compris les archives sur Firebase (irréversible — aucune saison passée ne pourra être récupérée).
+                <br/><br/>
+                Pour confirmer, tape <b>SUPPRIMER</b> ci-dessous :
+              </div>
+              <input autoFocus value={resetConfirmText} onChange={e => setResetConfirmText(e.target.value)} placeholder="SUPPRIMER" style={{ width:'100%',marginBottom:14,padding:'8px 10px',fontSize:14 }} />
+              <div style={{ display:'flex',gap:8,justifyContent:'flex-end' }}>
+                <button className="btn btn-dark btn-sm" onClick={() => setConfirmReset(false)}>✕ Annuler</button>
+                <button className="btn btn-sm" disabled={resetConfirmText.trim().toUpperCase() !== 'SUPPRIMER'}
+                  style={{ background: resetConfirmText.trim().toUpperCase() === 'SUPPRIMER' ? '#c0392b' : '#555', color:'#fff', opacity: resetConfirmText.trim().toUpperCase() === 'SUPPRIMER' ? 1 : 0.5, cursor: resetConfirmText.trim().toUpperCase() === 'SUPPRIMER' ? 'pointer' : 'not-allowed' }}
+                  onClick={() => { if (resetConfirmText.trim().toUpperCase() === 'SUPPRIMER') { resetData(); setConfirmReset(false); } }}>
+                  🗑 Tout supprimer
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Season bar */}
         <div className="season-bar">
