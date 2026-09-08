@@ -7601,12 +7601,16 @@ function AppInner() {
             const totalH  = isDesktop ? 600 : 220;
             const colors  = ['#bdc3c7','#f1c40f','#cd7f32'];
             const labels  = ['2e','1er','3e'];
+            // Drapeau du pays de la marque — taille proportionnelle à la place (1er > 2e > 3e),
+            // et nettement plus gros sur ordinateur.
+            const flagW   = isDesktop ? [170, 240, 110] : [36, 60, 26];
             return (
               <div style={{gridColumn:'1/-1',background:'var(--dark2)',borderRadius:8,border:'1px solid var(--border)',padding:'16px 12px 8px',marginBottom:8,overflow:'hidden'}}>
                 <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:isDesktop?18:13,color:'var(--gold-dim)',letterSpacing:2,textAlign:'center',marginBottom:12}}>🏆 PODIUM DU GROUPE {activeGroup+1}</div>
                 <div style={{display:'flex',justifyContent:'center',alignItems:'flex-end',gap:gapPx,height:totalH,width:'100%'}}>
                   {order.map((car, idx) => {
                     const photo = getCarPhoto(car.id);
+                    const flagCode = getBrandCountry(getCarBrand(car.id));
                     // order = [2e, 1er, 3e] → on veut faire monter 3e d'abord, puis 2e, puis 1er en dernier (effet de révélation)
                     const delaySteps = [0.25, 0.5, 0];
                     const delay = `${delaySteps[idx]}s`;
@@ -7617,7 +7621,10 @@ function AppInner() {
                         </div>
                         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:nameFs,color:colors[idx],textAlign:'center',letterSpacing:1,marginBottom:3,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'100%'}}>{car.name}</div>
                         <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:ptsFs,color:'var(--text)',marginBottom:4,whiteSpace:'nowrap'}}>{car.pts} pts</div>
-                        <div className="podium-bar" style={{width:'100%',height:barH[idx],background:`linear-gradient(180deg, ${colors[idx]}44, ${colors[idx]}22)`,border:`1px solid ${colors[idx]}66`,borderRadius:'4px 4px 0 0',display:'flex',alignItems:'flex-start',justifyContent:'center',paddingTop:8,animationDelay:delay}}>
+                        <div className="podium-bar" style={{width:'100%',height:barH[idx],background:`linear-gradient(180deg, ${colors[idx]}44, ${colors[idx]}22)`,border:`1px solid ${colors[idx]}66`,borderRadius:'4px 4px 0 0',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'flex-start',gap:6,paddingTop:8,animationDelay:delay}}>
+                          {flagCode && (
+                            <img src={`https://flagcdn.com/${flagCode.toLowerCase()}.svg`} alt="" style={{width:flagW[idx],height:flagW[idx]*0.75,objectFit:'cover',borderRadius:3,boxShadow:'0 2px 6px rgba(0,0,0,0.4)',border:'1px solid rgba(255,255,255,0.25)'}} />
+                          )}
                           <span style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:rankFs,color:colors[idx]}}>{labels[idx]}</span>
                         </div>
                       </div>
