@@ -1552,7 +1552,7 @@ const css = `
     --dark3: #212121;
     --border: #2c2c2c;
     --text: #ece4d3;
-    --text-dim: #8f8574;
+    --text-dim: #b0a593;
     --red: #c0392b;
     --green: #27ae60;
     --blue: #2980b9;
@@ -1560,7 +1560,7 @@ const css = `
     --shadow-md: 0 6px 20px rgba(0,0,0,0.45);
     --shadow-lg: 0 12px 40px rgba(0,0,0,0.55);
     --glow-gold: 0 0 24px rgba(212,175,55,0.18);
-    --radius: 6px;
+    --radius: 10px;
   }
 
   html {
@@ -1649,7 +1649,7 @@ const css = `
   #tabs-main .tab.active { color: var(--gold); background: none; box-shadow: none; border-bottom-color: var(--gold); }
 
   /* Content */
-  .content { flex: 1; padding: 16px 16px 0 16px; max-width: 100%; margin: 0 auto; width: 100%; overflow-x: clip; }
+  .content { flex: 1; padding: 20px clamp(12px, 2vw, 28px) 32px; max-width: 1440px; margin: 0 auto; width: 100%; overflow-x: clip; }
 
   /* Cards */
   .card {
@@ -2370,6 +2370,27 @@ const css = `
   }
   .splash-logo span { display: block; font-size: 48px; margin-top: 10px; -webkit-text-fill-color: initial; }
   @media (min-width: 768px) { .splash-logo { font-size: 52px; } .splash-logo span { font-size: 64px; } }
+
+  /* Refonte 2026 — lisibilité, cohérence et accessibilité sans toucher aux données. */
+  button, input, select, [role="button"] { min-height: 40px; }
+  button:focus-visible, input:focus-visible, select:focus-visible, [role="button"]:focus-visible {
+    outline: 3px solid var(--gold2); outline-offset: 3px;
+  }
+  button:disabled { cursor: not-allowed; filter: saturate(0.45); }
+  .section-title { text-wrap: balance; }
+  .card { backdrop-filter: blur(8px); }
+  .car-catalog-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px; }
+  .car-catalog-card { content-visibility:auto; contain-intrinsic-size: 0 240px; }
+  .catalog-toolbar { position:sticky; top:58px; z-index:20; background:rgba(14,14,14,.96); backdrop-filter:blur(14px); }
+  .catalog-load-more { display:flex; flex-direction:column; align-items:center; gap:8px; padding:18px 8px 8px; }
+  .sr-only { position:absolute !important; width:1px !important; height:1px !important; padding:0 !important; margin:-1px !important; overflow:hidden !important; clip:rect(0,0,0,0) !important; white-space:nowrap !important; border:0 !important; }
+  @media (max-width: 767px) {
+    .header { gap:8px; padding:4px 10px; }
+    .header-logo { font-size:20px; letter-spacing:2px; }
+    .content { padding:12px 10px 28px; }
+    .car-catalog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
+    .catalog-toolbar { top:48px; }
+  }
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
@@ -3396,6 +3417,8 @@ function AppInner() {
   // l'écran, donc le fond sombre est posé immédiatement, sans attendre que la
   // balise <style> injectée par React soit parsée.
   React.useLayoutEffect(() => {
+    document.documentElement.lang = 'fr';
+    document.title = 'Tournois de Voitures';
     document.documentElement.style.background = '#060606';
     document.body.style.background = '#060606';
     document.body.style.color = '#ece4d3';
@@ -3579,17 +3602,31 @@ function AppInner() {
   const StableTournoiChampionsView = React.useRef((props) => tournoiChampionsViewImplRef.current ? tournoiChampionsViewImplRef.current(props) : null).current;
   const historiqueViewImplRef = React.useRef(null);
   const StableHistoriqueView = React.useRef((props) => historiqueViewImplRef.current ? historiqueViewImplRef.current(props) : null).current;
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(() => {
+    try { return sessionStorage.getItem('tdv_splash_seen') !== '1'; } catch { return true; }
+  });
   useEffect(() => {
-    const t = setTimeout(() => setShowSplash(false), 2300);
+    if (!showSplash) return undefined;
+    try { sessionStorage.setItem('tdv_splash_seen', '1'); } catch {}
+    const t = setTimeout(() => setShowSplash(false), 1400);
     return () => clearTimeout(t);
-  }, []);
+  }, [showSplash]);
   // Compteur pour FORCER un re-rendu garanti après chaque application de données Firebase.
   // Un changement d'état primitif est toujours « commit » par React, même si le changement de
   // référence du db passait inaperçu (cas observé : playoffs appliqués au db mais affichage figé).
   const [, setSyncTick] = useState(0);
   const [isPrivate, setIsPrivate] = useState(false);
-  const ADMIN_PASSWORD = 'Tungtungtung440';
+  // Aucun secret en clair dans le bundle. Ceci ne remplace pas des règles Firestore strictes :
+  // l'autorisation réelle des écritures doit rester contrôlée côté Firebase.
+  const ADMIN_PASSWORD_SHA256 = '472e546bc8549de318eb3390a149dc4cb963a1f8512b1b44715db999526be58a';
+  const [adminAttempts, setAdminAttempts] = useState(0);
+  async function verifyAdminPassword(value) {
+    if (!value || !window.crypto?.subtle) return false;
+    const bytes = new TextEncoder().encode(value);
+    const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+    const hex = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+    return hex === ADMIN_PASSWORD_SHA256;
+  }
   const [isLoggedIn, setIsLoggedIn] = useState(() => {
     // Admin valable pour la SESSION en cours : persiste à l'actualisation (sessionStorage survit
     // au reload) mais se déconnecte à la FERMETURE de l'onglet. On nettoie l'ancien flag
@@ -3605,7 +3642,13 @@ function AppInner() {
     isPublicModeRef.current = isPublicMode;
   }, [isPublicMode]);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [mainTab, setMainTab] = useState("dashboard");
+  const [mainTab, setMainTab] = useState(() => {
+    const candidate = typeof window !== 'undefined' ? window.location.hash.replace(/^#\/?/, '').split('/')[0] : '';
+    return ['dashboard','ligues','bonus','voitures','marques','pays','historique'].includes(candidate) ? candidate : 'dashboard';
+  });
+  React.useEffect(() => {
+    try { window.history.replaceState(window.history.state, '', `#/${mainTab}`); } catch {}
+  }, [mainTab]);
   // Menu plein écran (grille des 6 sections) — remplace l'ancienne barre d'onglets horizontale
   const [menuOpen, setMenuOpen] = useState(false);
   // Sous-menu Ligues (grille des 16 ligues/paliers) — même principe de navigation
@@ -3855,6 +3898,14 @@ function AppInner() {
   const [brandDetail, setBrandDetail] = useState(null);
   const [countryDetail, setCountryDetail] = useState(null);
   const [brandDetailSort, setBrandDetailSort] = useState('points');
+
+  // Une fiche marque/pays ne doit jamais survivre à un changement de section. Sans ce
+  // nettoyage, la vue de détail pouvait recouvrir la destination choisie et donner
+  // l'impression que Menu, Pays ou la recherche globale étaient bloqués.
+  React.useEffect(() => {
+    if (mainTab !== 'marques' && brandDetail !== null) setBrandDetail(null);
+    if (mainTab !== 'pays' && countryDetail !== null) setCountryDetail(null);
+  }, [mainTab, brandDetail, countryDetail]);
   const [brandLeagueTab, setBrandLeagueTab] = useState('toutes');
   // États de VoituresView remontés ici pour survivre aux re-renders (ex. ouverture de profil)
   const [voituresSection, setVoituresSection] = useState('actifs');
@@ -5758,6 +5809,7 @@ function AppInner() {
   // champions) en gardant les voitures/ligues actuelles ET toutes les saisons passées.
   // groupResults/matches vidés → les calendriers se régénèrent automatiquement.
   function resetCurrentSeason() {
+    downloadSafetyBackup(`avant-reset-saison-${currentSeason.season}`);
     setDb(d => {
       const seasons = [...d.seasons];
       const s = { ...seasons[d.currentSeasonIdx] };
@@ -6653,13 +6705,40 @@ function AppInner() {
     });
   }
 
-  function exportData() {
-    const json = JSON.stringify(db, null, 2);
+  function downloadSafetyBackup(reason = 'export') {
+    const snapshot = dbRef.current || db;
+    const json = JSON.stringify(snapshot, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `tournoi-voitures-s${currentSeason.season}.json`;
-    a.click(); URL.revokeObjectURL(url);
+    const safeReason = String(reason).replace(/[^a-z0-9-]+/gi, '-').toLowerCase();
+    a.href = url; a.download = `tournoi-voitures-s${currentSeason.season}-${safeReason}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function exportData() {
+    downloadSafetyBackup('export');
+  }
+
+  function validateImportedData(payload) {
+    if (!payload || typeof payload !== 'object' || !Array.isArray(payload.seasons) || payload.seasons.length === 0) {
+      throw new Error('La sauvegarde ne contient aucune saison.');
+    }
+    const seasonNums = new Set();
+    payload.seasons.forEach((season, index) => {
+      if (!season || typeof season.season !== 'number' || !season.leagues || typeof season.leagues !== 'object') {
+        throw new Error(`Structure invalide à la saison ${index + 1}.`);
+      }
+      if (seasonNums.has(season.season)) throw new Error(`La saison S${season.season} est dupliquée.`);
+      seasonNums.add(season.season);
+      Object.entries(season.leagues).forEach(([leagueName, league]) => {
+        if (!league || !Array.isArray(league.cars)) throw new Error(`Liste de voitures invalide pour ${leagueName} en S${season.season}.`);
+      });
+    });
+    const idx = Number.isInteger(payload.currentSeasonIdx) ? payload.currentSeasonIdx : payload.seasons.length - 1;
+    if (idx < 0 || idx >= payload.seasons.length) throw new Error('La saison active est invalide.');
+    return { ...payload, currentSeasonIdx: idx };
   }
 
   function importData(e) {
@@ -6668,7 +6747,19 @@ function AppInner() {
     const reader = new FileReader();
     reader.onload = ev => {
       try {
-        const parsed = JSON.parse(ev.target.result);
+        const current = dbRef.current || db;
+        const validated = validateImportedData(JSON.parse(ev.target.result));
+        const parsed = {
+          ...validated,
+          // Une sauvegarde ancienne peut ne pas contenir ces collections : on fusionne au lieu
+          // d'effacer silencieusement les photos, marques ou corrections déjà présentes.
+          photos: { ...(current.photos || {}), ...(validated.photos || {}) },
+          photoTimes: { ...(current.photoTimes || {}), ...(validated.photoTimes || {}) },
+          brands: { ...(current.brands || {}), ...(validated.brands || {}) },
+          histOverrides: { ...(current.histOverrides || {}), ...(validated.histOverrides || {}) },
+          nameMap: { ...(current.nameMap || {}), ...(validated.nameMap || {}) },
+        };
+        downloadSafetyBackup('avant-import');
         setDb(parsed);
         // Pousser le découpage complet vers Firestore : archiver chaque saison passée + main allégé.
         if (!isPublicModeRef.current && Array.isArray(parsed.seasons)) {
@@ -6685,22 +6776,19 @@ function AppInner() {
             setDoc(dataDocRef, { data: JSON.stringify(buildSlimMainPayload(parsed)), updatedAt: Date.now(), writer: CLIENT_ID });
           } catch(err) { console.warn('Import main slim error', err); }
         }
-      } catch { alert("Fichier JSON invalide"); }
+      } catch (error) { alert(`Fichier JSON invalide : ${error.message || 'structure non reconnue'}`); }
     };
     reader.readAsText(file);
   }
 
   function resetData() {
+    downloadSafetyBackup('avant-suppression-complete');
     loadedForNotifs.current = false;
     auxLoadedRef.current = false;
-    const fresh = { 
-      seasons: [], 
-      currentSeasonIdx: 0, 
-      photos: db.photos || {}, 
-      brands: db.brands || {},
-      histOverrides: db.histOverrides || {},
-      nameMap: db.nameMap || {}
-    };
+    // Le reset concerne le tournoi, pas les collections éditoriales. Toute clé non liée aux
+    // saisons (photos + horodatages, marques, pays, renommages, RIP, etc.) est conservée.
+    const { seasons: _oldSeasons, currentSeasonIdx: _oldIndex, ...persistentCollections } = db;
+    const fresh = { ...persistentCollections, seasons: [], currentSeasonIdx: 0 };
     const newSeason = initSeason(33);
     LEAGUES.forEach(l => {
       const prevCars = db.seasons[db.currentSeasonIdx]?.leagues[l]?.cars.map(c => ({ id: c.id, name: c.name })) || [];
@@ -7064,7 +7152,7 @@ function AppInner() {
   function Dashboard() {
     return (
       <div>
-        <div className="section-title">Tableau de Bord — Saison {currentSeason.season}</div>
+        <h1 className="section-title">Tableau de Bord — Saison {currentSeason.season}</h1>
 
         <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {LEAGUES.map(l => {
@@ -7075,7 +7163,13 @@ function AppInner() {
             const league = getLeague(l);
             const allMatches = Object.values(league.groupResults || {}).flat();
             const played = allMatches.filter(m => m.homeGoals !== null).length;
-            const total = allMatches.length;
+            // Le dénominateur vient des groupes, pas seulement des calendriers déjà créés.
+            // Ainsi 459 matchs chargés sur les 1 224 attendus ne peuvent plus apparaître à 100 %.
+            const expectedTotal = Array.from({ length: GROUPS }, (_, group) => {
+              const count = (league.cars || []).filter(c => c.group === group).length;
+              return count * Math.max(0, count - 1) / 2;
+            }).reduce((sum, count) => sum + count, 0);
+            const total = expectedTotal || allMatches.length;
             const pct = total > 0 ? Math.round(played / total * 100) : 0;
 
             const quals = computeQualifications(l);
@@ -7112,7 +7206,7 @@ function AppInner() {
                         <div style={{ width:'100%',borderRadius:6,overflow:'hidden',background:'var(--dark2)',border:'2px solid var(--gold-dim)',marginBottom:8,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
                           {getCarPhoto(champId)
-                            ? <img src={getCarPhoto(champId)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                            ? <img src={getCarPhoto(champId)} alt={`${champ.name}, champion de ${l}`} loading="lazy" decoding="async" style={{ width:'100%',height:'auto',display:'block' }} />
                             : <div style={{ height:180,display:'flex',alignItems:'center',justifyContent:'center',fontSize:64 }}>🚗</div>}
                         </div>
                         <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:20,color:'var(--gold)',letterSpacing:2,textAlign:'center' }}>{champ.name}</span>
@@ -7137,14 +7231,14 @@ function AppInner() {
                     <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
                       <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>
                         <span style={{ background:'#c9a84c',color:'#000',borderRadius:2,padding:'0 4px',fontSize:10,marginRight:4 }}>Z</span>
-                        Meilleur
+                        {' '}Meilleur
                       </div>
                       {zCar ? (
                         <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
                           <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
                             {getCarPhoto(zCar.id)
-                              ? <img src={getCarPhoto(zCar.id)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                              ? <img src={getCarPhoto(zCar.id)} alt={`${zCar.name}, meilleur de ${l}`} loading="lazy" decoding="async" style={{ width:'100%',height:'auto',display:'block' }} />
                               : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
                           <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
@@ -7164,7 +7258,7 @@ function AppInner() {
                           onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
                           <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
                             {getCarPhoto(relId)
-                              ? <img src={getCarPhoto(relId)} alt="" style={{ width:'100%',height:'auto',display:'block' }} />
+                              ? <img src={getCarPhoto(relId)} alt={`${rel.name}, relégué de ${l}`} loading="lazy" decoding="async" style={{ width:'100%',height:'auto',display:'block' }} />
                               : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                           </div>
                           <div style={{ display:'flex',alignItems:'center',justifyContent:'center',marginTop:8,minHeight:32 }}>
@@ -7179,7 +7273,7 @@ function AppInner() {
 
                   {/* Top 5 pts annexes cumulatif — calculé en direct */}
                   <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
-                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Top 10 Pts Annexes — Total Cumulatif</div>
+                    <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Classement Pts Annexes — Total Cumulatif</div>
                     {(() => {
                       const allBonus = computeAllSeasonsBonus(l);
                       const viewedNum = currentSeason.season;
@@ -9227,29 +9321,39 @@ function AppInner() {
     const champSeasons = [];
     const relSeasons = [];
     const ALL_PROFILE_LEAGUES = [...LEAGUES, ...AUXILIARY_LEAGUES];
+    const addProfileMatch = (rawMatch, lid, leagueCars) => {
+      const match = Array.isArray(rawMatch)
+        ? {
+            homeId: leagueCars?.[rawMatch[0]]?.id,
+            awayId: leagueCars?.[rawMatch[1]]?.id,
+            homeGoals: rawMatch[2],
+            awayGoals: rawMatch[3],
+          }
+        : rawMatch;
+      if (!match || match.homeGoals === null || match.homeGoals === undefined) return;
+      if (match.homeId === lid) {
+        totalGP++; totalGF += match.homeGoals; totalGA += match.awayGoals;
+        if (match.homeGoals > match.awayGoals) totalW++; else if (match.homeGoals < match.awayGoals) totalL++; else totalD++;
+      } else if (match.awayId === lid) {
+        totalGP++; totalGF += match.awayGoals; totalGA += match.homeGoals;
+        if (match.awayGoals > match.homeGoals) totalW++; else if (match.awayGoals < match.homeGoals) totalL++; else totalD++;
+      }
+    };
     db.seasons.forEach(s => {
       // Retrouver la ligue de la voiture CETTE saison (elle peut changer de ligue via promotion/relégation)
       let foundLn = null, lid = null;
       for (const ln of ALL_PROFILE_LEAGUES) {
         const lg = s.leagues[ln];
         if (!lg) continue;
-        const entry = lg.cars.find(c => c.id === carId || namesMatch(c.name, effectiveName));
+        const entry = lg.cars.find(c => c.id === carId || c.id === resolvedCarId || namesMatch(c.name, effectiveName));
         if (entry) { foundLn = ln; lid = entry.id; break; }
       }
       if (!foundLn) return;
       const l = s.leagues[foundLn];
       Object.values(l.groupResults || {}).forEach(matches => {
-        matches.forEach(m => {
-          if (m.homeGoals === null) return;
-          if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
-          if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
-        });
+        matches.forEach(m => addProfileMatch(m, lid, l.cars));
       });
-      (l.matches || []).forEach(m => {
-        if (m.homeGoals === null) return;
-        if (m.homeId === lid) { totalGP++; totalGF += m.homeGoals; totalGA += m.awayGoals; if (m.homeGoals > m.awayGoals) totalW++; else if (m.homeGoals < m.awayGoals) totalL++; else totalD++; }
-        if (m.awayId === lid) { totalGP++; totalGF += m.awayGoals; totalGA += m.homeGoals; if (m.awayGoals > m.homeGoals) totalW++; else if (m.awayGoals < m.homeGoals) totalL++; else totalD++; }
-      });
+      (l.matches || []).forEach(m => addProfileMatch(m, lid, l.cars));
       if (s.champions[foundLn] === lid) { champCount++; champSeasons.push(s.season); }
       if (s.relegated[foundLn] === lid) { relCount++; relSeasons.push(s.season); }
       const bp = computeBonusPoints(s, foundLn);
@@ -9434,7 +9538,7 @@ function AppInner() {
     })();
 
     return (
-      <div className="car-profile-modal" onClick={() => setProfileCar(null)}>
+      <div className="car-profile-modal" role="dialog" aria-modal="true" aria-label={`Profil de ${effectiveName}`} onClick={() => setProfileCar(null)}>
         <div className={`car-profile-card${(champCount + histChampions.length) > 0 ? ' is-champion' : ''}`} onClick={e => e.stopPropagation()}>
           {/* Header */}
           <div className="car-profile-header">
@@ -9538,7 +9642,7 @@ function AppInner() {
               </div>
             </div>
             <div className="car-profile-actions" style={{ display:'flex', gap:6 }}>
-              <button className="btn btn-dark btn-sm" onClick={() => { setProfileCar(null); setCompareMode(false); setCompareCarId(null); }}>✕</button>
+              <button aria-label="Fermer le profil" className="btn btn-dark btn-sm" onClick={() => { setProfileCar(null); setCompareMode(false); setCompareCarId(null); }}>✕</button>
             </div>
           </div>
 
@@ -13545,6 +13649,12 @@ function AppInner() {
     const [editName, setEditName] = useState('');
     const [ripSearch, setRipSearch] = useState('');
     const [noBrandOnly, setNoBrandOnly] = useState(false);
+    const CATALOG_BATCH_SIZE = 60;
+    const [visibleCarCount, setVisibleCarCount] = useState(CATALOG_BATCH_SIZE);
+
+    React.useEffect(() => {
+      setVisibleCarCount(CATALOG_BATCH_SIZE);
+    }, [search, leagueFilter, activeLetter, noBrandOnly, ripTab, voituresQueueTab]);
 
     const rip = RIP_CARS;
 
@@ -13625,11 +13735,12 @@ function AppInner() {
     const activeLetters = new Set(Object.keys(grouped));
     const displayLetter = activeLetter;
 
-    const displayCars = activeLetter === 'TOUS' ? filtered : (grouped[activeLetter] || []);
+    const allDisplayCars = activeLetter === 'TOUS' ? filtered : (grouped[activeLetter] || []);
+    const displayCars = allDisplayCars.slice(0, visibleCarCount);
 
     return (
       <div>
-        <div className="section-title">Voitures — Toutes les ligues</div>
+        <h1 className="section-title">Voitures — Toutes les ligues</h1>
         {/* Onglets Actives / RIP / File d'attente */}
         <div style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
           <button onClick={() => { setRipTab(false); setVoituresQueueTab(false); }} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,background:'transparent',border:'none',borderBottom: (!ripTab && !voituresQueueTab) ? '2px solid var(--gold)' :'2px solid transparent',color: (!ripTab && !voituresQueueTab) ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
@@ -13698,7 +13809,7 @@ function AppInner() {
                 const photo = db.photos?.[c.photoKey] || getCarPhotoByName(c.name);
                 return (
                   <div key={c.name} style={{ borderRadius:8,border:'1px solid #444',background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column',opacity:0.85 }}>
-                    <label style={{ cursor:'pointer',display:'block',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
+                    <label style={{ cursor:'pointer',width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',display:'flex',alignItems:'center',justifyContent:'center',position:'relative' }}
                       onClick={e => e.preventDefault()}>
                       {photo
                         ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
@@ -13738,8 +13849,9 @@ function AppInner() {
           </div>
         ) : (
           <div className="card">
-          <div style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
+          <div className="catalog-toolbar" style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
             <input
+              aria-label="Rechercher une voiture"
               placeholder="🔍 Rechercher..."
               value={search}
               onChange={e => setSearchPersist(e.target.value)}
@@ -13807,21 +13919,21 @@ function AppInner() {
           {/* Grille */}
           <div style={{ padding:'8px' }}>
             <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:'var(--gold)',letterSpacing:3,padding:'10px 4px 4px',borderBottom:'1px solid var(--border)',marginBottom:8 }}>
-              {displayLetter === 'TOUS' ? 'Toutes' : displayLetter} <span style={{ fontSize:13,color:'var(--text-dim)' }}>({displayCars.length} voitures)</span>
+              {displayLetter === 'TOUS' ? 'Toutes' : displayLetter} <span style={{ fontSize:13,color:'var(--text-dim)' }}>({allDisplayCars.length} voitures)</span>
             </div>
-            <div style={{ display:'grid',gridTemplateColumns:'repeat(2, 1fr)',gap:8 }}>
+            <div className="car-catalog-grid">
               {displayCars.map((c, i) => {
                 const photo = c.carId ? getCarPhoto(c.carId) : null;
                 const key = `${c.league}||${c.name}`;
                 const isEditing = editKey === key;
                 return (
-                  <div key={i} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
-                    <div style={{ width:'100%',aspectRatio:'16/9',background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
+                  <div key={c.carId || `${c.league}-${c.name}`} className="car-catalog-card" style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                    <button type="button" aria-label={`Ouvrir le profil de ${c.name}`} style={{ width:'100%',aspectRatio:'16/9',padding:0,border:0,background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
                       onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                       {photo
-                        ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
+                        ? <img src={photo} alt={`${c.name} — ${c.league}`} loading="lazy" decoding="async" style={{ width:'100%',height:'100%',objectFit:'cover',objectPosition:'center',display:'block' }} />
                         : <span style={{ fontSize:36 }}>🚗</span>}
-                    </div>
+                    </button>
                     <div style={{ padding:'6px 8px',borderTop:`1px solid ${leagueColors[c.league] || 'var(--border)'}22` }}>
                       {isEditing ? (
                         <div style={{ display:'flex',flexDirection:'column',gap:3 }}>
@@ -13863,6 +13975,14 @@ function AppInner() {
                 );
               })}
             </div>
+            {displayCars.length < allDisplayCars.length && (
+              <div className="catalog-load-more">
+                <span className="text-dim" aria-live="polite">{displayCars.length} sur {allDisplayCars.length} voitures affichées</span>
+                <button className="btn btn-gold" onClick={() => setVisibleCarCount(n => Math.min(n + CATALOG_BATCH_SIZE, allDisplayCars.length))}>
+                  Afficher {Math.min(CATALOG_BATCH_SIZE, allDisplayCars.length - displayCars.length)} voitures de plus
+                </button>
+              </div>
+            )}
           </div>
         </div>
         )} {/* fin ternaire ripTab */}
@@ -15229,7 +15349,15 @@ function AppInner() {
       const allBonus = computeAllSeasonsBonus(LEAGUES[0]);
       const bonusEntry = allBonus.find(e => e.id === cid);
       const bp = bonusEntry ? bonusEntry.total : 0;
-      return { gp, w, d, l, gf, ga, diff:gf-ga, pct:gp?(w*3+d)/(gp*3):0, bp, titles, playoffCount };
+      return {
+        gp, w, d, l, gf, ga, diff:gf-ga,
+        pct: gp ? (w*3+d)/(gp*3) : 0,
+        winRate: gp ? w/gp : 0,
+        gfPerGame: gp ? gf/gp : 0,
+        gaPerGame: gp ? ga/gp : 0,
+        diffPerGame: gp ? (gf-ga)/gp : 0,
+        bp, titles, playoffCount,
+      };
     }, [db.seasons, allCars]);
 
     const filteredA = searchA.length >= 1 ? allCars.filter(c=>c.name.toLowerCase().includes(searchA.toLowerCase()) && c.id!==carB?.id).slice(0,6) : [];
@@ -15238,10 +15366,10 @@ function AppInner() {
     const sA = carA ? getStats(carA.id) : null;
     const sB = carB ? getStats(carB.id) : null;
 
-    const StatRow = ({label, v1, v2, higherBetter=true}) => {
+    const StatRow = ({label, v1, v2, higherBetter=true, comparable=true}) => {
       const a = parseFloat(v1), b = parseFloat(v2);
-      const win1 = !isNaN(a)&&!isNaN(b)&&(higherBetter ? a>b : a<b);
-      const win2 = !isNaN(a)&&!isNaN(b)&&(higherBetter ? b>a : b<a);
+      const win1 = comparable&&!isNaN(a)&&!isNaN(b)&&(higherBetter ? a>b : a<b);
+      const win2 = comparable&&!isNaN(a)&&!isNaN(b)&&(higherBetter ? b>a : b<a);
       return (
         <div className="cmp-row" style={{display:'grid',gridTemplateColumns:'1fr 120px 1fr',alignItems:'center',padding:'7px 0',borderBottom:'1px solid #111'}}>
           <span style={{textAlign:'right',fontFamily:"'Bebas Neue',sans-serif",fontSize:18,color:win1?'var(--green)':win2?'#e74c3c':'var(--gold)'}}>{v1??'—'}</span>
@@ -15288,7 +15416,7 @@ function AppInner() {
 
     return (
       <div style={{padding:16}}>
-        <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',letterSpacing:3,marginBottom:16}}>⚡ COMPARAISON TÊTE-À-TÊTE</div>
+        <h1 style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',letterSpacing:3,marginBottom:16}}>⚡ COMPARAISON TÊTE-À-TÊTE</h1>
 
         {/* Sélecteurs */}
         <div style={{display:'flex',gap:16,alignItems:'flex-start',marginBottom:20}}>
@@ -15302,11 +15430,12 @@ function AppInner() {
           <div>
             {/* Verdict global — qui domine la comparaison */}
             {(() => {
+              // Le verdict compare la performance, pas l'ancienneté : les volumes bruts
+              // (matchs, victoires, buts) restent visibles mais ne donnent plus un point.
               const comparisons = [
-                { v1: sA.gp, v2: sB.gp }, { v1: sA.w, v2: sB.w }, { v1: sA.d, v2: sB.d },
-                { v1: sA.l, v2: sB.l, higherBetter: false }, { v1: sA.pct, v2: sB.pct },
-                { v1: sA.gf, v2: sB.gf }, { v1: sA.ga, v2: sB.ga, higherBetter: false },
-                { v1: sA.diff, v2: sB.diff }, { v1: sA.bp, v2: sB.bp },
+                { v1: sA.pct, v2: sB.pct }, { v1: sA.winRate, v2: sB.winRate },
+                { v1: sA.gfPerGame, v2: sB.gfPerGame }, { v1: sA.gaPerGame, v2: sB.gaPerGame, higherBetter: false },
+                { v1: sA.diffPerGame, v2: sB.diffPerGame }, { v1: sA.bp, v2: sB.bp },
                 { v1: sA.titles, v2: sB.titles }, { v1: sA.playoffCount, v2: sB.playoffCount },
               ];
               let winsA = 0, winsB = 0;
@@ -15331,14 +15460,15 @@ function AppInner() {
               );
             })()}
             <div style={{background:'var(--dark2)',borderRadius:8,padding:'0 12px',border:'1px solid var(--border)',marginBottom:16}}>
-              <StatRow label="MATCHS JOUÉS" v1={sA.gp} v2={sB.gp} />
-              <StatRow label="VICTOIRES" v1={sA.w} v2={sB.w} />
-              <StatRow label="NULS" v1={sA.d} v2={sB.d} />
-              <StatRow label="DÉFAITES" v1={sA.l} v2={sB.l} higherBetter={false} />
+              <StatRow label="MATCHS JOUÉS (INFO)" v1={sA.gp} v2={sB.gp} comparable={false} />
+              <StatRow label="VICTOIRES (TOTAL)" v1={sA.w} v2={sB.w} comparable={false} />
+              <StatRow label="NULS (TOTAL)" v1={sA.d} v2={sB.d} comparable={false} />
+              <StatRow label="DÉFAITES (TOTAL)" v1={sA.l} v2={sB.l} comparable={false} />
               <StatRow label="% POINTS" v1={(sA.pct*100).toFixed(1)+'%'} v2={(sB.pct*100).toFixed(1)+'%'} />
-              <StatRow label="BUTS POUR" v1={sA.gf} v2={sB.gf} />
-              <StatRow label="BUTS CONTRE" v1={sA.ga} v2={sB.ga} higherBetter={false} />
-              <StatRow label="DIFFÉRENCE" v1={sA.diff>=0?'+'+sA.diff:sA.diff} v2={sB.diff>=0?'+'+sB.diff:sB.diff} />
+              <StatRow label="% VICTOIRES" v1={(sA.winRate*100).toFixed(1)+'%'} v2={(sB.winRate*100).toFixed(1)+'%'} />
+              <StatRow label="BUTS / MATCH" v1={sA.gfPerGame.toFixed(2)} v2={sB.gfPerGame.toFixed(2)} />
+              <StatRow label="ENCAISSÉS / MATCH" v1={sA.gaPerGame.toFixed(2)} v2={sB.gaPerGame.toFixed(2)} higherBetter={false} />
+              <StatRow label="DIFF. / MATCH" v1={sA.diffPerGame.toFixed(2)} v2={sB.diffPerGame.toFixed(2)} />
               <StatRow label="PTS ANNEXES" v1={sA.bp} v2={sB.bp} />
               <StatRow label="TITRES" v1={sA.titles} v2={sB.titles} />
               <StatRow label="QUALIF. PLAYOFFS" v1={sA.playoffCount} v2={sB.playoffCount} />
@@ -15385,7 +15515,7 @@ function AppInner() {
               }
               return (
                 <div style={{background:'var(--dark2)',borderRadius:8,padding:'12px',border:'1px solid var(--border)'}}>
-                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--gold-dim)',letterSpacing:2,marginBottom:10}}>🥊 CONFRONTATIONS DIRECTES ({h2h.length} matchs)</div>
+                  <div style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:14,color:'var(--gold-dim)',letterSpacing:2,marginBottom:10}}>🥊 CONFRONTATIONS DIRECTES ({h2h.length} {h2h.length > 1 ? 'matchs' : 'match'})</div>
                   {/* Bilan global */}
                   <div style={{display:'grid',gridTemplateColumns:'1fr auto 1fr',alignItems:'center',marginBottom:8}}>
                     <div style={{textAlign:'right'}}>
@@ -16135,10 +16265,10 @@ function AppInner() {
                 <div className="card-header">
                   <div className="card-title">🏆 Podium — Top 4</div>
                   <button className="btn btn-gold btn-sm" style={{ marginLeft:'auto' }} onClick={() => generatePodiumPDF(top4, currentSeason.season)}>
-                    📄 Exporter Podium PDF
+                    📄 Exporter le podium
                   </button>
                 </div>
-                <div className="card-body" style={{ background:'#fff',borderRadius:'0 0 8px 8px' }}>
+                <div className="card-body" style={{ background:'linear-gradient(180deg,var(--dark2),var(--black))',borderRadius:'0 0 8px 8px' }}>
                   <div style={{ display:'flex',gap:8,justifyContent:'center',alignItems:'flex-end',padding:'20px 8px',flexWrap:'wrap',overflowX:'auto' }}>
                     {[
                       { rank: 2, height: 360, color: '#C0C0C0', label: '2E' },
@@ -16151,16 +16281,16 @@ function AppInner() {
                       return (
                         <div key={rank} style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:12 }}>
                        <div style={{ width:'min(220px,28vw)',height:'min(160px,20vw)',borderRadius:10,overflow:'hidden',border:'4px solid '+color }} onClick={() => openProfileCar({ leagueName: entry.league, carId: entry.id })}>
-                            {entry.photo ? <img src={entry.photo} style={{ width:'100%',height:'100%',objectFit:'contain',background:'#f5f5f5' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:64,background:'#f5f5f5' }}>🚗</div>}
+                            {entry.photo ? <img src={entry.photo} alt={`${entry.name}, ${label} du Tournoi des Champions`} loading="lazy" decoding="async" style={{ width:'100%',height:'100%',objectFit:'cover',background:'var(--dark3)' }} /> : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:64,background:'var(--dark3)' }}>🚗</div>}
                           </div>
-                          <div style={{ fontSize:'min(28px,4vw)',fontWeight:700,color:'#111',textAlign:'center',maxWidth:'min(220px,28vw)',fontFamily:"'Bebas Neue',sans-serif" }}>{entry.name}</div>
+                          <div style={{ fontSize:'min(28px,4vw)',fontWeight:700,color:'var(--text)',textAlign:'center',maxWidth:'min(220px,28vw)',fontFamily:"'Bebas Neue',sans-serif" }}>{entry.name}</div>
                           {getCarBrand(entry.id) && (
-                            <div style={{ fontSize:20,color:'#555',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{getCarBrand(entry.id)}</div>
+                            <div style={{ fontSize:20,color:'var(--text-dim)',textAlign:'center',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{getCarBrand(entry.id)}</div>
                           )}
-                          <button className="btn btn-dark" style={{ fontSize:12,padding:'4px 10px' }}
+                          {!isPublicMode && <button className="btn btn-dark" style={{ fontSize:12,padding:'4px 10px' }}
                             onClick={() => setBrandModal({ carId: entry.id, carName: entry.name, photo: entry.photo })}>
-                            {!isPublicMode && <>✏️ {getCarBrand(entry.id) ? 'Modifier' : 'Marque'}</>}
-                          </button>
+                            ✏️ {getCarBrand(entry.id) ? 'Modifier' : 'Marque'}
+                          </button>}
                           <div style={{ fontSize:15,color:color,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2 }}>{entry.league.replace('Voitures ','V')}</div>
                           <div style={{ background:color,width:220,height,display:'flex',alignItems:'center',justifyContent:'center',borderRadius:'10px 10px 0 0' }}>
                             <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:90,color:rank <= 3 ? '#000' :'#fff' }}>{label}</span>
@@ -16373,20 +16503,21 @@ function AppInner() {
               );
             })()}
 
-            <div style={{ padding:12,textAlign:'center' }}>
+            {!isPublicMode && <div style={{ padding:12,textAlign:'center' }}>
               {!confirmResetTC
                 ? <button className="btn btn-danger btn-sm" onClick={() => setConfirmResetTC(true)}>🗑 Réinitialiser le tournoi</button>
                 : <span style={{ display:'inline-flex',gap:6,alignItems:'center' }}>
                     <span style={{ fontSize:12,color:'#e74c3c' }}>Réinitialiser le Tournoi des Champions ?</span>
                     <button className="btn btn-sm" style={{ background:'#c0392b',color:'#fff',fontSize:12 }}
                       onClick={() => {
+                        downloadSafetyBackup(`avant-reset-tournoi-champions-s${currentSeason.season}`);
                         setDb(d => { const s = [...d.seasons]; s[d.currentSeasonIdx] = { ...s[d.currentSeasonIdx], tournoiChampions: null }; return { ...d, seasons: s }; });
                         setConfirmResetTC(false);
                       }}>✓ Oui</button>
                     <button className="btn btn-dark btn-sm" style={{ fontSize:12 }} onClick={() => setConfirmResetTC(false)}>✕ Non</button>
                   </span>
               }
-            </div>
+            </div>}
           </div>
         )}
       </div>
@@ -16923,12 +17054,13 @@ function AppInner() {
 
         {/* Recherche rapide globale — trouver une voiture par nom peu importe sa ligue */}
         {globalSearchOpen && (
-          <div className="car-profile-modal" style={{ alignItems:'flex-start', paddingTop:'10vh' }} onClick={closeGlobalSearch}>
+          <div className="car-profile-modal" role="dialog" aria-modal="true" aria-label="Recherche globale" style={{ alignItems:'flex-start', paddingTop:'10vh' }} onClick={closeGlobalSearch}>
             <div className="car-profile-card" style={{ maxWidth:480, animation:'cardSettleIn 0.25s cubic-bezier(0.22,1,0.36,1) both' }} onClick={e => e.stopPropagation()}>
               <div style={{ padding:16, borderBottom:'1px solid var(--gold-dim)' }}>
                 <input
                   autoFocus
                   type="text"
+                  aria-label="Rechercher une voiture, une marque ou un pays"
                   placeholder="Rechercher une voiture, une marque ou un pays..."
                   value={globalSearchQuery}
                   onChange={e => setGlobalSearchQuery(e.target.value)}
@@ -16954,8 +17086,9 @@ function AppInner() {
                     {globalSearchResults.map(r => {
                       if (r.type === 'brand') {
                         return (
-                          <div key={`brand-${r.brand}`}
+                          <div key={`brand-${r.brand}`} role="button" tabIndex={0}
                             style={{ borderRadius:8, border:'1px solid var(--gold-dim)', background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
                             onClick={() => { closeGlobalSearch(); setMainTab('marques'); setMarquesSubTab('points'); setBrandDetail(r.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setBrandDetail(null)); }}>
                             <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                               {r.countryCode && <CountryFlag code={r.countryCode} size={22} />}
@@ -16972,8 +17105,9 @@ function AppInner() {
                       }
                       if (r.type === 'country') {
                         return (
-                          <div key={`country-${r.code}`}
+                          <div key={`country-${r.code}`} role="button" tabIndex={0}
                             style={{ borderRadius:8, border:'1px solid var(--gold-dim)', background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
+                            onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
                             onClick={() => { closeGlobalSearch(); setMainTab('pays'); setCountryDetail(r.code); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setCountryDetail(null)); }}>
                             <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                               <CountryFlag code={r.code} size={26} />
@@ -16990,12 +17124,13 @@ function AppInner() {
                       }
                       const borderColor = MAIN_LEAGUE_COLORS[r.league] || 'var(--border)';
                       return (
-                        <div key={`${r.league}-${r.id}`}
+                        <div key={`${r.league}-${r.id}`} role="button" tabIndex={0}
                           style={{ borderRadius:8, border:`2px solid ${borderColor}`, background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
+                          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
                           onClick={() => { closeGlobalSearch(); openProfileCar({ leagueName: r.league, carId: r.id }); }}>
                           <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center' }}>
                             {r.photo
-                              ? <img src={r.photo} alt="" loading="lazy" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
+                              ? <img src={r.photo} alt={`${r.name} — ${r.league}`} loading="lazy" decoding="async" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', display:'block' }} />
                               : <span style={{ fontSize:36 }}>🚗</span>}
                           </div>
                           <div style={{ padding:'6px 8px', borderTop:`1px solid ${borderColor}22` }}>
@@ -17017,11 +17152,11 @@ function AppInner() {
         {/* Header */}
         <div className="header">
           <div className="header-logo">
-            <img src={APP_LOGO} alt="" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', verticalAlign:'middle', marginRight:8 }} />
+            <img src={APP_LOGO} alt="Logo Tournois de Voitures" style={{ width:34, height:34, borderRadius:8, objectFit:'cover', verticalAlign:'middle', marginRight:8 }} />
             Tournois de Voitures
           </div>
           <div className="header-divider" />
-          <button className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
+          <button aria-label="Ouvrir la recherche globale" className="btn btn-sm btn-dark" style={{ flexShrink:0, display:'flex', alignItems:'center', gap:6 }} onClick={() => setGlobalSearchOpen(true)} title="Rechercher une voiture (Ctrl/Cmd+K)">
             🔍<span style={{ fontSize:10, opacity:0.6, display:'none' }} className="search-kbd-hint">⌘K</span>
           </button>
           <div className="header-actions">
@@ -17031,16 +17166,21 @@ function AppInner() {
                   👁 VUE PUBLIQUE
                 </span>
                 <button className="btn btn-sm" style={{ background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }}
-                  onClick={() => {
+                  disabled={adminAttempts >= 5}
+                  onClick={async () => {
+                    if (adminAttempts >= 5) return;
                     const pwd = prompt('Mot de passe admin :');
-                    if (pwd === ADMIN_PASSWORD) {
+                    if (await verifyAdminPassword(pwd)) {
                       sessionStorage.setItem('tdv_admin', 'ok'); // session courante (efface à la fermeture)
+                      setAdminAttempts(0);
                       setIsLoggedIn(true);
                     } else if (pwd !== null) {
-                      alert('❌ Mot de passe incorrect');
+                      const nextAttempts = adminAttempts + 1;
+                      setAdminAttempts(nextAttempts);
+                      alert(nextAttempts >= 5 ? '🔒 Connexion temporairement verrouillée. Recharge la page pour réessayer.' : '❌ Mot de passe incorrect');
                     }
                   }}>
-                  🔒 Connexion
+                  {adminAttempts >= 5 ? '🔒 Verrouillé' : '🔒 Connexion'}
                 </button>
               </div>
             ) : (
