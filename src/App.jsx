@@ -2666,6 +2666,261 @@ const css = `
     .dashboard-feature img,
     .dashboard-secondary img { min-height: 0; }
   }
+
+  /* ── Refonte visuelle forte : véritable univers de championnat ─────────
+     Ces règles ne touchent qu'à la présentation. Les données, animations,
+     calculs de classement et synchronisations restent strictement inchangés. */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: .32;
+    background-image:
+      linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: linear-gradient(to bottom, #000, transparent 72%);
+  }
+  .header {
+    background:
+      linear-gradient(90deg, rgba(212,175,55,.12), transparent 22%),
+      rgba(7,7,7,.94);
+    backdrop-filter: blur(22px) saturate(1.25);
+  }
+  .header-logo {
+    text-shadow: 0 0 24px rgba(212,175,55,.24);
+  }
+  .primary-nav {
+    position: sticky;
+    top: 0;
+    z-index: 45;
+    min-height: 58px;
+    background: rgba(8,8,8,.88);
+    backdrop-filter: blur(20px) saturate(1.3);
+    box-shadow: 0 18px 38px rgba(0,0,0,.32);
+  }
+  .primary-nav-links { gap: 8px; }
+  .primary-nav-link {
+    position: relative;
+    overflow: hidden;
+    min-height: 40px;
+    padding-inline: 16px;
+    border-radius: 999px;
+  }
+  .primary-nav-link.active {
+    color: #111;
+    background: linear-gradient(135deg, #f4dc7a, var(--gold));
+    border-color: transparent;
+    box-shadow: 0 8px 22px rgba(212,175,55,.2);
+  }
+  .content {
+    width: min(1600px, 100%);
+    margin-inline: auto;
+    padding-inline: clamp(12px, 2.5vw, 42px);
+  }
+  .dashboard-hero {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: minmax(0,1fr) auto;
+    align-items: end;
+    gap: 24px;
+    min-height: 220px;
+    margin-bottom: 28px;
+    padding: clamp(26px,4vw,52px);
+    overflow: hidden;
+    border: 1px solid rgba(212,175,55,.22);
+    border-radius: 22px;
+    background:
+      linear-gradient(100deg, rgba(7,7,7,.98) 0%, rgba(14,14,14,.92) 53%, rgba(212,175,55,.11) 100%),
+      radial-gradient(circle at 88% 25%, rgba(212,175,55,.25), transparent 28rem);
+    box-shadow: 0 26px 70px rgba(0,0,0,.44), inset 0 1px rgba(255,255,255,.045);
+  }
+  .dashboard-hero::before {
+    content: 'TDV';
+    position: absolute;
+    z-index: -1;
+    right: clamp(14px,4vw,58px);
+    bottom: -42px;
+    color: transparent;
+    -webkit-text-stroke: 1px rgba(212,175,55,.16);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(150px,18vw,280px);
+    line-height: .8;
+    letter-spacing: -5px;
+  }
+  .dashboard-hero::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--gold), rgba(212,175,55,.08) 72%, transparent);
+  }
+  .dashboard-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 12px;
+    color: var(--gold);
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 2.6px;
+    text-transform: uppercase;
+  }
+  .dashboard-kicker::before {
+    content: '';
+    width: 28px;
+    height: 2px;
+    background: var(--gold);
+    box-shadow: 0 0 12px rgba(212,175,55,.55);
+  }
+  .dashboard-hero .section-title {
+    max-width: 850px;
+    margin: 0;
+    padding: 0;
+    color: #fff;
+    font-size: clamp(42px,6vw,84px);
+    letter-spacing: 1px;
+    line-height: .9;
+    text-transform: uppercase;
+  }
+  .dashboard-hero .section-title::before,
+  .dashboard-hero .section-title::after { display: none; }
+  .dashboard-hero-copy {
+    max-width: 620px;
+    margin: 17px 0 0;
+    color: rgba(255,255,255,.62);
+    font-size: clamp(13px,1.2vw,16px);
+    line-height: 1.55;
+  }
+  .dashboard-season-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    min-width: 150px;
+    color: var(--gold);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(64px,8vw,118px);
+    line-height: .72;
+    text-shadow: 0 0 35px rgba(212,175,55,.2);
+  }
+  .dashboard-season-badge small {
+    margin-bottom: 13px;
+    color: rgba(255,255,255,.55);
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .dashboard-leagues { gap: 28px; }
+  .dashboard-league-card {
+    --league-accent: var(--gold);
+    position: relative;
+    border-radius: 18px;
+    border-color: color-mix(in srgb, var(--league-accent) 25%, transparent);
+    background:
+      radial-gradient(circle at 0 0, color-mix(in srgb, var(--league-accent) 11%, transparent), transparent 28rem),
+      linear-gradient(145deg, rgba(24,24,24,.98), rgba(9,9,9,.98));
+    box-shadow: 0 26px 65px rgba(0,0,0,.36);
+  }
+  .dashboard-league-card:nth-child(2) { --league-accent: #d7e0e7; }
+  .dashboard-league-card:nth-child(3) { --league-accent: #c9875d; }
+  .dashboard-league-card:nth-child(4) { --league-accent: #8da9c4; }
+  .dashboard-league-card::before {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 18px 0 0 18px;
+    background: linear-gradient(to bottom, var(--league-accent), transparent 78%);
+    box-shadow: 0 0 18px color-mix(in srgb, var(--league-accent) 35%, transparent);
+  }
+  .dashboard-league-card > .card-header {
+    min-height: 78px;
+    padding-inline: 24px;
+    border-radius: 18px 18px 0 0;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--league-accent) 9%, transparent), transparent 48%);
+  }
+  .dashboard-league-card > .card-header .card-title {
+    color: #fff;
+    font-size: clamp(23px,2.2vw,34px);
+    letter-spacing: 2px;
+  }
+  .dashboard-league-body { padding: clamp(14px,2vw,24px); }
+  .dashboard-feature,
+  .dashboard-secondary,
+  .dashboard-ranking {
+    border-radius: 14px !important;
+    border-color: rgba(255,255,255,.085);
+    box-shadow: inset 0 1px rgba(255,255,255,.035), 0 12px 32px rgba(0,0,0,.18);
+  }
+  .dashboard-feature {
+    padding: 14px !important;
+    background: linear-gradient(155deg, color-mix(in srgb, var(--league-accent) 10%, #111), #090909) !important;
+  }
+  .dashboard-feature > div:nth-child(2) {
+    border-radius: 11px !important;
+    box-shadow: 0 16px 42px rgba(0,0,0,.45);
+  }
+  .dashboard-secondary {
+    padding: 12px !important;
+    transition: transform .22s ease, border-color .22s ease, background .22s ease;
+  }
+  .dashboard-secondary:hover {
+    transform: translateY(-3px);
+    border-color: rgba(212,175,55,.24);
+    background: rgba(24,24,24,.82) !important;
+  }
+  .dashboard-ranking { padding: 15px !important; }
+  .dashboard-ranking > div:first-child {
+    padding-bottom: 12px;
+    border-bottom: 1px solid rgba(255,255,255,.065);
+    font-size: 12px !important;
+  }
+
+  @media (max-width: 767px) {
+    body::before { background-size: 38px 38px; }
+    .primary-nav { min-height: 52px; }
+    .content { padding-inline: 10px; }
+    .dashboard-hero {
+      display: block;
+      min-height: 180px;
+      margin-inline: -2px;
+      margin-bottom: 18px;
+      padding: 24px 20px 27px;
+      border-radius: 15px;
+    }
+    .dashboard-hero::before { right: 8px; bottom: -18px; font-size: 126px; }
+    .dashboard-hero .section-title { font-size: clamp(38px,12vw,58px); }
+    .dashboard-hero-copy { max-width: 86%; margin-top: 13px; font-size: 12px; }
+    .dashboard-season-badge {
+      position: absolute;
+      right: 18px;
+      top: 20px;
+      min-width: 0;
+      font-size: 48px;
+      opacity: .32;
+    }
+    .dashboard-season-badge small { display: none; }
+    .dashboard-leagues { gap: 18px; }
+    .dashboard-league-card { border-radius: 14px; }
+    .dashboard-league-card::before { border-radius: 14px 0 0 14px; }
+    .dashboard-league-card > .card-header {
+      min-height: 64px;
+      padding-inline: 16px 12px;
+      border-radius: 14px 14px 0 0;
+    }
+    .dashboard-league-card > .card-header .card-title { font-size: 23px; }
+    .dashboard-feature,
+    .dashboard-secondary,
+    .dashboard-ranking { border-radius: 11px !important; }
+    .dashboard-secondary:hover { transform: none; }
+  }
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
@@ -7427,9 +7682,21 @@ function AppInner() {
   function Dashboard() {
     return (
       <div className="dashboard-shell">
-        <h1 className="section-title">Tableau de Bord — Saison {currentSeason.season}</h1>
+        <section className="dashboard-hero" aria-labelledby="dashboard-title">
+          <div>
+            <div className="dashboard-kicker">Championnat automobile</div>
+            <h1 id="dashboard-title" className="section-title">Tableau de bord</h1>
+            <p className="dashboard-hero-copy">
+              Les quatre ligues principales, leurs champions et la course aux points annexes réunis dans une vue d'ensemble.
+            </p>
+          </div>
+          <div className="dashboard-season-badge" aria-label={`Saison ${currentSeason.season}`}>
+            <small>Saison en cours</small>
+            {currentSeason.season}
+          </div>
+        </section>
 
-        <div className="dashboard-leagues" style={{ display:'flex',flexDirection:'column',gap:16 }}>
+        <div className="dashboard-leagues">
           {LEAGUES.map(l => {
             const champId = currentSeason.champions[l];
             const relId = currentSeason.relegated[l];
