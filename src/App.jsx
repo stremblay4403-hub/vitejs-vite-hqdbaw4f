@@ -2829,9 +2829,12 @@ const css = `
       linear-gradient(145deg, rgba(24,24,24,.98), rgba(9,9,9,.98));
     box-shadow: 0 26px 65px rgba(0,0,0,.36);
   }
-  .dashboard-league-card:nth-child(2) { --league-accent: #d7e0e7; }
-  .dashboard-league-card:nth-child(3) { --league-accent: #c9875d; }
-  .dashboard-league-card:nth-child(4) { --league-accent: #8da9c4; }
+  /* Couleurs historiques des quatre ligues : elles ne doivent pas varier
+     selon la position de la carte ni selon un thème décoratif. */
+  .dashboard-league-1 { --league-accent: #e74c3c; }
+  .dashboard-league-2 { --league-accent: #f1c40f; }
+  .dashboard-league-3 { --league-accent: #2ecc71; }
+  .dashboard-league-4 { --league-accent: #3498db; }
   .dashboard-league-card::before {
     content: '';
     position: absolute;
@@ -2842,7 +2845,23 @@ const css = `
     background: linear-gradient(to bottom, var(--league-accent), transparent 78%);
     box-shadow: 0 0 18px color-mix(in srgb, var(--league-accent) 35%, transparent);
   }
+  .dashboard-league-card::after {
+    content: attr(data-league-index);
+    position: absolute;
+    z-index: 0;
+    top: 5px;
+    right: 22px;
+    color: var(--league-accent);
+    opacity: .055;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 82px;
+    line-height: 1;
+    letter-spacing: -2px;
+    pointer-events: none;
+  }
   .dashboard-league-card > .card-header {
+    position: relative;
+    z-index: 1;
     min-height: 78px;
     padding-inline: 24px;
     border-radius: 18px 18px 0 0;
@@ -2854,6 +2873,11 @@ const css = `
     letter-spacing: 2px;
   }
   .dashboard-league-body { padding: clamp(14px,2vw,24px); }
+  .dashboard-progress-track {
+    border: 1px solid rgba(255,255,255,.07);
+    box-shadow: inset 0 1px 4px rgba(0,0,0,.55);
+  }
+  .dashboard-progress-fill { box-shadow: 0 0 12px color-mix(in srgb, var(--league-accent) 48%, transparent); }
   .dashboard-feature,
   .dashboard-secondary,
   .dashboard-ranking {
@@ -2870,6 +2894,7 @@ const css = `
     box-shadow: 0 16px 42px rgba(0,0,0,.45);
   }
   .dashboard-secondary {
+    height: 100%;
     padding: 12px !important;
     transition: transform .22s ease, border-color .22s ease, background .22s ease;
   }
@@ -2885,9 +2910,58 @@ const css = `
     font-size: 12px !important;
   }
   .dashboard-ranking-row { min-width: 0; }
+  .dashboard-ranking-row {
+    transition: transform .18s ease, border-color .18s ease, background .18s ease;
+  }
+  .dashboard-ranking-row:hover {
+    transform: translateX(3px);
+    border-color: color-mix(in srgb, var(--league-accent) 35%, var(--border)) !important;
+    background: rgba(31,31,31,.92) !important;
+  }
   .dashboard-ranking-copy,
   .dashboard-ranking-name,
   .dashboard-ranking-brand { min-width: 0; }
+  .dashboard-feature-photo,
+  .dashboard-secondary-photo {
+    aspect-ratio: 16 / 9;
+  }
+  .dashboard-feature-photo img,
+  .dashboard-secondary-photo img {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    object-fit: cover !important;
+    object-position: center;
+  }
+  .dashboard-empty-photo {
+    aspect-ratio: 16 / 9;
+    height: auto !important;
+    background:
+      radial-gradient(circle at 50% 45%, color-mix(in srgb, var(--league-accent) 10%, transparent), transparent 55%),
+      rgba(8,8,8,.62) !important;
+    border-color: color-mix(in srgb, var(--league-accent) 22%, var(--border)) !important;
+  }
+  .dashboard-mini-empty {
+    flex: 1;
+    min-height: 118px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px dashed rgba(255,255,255,.08);
+    border-radius: 8px;
+    background: rgba(4,4,4,.28);
+  }
+
+  .car-profile-name { font-size: 30px; line-height: 1.05; }
+  .car-profile-league { margin-top: 6px; font-size: 15px; }
+  .car-profile-brand { font-size: 20px; }
+  .car-profile-brand-row { margin-top: 9px !important; }
+  .car-profile-badges .badge { font-size: 12px; padding: 4px 9px; }
+  .car-profile-card .car-stat-grid { max-width: 920px; }
+  .car-profile-card .tbl { font-size: 16px; }
+  .car-profile-card .tbl th { color: #bfa760; background: #202020; }
+  .car-profile-card .tbl tbody tr:nth-child(even) td { background: rgba(255,255,255,.022); }
+  .car-profile-card .tbl td { padding-block: 11px; }
 
   /* Catalogue : groupes distincts afin que les filtres restent toujours
      accessibles, même sur un écran étroit. */
@@ -2896,6 +2970,9 @@ const css = `
     grid-template-columns: auto auto 1fr;
     align-items: center;
     gap: 10px !important;
+    background:
+      linear-gradient(135deg, rgba(212,175,55,.035), transparent 36%),
+      rgba(13,13,13,.96);
   }
   .catalog-search-row,
   .catalog-admin-actions,
@@ -2905,6 +2982,13 @@ const css = `
   .catalog-admin-actions { flex-wrap: wrap; }
   .catalog-league-filters { flex-wrap: wrap; }
   .catalog-mobile-filter { display: none; }
+  .car-catalog-card > div:last-child {
+    min-height: 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  }
+  .car-catalog-card .car-grid-name { line-height: 1.08; }
 
   @media (max-width: 767px) {
     body::before { background-size: 38px 38px; }
@@ -2974,6 +3058,7 @@ const css = `
     .dashboard-secondary,
     .dashboard-ranking { border-radius: 11px !important; }
     .dashboard-secondary:hover { transform: none; }
+    .dashboard-ranking-row:hover { transform: none; }
     .dashboard-ranking { padding: 10px !important; }
     .dashboard-ranking-row { gap: 7px !important; }
     .dashboard-ranking-photo { width: 82px !important; height: 56px !important; }
@@ -3021,22 +3106,20 @@ const css = `
       width: 100%;
     }
     .catalog-admin-actions .btn { white-space: normal; min-width: 0; }
-    .catalog-mobile-filter {
-      display: grid;
-      grid-template-columns: auto minmax(0,1fr);
-      align-items: center;
-      gap: 10px;
+    .catalog-mobile-filter { display: none; }
+    .catalog-league-filters {
+      display: flex;
       width: 100%;
-      padding: 7px 9px;
-      border: 1px solid rgba(212,175,55,.22);
-      border-radius: 8px;
-      background: rgba(212,175,55,.055);
-      color: var(--gold);
-      font-family: 'Bebas Neue', sans-serif;
-      letter-spacing: 1.5px;
+      flex-wrap: nowrap;
+      gap: 7px;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+      padding: 2px 0 5px;
     }
-    .catalog-mobile-filter select { width: 100%; min-width: 0; }
-    .catalog-league-filters { display: none; }
+    .catalog-league-filters::-webkit-scrollbar { display: none; }
+    .catalog-league-filters .btn { flex: 0 0 auto; white-space: nowrap; }
     .catalog-alphabet {
       position: static !important;
       top: auto !important;
@@ -3055,6 +3138,58 @@ const css = `
       line-height: 1.15;
       overflow-wrap: anywhere;
     }
+    .car-catalog-card > div:last-child { min-height: 54px; }
+  }
+
+  /* iPad portrait et paysage : composition dédiée entre téléphone et ordinateur. */
+  @media (min-width: 768px) and (max-width: 1180px) {
+    .header { gap: 8px; padding-inline: 12px; overflow: hidden; }
+    .header-logo { min-width: 0; font-size: 31px; letter-spacing: 4px; }
+    .header-logo img { width: 32px !important; height: 32px !important; }
+    .header-actions { min-width: 0; gap: 6px; }
+    .header-actions .btn { padding-inline: 10px; }
+    .primary-nav { top: 62px; z-index: 90; }
+
+    .dashboard-league-body {
+      display: grid !important;
+      grid-template-columns: minmax(0,1.15fr) minmax(280px,.85fr) !important;
+      grid-template-rows: auto auto !important;
+      align-items: stretch !important;
+      gap: 14px !important;
+    }
+    .dashboard-feature { grid-column: 1; grid-row: 1; }
+    .dashboard-secondary-grid { grid-column: 2; grid-row: 1; align-self: stretch; }
+    .dashboard-ranking { grid-column: 1 / -1; grid-row: 2; }
+    .dashboard-feature-photo,
+    .dashboard-secondary-photo { aspect-ratio: 16 / 9; }
+    .dashboard-secondary-grid { gap: 10px !important; height: 100%; }
+    .dashboard-secondary { min-width: 0; }
+    .dashboard-mini-empty { min-height: 0; }
+    .dashboard-ranking-row { gap: 7px !important; }
+
+    .catalog-toolbar { grid-template-columns: 1fr !important; align-items: stretch; }
+    .catalog-search-row { width: 100%; }
+    .catalog-search-row input { width: min(360px, 55vw); }
+    .catalog-admin-actions { width: 100%; }
+    .catalog-league-filters { width: 100%; }
+    .catalog-league-filters .btn { min-height: 38px; }
+
+    .car-profile-card { max-width: min(1040px, 96vw); }
+    .car-profile-info { padding: 40px 44px 32px; }
+    .car-profile-name { font-size: 38px; letter-spacing: 2px !important; }
+    .car-profile-league { font-size: 17px; }
+    .car-profile-brand { font-size: 23px; }
+    .car-profile-brand-row .country-flag { width: 26px !important; height: 19.5px !important; }
+    .car-profile-badges { margin-top: 11px !important; gap: 8px !important; }
+    .car-profile-badges .badge { font-size: 13px; padding: 5px 10px; }
+    .car-profile-card .car-stat-grid {
+      max-width: none;
+      padding: 24px 34px;
+      gap: 12px;
+    }
+    .car-profile-card .car-stat-item { padding: 14px 10px; }
+    .car-profile-card .car-stat-item .val { font-size: 26px; }
+    .car-profile-card .car-stat-item:nth-child(5) .val { font-size: 34px; }
   }
 `;
 
@@ -7862,13 +7997,13 @@ function AppInner() {
               .slice(0, 5);
 
             return (
-              <div key={l} className="card dashboard-league-card">
+              <div key={l} data-league-index={`0${LEAGUES.indexOf(l) + 1}`} className={`card dashboard-league-card dashboard-league-${LEAGUES.indexOf(l) + 1}`}>
                 <div className="card-header">
                   <div className="card-title">{l}</div>
                   <div style={{ flex:1 }} />
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                    <div style={{ width:80,height:6,background:'var(--dark3)',borderRadius:3,overflow:'hidden' }}>
-                      <div style={{ width:`${pct}%`,height:'100%',background:pct === 100 ? 'var(--green)' :'var(--gold)',borderRadius:3,transition:'width 0.3s' }} />
+                    <div className="dashboard-progress-track" style={{ width:80,height:6,background:'var(--dark3)',borderRadius:3,overflow:'hidden' }}>
+                      <div className="dashboard-progress-fill" style={{ width:`${pct}%`,height:'100%',background:pct === 100 ? 'var(--green)' :'var(--league-accent)',borderRadius:3,transition:'width 0.3s' }} />
                     </div>
                     <span className="text-dim" style={{ fontSize:11 }}>{played}/{total} ({pct}%)</span>
                   </div>
@@ -7880,7 +8015,7 @@ function AppInner() {
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>🏆 Champion Playoff</div>
                     {champ ? (
                       <>
-                        <div style={{ width:'100%',borderRadius:6,overflow:'hidden',background:'var(--dark2)',border:'2px solid var(--gold-dim)',marginBottom:8,cursor:'pointer' }}
+                        <div className="dashboard-feature-photo" style={{ width:'100%',borderRadius:6,overflow:'hidden',background:'var(--dark2)',border:'2px solid var(--gold-dim)',marginBottom:8,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: champId })}>
                           {getCarPhoto(champId)
                             ? <img src={getCarPhoto(champId)} alt={`${champ.name}, champion de ${l}`} loading="lazy" decoding="async" style={{ width:'100%',height:'auto',display:'block' }} />
@@ -7893,7 +8028,7 @@ function AppInner() {
                       </>
                     ) : (
                       <>
-                        <div style={{ width:'100%',height:120,borderRadius:6,background:'var(--dark2)',display:'flex',alignItems:'center',justifyContent:'center',border:'1px dashed var(--border)',marginBottom:8 }}>
+                        <div className="dashboard-empty-photo" style={{ width:'100%',height:120,borderRadius:6,background:'var(--dark2)',display:'flex',alignItems:'center',justifyContent:'center',border:'1px dashed var(--border)',marginBottom:8 }}>
                           <span style={{ fontSize:48,opacity:0.3 }}>🏆</span>
                         </div>
                         <span className="text-dim" style={{ fontSize:12,textAlign:'center' }}>Playoffs non terminés</span>
@@ -7913,7 +8048,7 @@ function AppInner() {
                       {zCar ? (
                         <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: zCar.id })}>
-                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
+                          <div className="dashboard-secondary-photo" style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid var(--gold-dim)',flexShrink:0 }}>
                             {getCarPhoto(zCar.id)
                               ? <img src={getCarPhoto(zCar.id)} alt={`${zCar.name}, meilleur de ${l}`} loading="lazy" decoding="async" style={{ width:'100%',height:'auto',display:'block' }} />
                               : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
@@ -7923,7 +8058,7 @@ function AppInner() {
                           </div>
                         </div>
                       ) : (
-                        <span className="text-dim" style={{ fontSize:11 }}>Non terminé</span>
+                        <div className="dashboard-mini-empty"><span className="text-dim" style={{ fontSize:11 }}>Non terminé</span></div>
                       )}
                     </div>
 
@@ -7933,7 +8068,7 @@ function AppInner() {
                       {rel ? (
                         <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
                           onClick={() => openProfileCar({ leagueName: l, carId: relId })}>
-                          <div style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
+                          <div className="dashboard-secondary-photo" style={{ width:'100%',borderRadius:5,overflow:'hidden',background:'var(--dark2)',border:'1px solid rgba(231,76,60,0.4)',flexShrink:0 }}>
                             {getCarPhoto(relId)
                               ? <img src={getCarPhoto(relId)} alt={`${rel.name}, relégué de ${l}`} loading="lazy" decoding="async" style={{ width:'100%',height:'auto',display:'block' }} />
                               : <div style={{ height:100,display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
@@ -7943,7 +8078,7 @@ function AppInner() {
                           </div>
                         </div>
                       ) : (
-                        <span className="text-dim" style={{ fontSize:11 }}>Non terminé</span>
+                        <div className="dashboard-mini-empty"><span className="text-dim" style={{ fontSize:11 }}>Non terminé</span></div>
                       )}
                     </div>
                   </div>
@@ -10228,8 +10363,8 @@ function AppInner() {
               {!isPublicMode && <input type="file" accept="image/*" style={{ display:'none' }} onChange={handlePhoto} />}
             </label>
             <div className="car-profile-info" style={{ flex:1 }}>
-              <div className="font-bebas" style={{ fontSize:22,color:'var(--gold)',letterSpacing:3 }}>{effectiveName}</div>
-              <div className="text-dim" style={{ fontSize:12 }}>{(() => {
+              <div className="font-bebas car-profile-name" style={{ color:'var(--gold)',letterSpacing:3 }}>{effectiveName}</div>
+              <div className="text-dim car-profile-league">{(() => {
                 let foundLeague = null;
                 for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
                   const league = currentSeason.leagues[l];
@@ -10239,11 +10374,12 @@ function AppInner() {
                 }
                 return foundLeague || leagueName;
               })()}</div>
-              <div style={{ marginTop:4,display:'flex',alignItems:'center',justifyContent:'center',gap:8,flexWrap:'wrap' }}>
+              <div className="car-profile-brand-row" style={{ marginTop:4,display:'flex',alignItems:'center',justifyContent:'center',gap:8,flexWrap:'wrap' }}>
                 {getBrandCountry(getCarBrand(resolvedCarId)) && <CountryFlag code={getBrandCountry(getCarBrand(resolvedCarId))} size={22} />}
                 {getCarBrand(resolvedCarId) ? (
                   <span
-                    style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,fontSize:17,color:'var(--text-dim)',letterSpacing:0.5,cursor:'pointer' }}
+                    className="car-profile-brand"
+                    style={{ fontFamily:"'Rajdhani',sans-serif",fontWeight:700,color:'var(--text-dim)',letterSpacing:0.5,cursor:'pointer' }}
                     onClick={() => {
                       const br = getCarBrand(resolvedCarId);
                       const prevMainTab = mainTab, prevMenuOpen = menuOpen, prevMarquesSubTab = marquesSubTab;
