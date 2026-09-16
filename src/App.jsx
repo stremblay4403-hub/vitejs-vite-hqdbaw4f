@@ -108,6 +108,7 @@ function CountryFlag({ code, size = 18 }) {
   if (!code) return null;
   return (
     <img
+      className="country-flag"
       src={`https://flagcdn.com/${code.toLowerCase()}.svg`}
       alt=""
       style={{ width:size, height: size * 0.75, objectFit:'cover', borderRadius:2, display:'inline-block', verticalAlign:'middle', flexShrink:0 }}
@@ -2645,7 +2646,8 @@ const css = `
   /* Protection explicite du travail photographique existant : les photos de
      classement et de profil ne sont jamais rapetissées par la refonte. */
   .car-thumb { width: 52px; height: 38px; }
-  .dashboard-ranking img { min-width: 90px; min-height: 60px; }
+  .dashboard-ranking-photo img { min-width: 90px; min-height: 60px; }
+  .country-flag { max-width: none; min-width: 0 !important; min-height: 0 !important; }
   .dashboard-feature img { min-height: 180px; max-height: none; width: 100%; object-fit: cover; }
   .dashboard-secondary img { min-height: 100px; height: auto !important; width: 100%; object-fit: cover; }
 
@@ -2882,10 +2884,62 @@ const css = `
     border-bottom: 1px solid rgba(255,255,255,.065);
     font-size: 12px !important;
   }
+  .dashboard-ranking-row { min-width: 0; }
+  .dashboard-ranking-copy,
+  .dashboard-ranking-name,
+  .dashboard-ranking-brand { min-width: 0; }
+
+  /* Catalogue : groupes distincts afin que les filtres restent toujours
+     accessibles, même sur un écran étroit. */
+  .catalog-toolbar {
+    display: grid !important;
+    grid-template-columns: auto auto 1fr;
+    align-items: center;
+    gap: 10px !important;
+  }
+  .catalog-search-row,
+  .catalog-admin-actions,
+  .catalog-league-filters { display: flex; align-items: center; gap: 8px; }
+  .catalog-search-row input { width: 210px; }
+  .catalog-result-count { white-space: nowrap; }
+  .catalog-admin-actions { flex-wrap: wrap; }
+  .catalog-league-filters { flex-wrap: wrap; }
+  .catalog-mobile-filter { display: none; }
 
   @media (max-width: 767px) {
     body::before { background-size: 38px 38px; }
-    .primary-nav { min-height: 52px; }
+    .header {
+      gap: 6px;
+      padding: 5px 8px;
+      overflow: hidden;
+    }
+    .header-logo {
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-size: clamp(14px,4.3vw,19px);
+      letter-spacing: 1.5px;
+    }
+    .header-logo img { margin-right: 5px !important; }
+    .header-actions { gap: 5px; }
+    .header-actions > div { gap: 5px !important; }
+    .header-public-badge,
+    .header-login-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: 0 0 40px;
+      width: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      padding: 0 !important;
+      overflow: hidden;
+      border-radius: 8px !important;
+    }
+    .header-public-label,
+    .header-login-label { display: none; }
+    .primary-nav { position: relative; top: auto; min-height: 52px; box-shadow: 0 8px 20px rgba(0,0,0,.22); }
     .content { padding-inline: 10px; }
     .dashboard-hero {
       display: block;
@@ -2920,6 +2974,87 @@ const css = `
     .dashboard-secondary,
     .dashboard-ranking { border-radius: 11px !important; }
     .dashboard-secondary:hover { transform: none; }
+    .dashboard-ranking { padding: 10px !important; }
+    .dashboard-ranking-row { gap: 7px !important; }
+    .dashboard-ranking-photo { width: 82px !important; height: 56px !important; }
+    .dashboard-ranking-photo img { min-width: 82px; min-height: 56px; }
+    .dashboard-ranking-position { width: 20px !important; font-size: 19px !important; }
+    .dashboard-ranking-copy > div { gap: 5px !important; }
+    .dashboard-ranking .country-flag {
+      width: 16px !important;
+      height: 12px !important;
+      min-width: 16px !important;
+      min-height: 12px !important;
+      object-fit: cover;
+    }
+    .dashboard-ranking-name { flex: 1; font-size: 16px !important; }
+    .dashboard-ranking-brand { letter-spacing: .8px !important; }
+
+    .catalog-toolbar {
+      position: static;
+      top: auto;
+      display: flex !important;
+      flex-direction: column;
+      align-items: stretch !important;
+      gap: 9px !important;
+      padding: 10px !important;
+      border-radius: 0;
+      backdrop-filter: none;
+      box-shadow: none;
+    }
+    .catalog-search-row {
+      display: grid;
+      grid-template-columns: minmax(0,1fr) auto;
+      gap: 8px;
+      width: 100%;
+    }
+    .catalog-search-row input { width: 100%; min-width: 0; }
+    .catalog-result-count {
+      display: flex;
+      align-items: center;
+      padding-inline: 4px;
+      font-size: 12px !important;
+    }
+    .catalog-admin-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      width: 100%;
+    }
+    .catalog-admin-actions .btn { white-space: normal; min-width: 0; }
+    .catalog-mobile-filter {
+      display: grid;
+      grid-template-columns: auto minmax(0,1fr);
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 7px 9px;
+      border: 1px solid rgba(212,175,55,.22);
+      border-radius: 8px;
+      background: rgba(212,175,55,.055);
+      color: var(--gold);
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1.5px;
+    }
+    .catalog-mobile-filter select { width: 100%; min-width: 0; }
+    .catalog-league-filters { display: none; }
+    .catalog-alphabet {
+      position: static !important;
+      top: auto !important;
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      scrollbar-width: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .catalog-alphabet::-webkit-scrollbar { display: none; }
+    .catalog-alphabet .btn { flex: 0 0 auto; }
+    .catalog-status-tabs > button {
+      min-width: 0;
+      padding: 9px 4px !important;
+      font-size: 12px !important;
+      line-height: 1.15;
+      overflow-wrap: anywhere;
+    }
   }
 `;
 
@@ -7858,22 +7993,22 @@ function AppInner() {
                         const brand = e.id ? getCarBrand(e.id) : '';
                         const flagCode = brand ? getBrandCountry(brand) : '';
                         return (
-                          <div key={e.id || e.name}
+                          <div key={e.id || e.name} className="dashboard-ranking-row"
                             style={{ display:'flex',alignItems:'center',gap:10,cursor:e.id && !e.historicalOnly ? 'pointer' :'default',background:'var(--dark2)',borderRadius:6,overflow:'hidden',border:'1px solid var(--border)' }}
                             onClick={() => { if (e.id && !e.historicalOnly) openProfileCar({ leagueName: l, carId: e.id }); }}>
-                            <div style={{ width:90,height:60,flexShrink:0,background:'var(--dark3)',overflow:'hidden' }}>
+                            <div className="dashboard-ranking-photo" style={{ width:90,height:60,flexShrink:0,background:'var(--dark3)',overflow:'hidden' }}>
                               {photo
                                 ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
                                 : <div style={{ width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:28 }}>🚗</div>}
                             </div>
-                            <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
-                            <div style={{ flex:1,display:'flex',flexDirection:'column',gap:1,minWidth:0 }}>
+                            <span className="dashboard-ranking-position" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',width:24,textAlign:'center',flexShrink:0 }}>{i + 1}</span>
+                            <div className="dashboard-ranking-copy" style={{ flex:1,display:'flex',flexDirection:'column',gap:1,minWidth:0 }}>
                               <div style={{ display:'flex',alignItems:'center',gap:6 }}>
                                 {flagCode && <CountryFlag code={flagCode} size={16} />}
-                                <span style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{e.name}</span>
+                                <span className="dashboard-ranking-name" style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:17,letterSpacing:1,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{e.name}</span>
                               </div>
                               {brand && (
-                                <span style={{ fontSize:10,color:'var(--text-dim)',letterSpacing:1.5,textTransform:'uppercase',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{brand}</span>
+                                <span className="dashboard-ranking-brand" style={{ fontSize:10,color:'var(--text-dim)',letterSpacing:1.5,textTransform:'uppercase',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{brand}</span>
                               )}
                             </div>
                             {diff !== null && diff !== 0 && (
@@ -14284,7 +14419,7 @@ function AppInner() {
       <div>
         <h1 className="section-title">Voitures — Toutes les ligues</h1>
         {/* Onglets Actives / RIP / File d'attente */}
-        <div style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
+        <div className="catalog-status-tabs" style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
           <button onClick={() => { setRipTab(false); setVoituresQueueTab(false); }} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,background:'transparent',border:'none',borderBottom: (!ripTab && !voituresQueueTab) ? '2px solid var(--gold)' :'2px solid transparent',color: (!ripTab && !voituresQueueTab) ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
             🏎️ Actives ({filtered.length})
           </button>
@@ -14391,53 +14526,67 @@ function AppInner() {
           </div>
         ) : (
           <div className="card">
-          <div className="catalog-toolbar" style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)',display:'flex',gap:10,alignItems:'center',flexWrap:'wrap' }}>
-            <input
-              aria-label="Rechercher une voiture"
-              placeholder="🔍 Rechercher..."
-              value={search}
-              onChange={e => setSearchPersist(e.target.value)}
-              style={{ width:200 }}
-            />
-            <span className="font-bebas" style={{ fontSize:13,color:'var(--text-dim)' }}>
-              {filtered.length} voitures
-            </span>
+          <div className="catalog-toolbar" style={{ padding:'8px 12px',borderBottom:'1px solid var(--border)' }}>
+            <div className="catalog-search-row">
+              <input
+                aria-label="Rechercher une voiture"
+                placeholder="🔍 Rechercher..."
+                value={search}
+                onChange={e => setSearchPersist(e.target.value)}
+              />
+              <span className="font-bebas catalog-result-count" style={{ fontSize:13,color:'var(--text-dim)' }}>
+                {filtered.length} voitures
+              </span>
+            </div>
+
             {!isPublicMode && (
-              <button className={`btn btn-xs ${noBrandOnly ? 'btn-gold' : 'btn-dark'}`}
-                onClick={() => setNoBrandOnly(v => !v)}>
-                🏷️ Sans marque
-              </button>
-            )}
-            {!isPublicMode && (
-              <button className="btn btn-xs btn-gold"
-                onClick={() => {
-                  const list = [];
-                  [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
-                    const leagueCars = currentSeason.leagues[league]?.cars || [];
-                    leagueCars.forEach(c => {
-                      if (c.id && !getCarBrand(c.id)) {
-                        list.push({ carId: c.id, carName: c.name, photo: getCarPhoto(c.id) });
-                      }
+              <div className="catalog-admin-actions">
+                <button className={`btn btn-xs ${noBrandOnly ? 'btn-gold' : 'btn-dark'}`}
+                  onClick={() => setNoBrandOnly(v => !v)}>
+                  🏷️ Sans marque
+                </button>
+                <button className="btn btn-xs btn-gold"
+                  onClick={() => {
+                    const list = [];
+                    [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(league => {
+                      const leagueCars = currentSeason.leagues[league]?.cars || [];
+                      leagueCars.forEach(c => {
+                        if (c.id && !getCarBrand(c.id)) {
+                          list.push({ carId: c.id, carName: c.name, photo: getCarPhoto(c.id) });
+                        }
+                      });
                     });
-                  });
-                  list.sort((a, b) => a.carName.localeCompare(b.carName));
-                  if (!list.length) { alert('Toutes les voitures ont déjà une marque ! 🎉'); return; }
-                  startBrandQueue(list);
-                }}>
-                ▶️ Ajouter les marques
-              </button>
+                    list.sort((a, b) => a.carName.localeCompare(b.carName));
+                    if (!list.length) { alert('Toutes les voitures ont déjà une marque ! 🎉'); return; }
+                    startBrandQueue(list);
+                  }}>
+                  ▶️ Ajouter les marques
+                </button>
+              </div>
             )}
-            {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
-              <button key={l} onClick={() => setLeagueFilter(l)}
-                className={`btn btn-xs ${leagueFilter === l ? 'btn-gold' : 'btn-dark'}`}
-                style={{ borderLeft:l !== 'Toutes' ? `3px solid ${leagueColors[l] || '#9b59b6'}` :undefined }}>
-                {l === 'Toutes' ? 'Toutes' : l.replace('Voitures ', 'V')}
-              </button>
-            ))}
+
+            <label className="catalog-mobile-filter">
+              <span>Ligue</span>
+              <select aria-label="Filtrer les voitures par ligue" value={leagueFilter} onChange={e => setLeagueFilter(e.target.value)}>
+                {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
+                  <option key={l} value={l}>{l === 'Toutes' ? 'Toutes les ligues' : l}</option>
+                ))}
+              </select>
+            </label>
+
+            <div className="catalog-league-filters" aria-label="Filtres par ligue">
+              {['Toutes', ...LEAGUES, ...AUXILIARY_LEAGUES].map(l => (
+                <button key={l} onClick={() => setLeagueFilter(l)}
+                  className={`btn btn-xs ${leagueFilter === l ? 'btn-gold' : 'btn-dark'}`}
+                  style={{ borderLeft:l !== 'Toutes' ? `3px solid ${leagueColors[l] || '#9b59b6'}` :undefined }}>
+                  {l === 'Toutes' ? 'Toutes' : l.replace('Voitures ', 'V')}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Barre alphabet */}
-          <div style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
+          <div className="catalog-alphabet" style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
             <button className="btn btn-xs"
               style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,padding:'2px 8px',
                 background: displayLetter === 'TOUS' ? 'var(--gold)' : 'var(--dark3)',
@@ -17704,10 +17853,10 @@ function AppInner() {
           <div className="header-actions">
             {isPublicMode ? (
               <div style={{ display:'flex',alignItems:'center',gap:8 }}>
-                <span style={{ background:'rgba(39,174,96,0.2)',border:'1px solid var(--green)',color:'var(--green)',borderRadius:4,padding:'4px 10px',fontSize:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>
-                  👁 VUE PUBLIQUE
+                <span className="header-public-badge" style={{ background:'rgba(39,174,96,0.2)',border:'1px solid var(--green)',color:'var(--green)',borderRadius:4,padding:'4px 10px',fontSize:12,fontFamily:"'Bebas Neue',sans-serif",letterSpacing:1 }}>
+                  <span aria-hidden="true">👁</span><span className="header-public-label"> VUE PUBLIQUE</span>
                 </span>
-                <button className="btn btn-sm" style={{ background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }}
+                <button aria-label="Connexion administrateur" className="btn btn-sm header-login-button" style={{ background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }}
                   disabled={adminAttempts >= 5}
                   onClick={async () => {
                     if (adminAttempts >= 5) return;
@@ -17722,7 +17871,7 @@ function AppInner() {
                       alert(nextAttempts >= 5 ? '🔒 Connexion temporairement verrouillée. Recharge la page pour réessayer.' : '❌ Mot de passe incorrect');
                     }
                   }}>
-                  {adminAttempts >= 5 ? '🔒 Verrouillé' : '🔒 Connexion'}
+                  <span aria-hidden="true">🔒</span><span className="header-login-label">{adminAttempts >= 5 ? ' Verrouillé' : ' Connexion'}</span>
                 </button>
               </div>
             ) : (
