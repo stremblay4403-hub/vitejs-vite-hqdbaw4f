@@ -2577,6 +2577,95 @@ const css = `
     .header-actions > div > span { display: none; }
     .car-catalog-grid { grid-template-columns: 1fr; }
   }
+
+  /* Navigation adaptative : raccourcis complets sur grand écran, parcours compact
+     historique sur téléphone. Aucune destination ni logique n'est remplacée. */
+  .primary-nav {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px clamp(12px, 2vw, 28px);
+    border-bottom: 1px solid var(--hairline);
+    background: rgba(10,10,10,.96);
+  }
+  .primary-nav-links { display: flex; align-items: center; gap: 4px; min-width: 0; }
+  .primary-nav-link {
+    min-height: 38px;
+    padding-inline: 13px;
+    color: var(--text-dim);
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    font-family: 'Rajdhani', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: .5px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .primary-nav-link:hover { color: var(--text); background: rgba(255,255,255,.045); }
+  .primary-nav-link.active {
+    color: var(--gold);
+    background: rgba(212,175,55,.09);
+    border-color: rgba(212,175,55,.26);
+  }
+  .primary-nav-menu-button { flex-shrink: 0; }
+  .league-menu-sections { display: flex; flex-direction: column; gap: 24px; }
+  .league-menu-section-title {
+    margin: 0 0 10px;
+    color: var(--text-dim);
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 14px;
+    letter-spacing: 2px;
+  }
+  .league-menu-section .menu-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .league-context-nav {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 9px clamp(12px, 2vw, 28px);
+    background: rgba(18,18,18,.96);
+    border-bottom: 1px solid var(--hairline);
+  }
+  .league-context-group { display: flex; align-items: center; gap: 5px; }
+  .league-context-divider { width: 1px; height: 28px; background: var(--hairline); }
+  .league-context-button {
+    min-height: 34px;
+    padding: 6px 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--dark2);
+    color: var(--text-dim);
+    font-family: 'Rajdhani', sans-serif;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .league-context-button.active { color: #111; background: var(--context-color, var(--gold)); border-color: var(--context-color, var(--gold)); }
+
+  /* Protection explicite du travail photographique existant : les photos de
+     classement et de profil ne sont jamais rapetissées par la refonte. */
+  .car-thumb { width: 52px; height: 38px; }
+  .dashboard-ranking img { min-width: 90px; min-height: 60px; }
+  .dashboard-feature img { min-height: 180px; max-height: none; width: 100%; object-fit: cover; }
+  .dashboard-secondary img { min-height: 100px; height: auto !important; width: 100%; object-fit: cover; }
+
+  @media (min-width: 768px) {
+    .primary-nav-menu-button { display: none !important; }
+    .primary-nav-back { display: none !important; }
+    .league-menu-section .menu-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  }
+  @media (max-width: 767px) {
+    .primary-nav { padding: 8px 10px; }
+    .primary-nav-links { display: none; }
+    .primary-nav-menu-button { display: flex; }
+    .league-menu-sections { gap: 18px; }
+    .league-menu-section-title { font-size: 13px; margin-bottom: 8px; }
+    .league-context-nav { display: none; }
+    /* Sur téléphone, les tailles et compositions photographiques déjà validées
+       restent celles de la version précédente. */
+    .dashboard-feature img,
+    .dashboard-secondary img { min-height: 0; }
+  }
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
@@ -17487,16 +17576,39 @@ function AppInner() {
           )}
         </div>
 
-        {/* Barre principale simplifiée — Tableau de Bord + bouton menu (grille des sections) */}
-        <div style={{ display:'flex', gap:8, padding:'10px 24px', borderBottom:'1px solid var(--border)', background:'var(--dark)', alignItems:'center' }}>
+        {/* Navigation adaptative : complète sur ordinateur, compacte sur téléphone. */}
+        <div className="primary-nav">
           <button
-            className="btn btn-sm"
+            className="btn btn-sm primary-nav-home"
             style={{ background: (mainTab === 'dashboard' && !menuOpen) ? 'var(--gold)' : 'var(--dark3)', color: (mainTab === 'dashboard' && !menuOpen) ? '#1a1305' : 'var(--text)', fontWeight:700 }}
             onClick={() => { setMainTab('dashboard'); setMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
             🏠 Tableau de Bord
           </button>
+          <div className="primary-nav-links" aria-label="Navigation principale">
+            {[
+              { key:'ligues', label:'Ligues', icon:'🏁' },
+              { key:'bonus', label:'Points Annexes', icon:'⭐' },
+              { key:'voitures', label:'Voitures', icon:'🚗' },
+              { key:'marques', label:'Marques', icon:'🏷️' },
+              { key:'pays', label:'Pays', icon:'🌍' },
+              { key:'historique', label:'Historique', icon:'📜' },
+            ].map(t => (
+              <button key={t.key}
+                className={`primary-nav-link ${mainTab === t.key && !menuOpen ? 'active' : ''}`}
+                onClick={() => {
+                  setMainTab(t.key);
+                  setMenuOpen(false);
+                  if (t.key === 'ligues') setLiguesMenuOpen(true);
+                  if (t.key === 'bonus') setLeagueMenuOpen(true);
+                  requestAnimationFrame(() => window.scrollTo(0, 0));
+                }}>
+                {t.icon} {t.label}
+              </button>
+            ))}
+          </div>
           <button
             aria-label="Menu"
+            className="primary-nav-menu-button"
             style={{ width:40, height:32, display:'flex',alignItems:'center',justifyContent:'center', background: menuOpen ? 'var(--gold)' : 'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, cursor:'pointer', gap:3, flexDirection:'column' }}
             onClick={() => { setMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setMenuOpen(false)); }}>
             <div style={{ display:'grid', gridTemplateColumns:'repeat(2, 5px)', gridTemplateRows:'repeat(2, 5px)', gap:3 }}>
@@ -17504,7 +17616,7 @@ function AppInner() {
             </div>
           </button>
           {!menuOpen && mainTab !== 'dashboard' && (
-            <button className="btn btn-dark btn-sm" style={{ marginLeft:'auto' }} onClick={navBack}>← Retour au menu</button>
+            <button className="btn btn-dark btn-sm primary-nav-back" style={{ marginLeft:'auto' }} onClick={navBack}>← Retour au menu</button>
           )}
         </div>
 
@@ -17602,56 +17714,73 @@ function AppInner() {
           return (
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>Ligues</div>
-            <div className="menu-grid">
+            <div className="league-menu-sections">
               {[
-                { key: 'champions', label: '🏆 Tournoi des Champions' },
-                { key: 'principales', label: 'Ligues Principales' },
-                { key: 'successeurs', label: 'Successeurs' },
-                { key: 'actuelles', label: 'Actuelles' },
-                { key: 'sucsucc', label: 'Succ. aux Succ.' },
-                { key: 'remplac', label: 'Remplaçants' },
-                { key: 'avantdern', label: 'Avant-dernière' },
-                { key: 'derniere', label: 'Dernière chance' },
-                { key: 'persev', label: 'Persévérance' },
-                { key: 'deter', label: 'Détermination' },
-                { key: 'acharn', label: 'Acharnement' },
-                { key: 'obstin', label: 'Obstination' },
-                { key: 'insist', label: 'Insistance' },
-                { key: 'comeback', label: 'Comeback' },
-                { key: 'import', label: 'Importation' },
-                { key: 'oubl', label: 'Oubliettes' },
-              ].map(t => {
-                const { total, played } = getProgress(t.key);
-                const done = total > 0 && played === total;
-                return (
-                <button key={t.key}
-                  onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); if (t.key === 'principales') { setLeagueMenuOpen(true); setSectionMenuOpen(true); } if (t.key === 'actuelles') setActuellesMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setLiguesMenuOpen(true)); }}
-                  style={{
-                    position:'relative',
-                    aspectRatio:'1.3',
-                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
-                    background: LIGUE_SUBTAB_COLORS[t.key] ? `${LIGUE_SUBTAB_COLORS[t.key]}22` : 'var(--dark2)',
-                    border:`1px solid ${LIGUE_SUBTAB_COLORS[t.key] || 'var(--border)'}`, borderRadius:10,
-                    color:'var(--text)', cursor:'pointer', textAlign:'center', padding:8,
-                  }}>
-                  {total > 0 && (
-                    <span style={{
-                      position:'absolute', top:8, right:8,
-                      fontSize:done ? 13 : 11, fontWeight:700,
-                      color: done ? 'var(--green)' : 'var(--text-dim)',
-                      background: done ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)',
-                      borderRadius:done ? '50%' : 6,
-                      width: done ? 22 : undefined, height: done ? 22 : undefined,
-                      display:'flex', alignItems:'center', justifyContent:'center',
-                      padding: done ? 0 : '2px 6px',
-                    }}>
-                      {done ? '✓' : `${played}/${total}`}
-                    </span>
-                  )}
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1 }}>{t.label}</span>
-                </button>
-                );
-              })}
+                { title:'Compétitions majeures', items:[
+                  { key:'champions', label:'🏆 Tournoi des Champions' },
+                  { key:'principales', label:'Ligues Principales' },
+                ]},
+                { title:'Relève', items:[
+                  { key:'successeurs', label:'Successeurs' },
+                  { key:'actuelles', label:'Actuelles' },
+                  { key:'sucsucc', label:'Succ. aux Succ.' },
+                ]},
+                { title:'Repêchage', items:[
+                  { key:'remplac', label:'Remplaçants' },
+                  { key:'avantdern', label:'Avant-dernière' },
+                  { key:'derniere', label:'Dernière chance' },
+                ]},
+                { title:'Persistance', items:[
+                  { key:'persev', label:'Persévérance' },
+                  { key:'deter', label:'Détermination' },
+                  { key:'acharn', label:'Acharnement' },
+                  { key:'obstin', label:'Obstination' },
+                  { key:'insist', label:'Insistance' },
+                ]},
+                { title:'Retour et archives', items:[
+                  { key:'comeback', label:'Comeback' },
+                  { key:'import', label:'Importation' },
+                  { key:'oubl', label:'Oubliettes' },
+                ]},
+              ].map(group => (
+                <section className="league-menu-section" key={group.title}>
+                  <h2 className="league-menu-section-title">{group.title}</h2>
+                  <div className="menu-grid">
+                    {group.items.map(t => {
+                      const { total, played } = getProgress(t.key);
+                      const done = total > 0 && played === total;
+                      return (
+                        <button key={t.key}
+                          onClick={() => { setLigueSubTab(t.key); setLiguesMenuOpen(false); if (t.key === 'principales') { setLeagueMenuOpen(true); setSectionMenuOpen(true); } if (t.key === 'actuelles') setActuellesMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setLiguesMenuOpen(true)); }}
+                          style={{
+                            position:'relative',
+                            minHeight:112,
+                            display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
+                            background: LIGUE_SUBTAB_COLORS[t.key] ? `${LIGUE_SUBTAB_COLORS[t.key]}22` : 'var(--dark2)',
+                            border:`1px solid ${LIGUE_SUBTAB_COLORS[t.key] || 'var(--border)'}`, borderRadius:10,
+                            color:'var(--text)', cursor:'pointer', textAlign:'center', padding:12,
+                          }}>
+                          {total > 0 && (
+                            <span style={{
+                              position:'absolute', top:8, right:8,
+                              fontSize:done ? 13 : 11, fontWeight:700,
+                              color: done ? 'var(--green)' : 'var(--text-dim)',
+                              background: done ? 'rgba(39,174,96,0.15)' : 'rgba(255,255,255,0.06)',
+                              borderRadius:done ? '50%' : 6,
+                              width: done ? 22 : undefined, height: done ? 22 : undefined,
+                              display:'flex', alignItems:'center', justifyContent:'center',
+                              padding: done ? 0 : '2px 6px',
+                            }}>
+                              {done ? '✓' : `${played}/${total}`}
+                            </span>
+                          )}
+                          <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1 }}>{t.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           </div>
           );
@@ -17799,6 +17928,37 @@ function AppInner() {
                 {t.label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Grand écran seulement : accès direct entre ligues et sections existantes.
+            Le téléphone conserve son parcours compact et ses écrans intermédiaires. */}
+        {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && (
+          <div className="league-context-nav" aria-label="Navigation de la ligue principale">
+            <div className="league-context-group">
+              {LEAGUES.map(l => (
+                <button key={l}
+                  className={`league-context-button ${leagueTab === l ? 'active' : ''}`}
+                  style={{ '--context-color': MAIN_LEAGUE_COLORS[l] }}
+                  onClick={() => { setLeagueTab(l); setGroupOpenDay(null); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
+                  {l.replace('Voitures ', 'V')}
+                </button>
+              ))}
+            </div>
+            <span className="league-context-divider" />
+            <div className="league-context-group">
+              {[
+                { key:'groupes', label:'Groupes' },
+                { key:'playoffs', label:'Playoffs' },
+                { key:'relegation', label:'Barrage' },
+              ].map(t => (
+                <button key={t.key}
+                  className={`league-context-button ${sectionTab === t.key ? 'active' : ''}`}
+                  onClick={() => { setSectionTab(t.key); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
