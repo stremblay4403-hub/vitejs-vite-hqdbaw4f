@@ -2106,7 +2106,8 @@ const css = `
   .champ-seasons-reveal .badge:nth-child(9) { animation-delay: 0.40s; }
   .champ-seasons-reveal .badge:nth-child(10) { animation-delay: 0.45s; }
 
-  /* Car profile — mise en page verticale (photo / nom / stats empilés) — TEST: appliqué à toutes les tailles pour l'instant, remettre "768px" pour repasser desktop-only */
+  /* Profil — l'ouverture et les animations restent identiques. La fiche demeure
+     verticale sur téléphone et utilise simplement mieux l'espace sur ordinateur. */
   @media (min-width: 0px) {
     .car-profile-card { max-width: 480px; }
     .car-profile-header {
@@ -2126,6 +2127,35 @@ const css = `
     .car-profile-actions { position: absolute; top: 12px; right: 12px; z-index: 2; }
     .car-profile-actions .btn { background: rgba(0,0,0,0.55); backdrop-filter: blur(3px); }
     .car-stat-grid { grid-template-columns: 1fr 1fr 1fr; gap: 10px; padding: 20px; }
+  }
+
+  @media (min-width: 900px) {
+    .car-profile-modal { padding: 32px; }
+    .car-profile-card { max-width: 960px; max-height: 92vh; }
+    .car-profile-header {
+      min-height: 300px;
+      flex-direction: row;
+      align-items: stretch;
+      text-align: left;
+      padding: 0;
+    }
+    .car-photo-box {
+      width: 56%;
+      height: auto;
+      min-height: 300px;
+      border-radius: 10px 0 0 0;
+    }
+    .car-profile-info {
+      width: 44%;
+      margin-top: 0;
+      padding: 38px 42px 30px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .car-profile-badges { justify-content: flex-start; }
+    .car-stat-grid { max-width: 760px; margin: 0 auto; }
   }
 
   /* Sim buttons */
@@ -2390,6 +2420,162 @@ const css = `
     .content { padding:12px 10px 28px; }
     .car-catalog-grid { grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
     .catalog-toolbar { top:48px; }
+  }
+
+  /* ── Direction visuelle 2026 : cockpit sportif plus calme et hiérarchisé ── */
+  :root {
+    --surface-1: rgba(20,20,20,.92);
+    --surface-2: rgba(27,27,27,.86);
+    --surface-hover: rgba(212,175,55,.075);
+    --hairline: rgba(255,255,255,.075);
+  }
+  body {
+    background:
+      radial-gradient(circle at 12% -10%, rgba(212,175,55,.095), transparent 32rem),
+      radial-gradient(circle at 92% 20%, rgba(69,115,145,.055), transparent 30rem),
+      #080808;
+  }
+  .header {
+    min-height: 62px;
+    border-bottom-color: rgba(212,175,55,.48);
+    box-shadow: 0 10px 35px rgba(0,0,0,.42), 0 1px 0 rgba(255,255,255,.035) inset;
+  }
+  .header-logo { line-height: 1; }
+  .season-bar {
+    border-bottom-color: var(--hairline);
+    background: rgba(11,11,11,.94);
+    backdrop-filter: blur(16px);
+  }
+  .content { padding-top: 26px; }
+  .section-title {
+    position: relative;
+    margin-bottom: 22px;
+    padding-left: 16px;
+    font-size: clamp(24px, 2.2vw, 34px);
+    letter-spacing: 3.5px;
+    line-height: 1.08;
+  }
+  .section-title::after {
+    content: '';
+    display: block;
+    width: min(180px, 42vw);
+    height: 1px;
+    margin-top: 9px;
+    background: linear-gradient(90deg, rgba(212,175,55,.72), transparent);
+  }
+  .card {
+    background: linear-gradient(145deg, rgba(29,29,29,.94), rgba(13,13,13,.96));
+    border-color: var(--hairline);
+    border-radius: 10px;
+    box-shadow: 0 18px 45px rgba(0,0,0,.24), inset 0 1px rgba(255,255,255,.025);
+  }
+  .card:hover { border-color: rgba(212,175,55,.2); }
+  .card-header {
+    min-height: 58px;
+    padding: 14px 18px;
+    background: linear-gradient(90deg, rgba(34,34,34,.95), rgba(19,19,19,.86));
+    border-bottom-color: var(--hairline);
+  }
+  .card-body { padding: 18px; }
+  .btn { min-height: 40px; border-radius: 6px; }
+  .btn-sm { min-height: 36px; }
+  input, select { border-radius: 7px; }
+  .tbl { background: rgba(10,10,10,.3); }
+  .tbl th { position: sticky; top: 0; z-index: 1; background: #202020; }
+  .tbl td { border-bottom-color: rgba(255,255,255,.055); }
+  .tbl tbody tr { transition: background .16s ease, filter .16s ease; }
+  .tbl tbody tr:hover { filter: brightness(1.07); }
+
+  /* Le tableau de bord garde exactement les mêmes données, dans une composition
+     plus courte : vedettes à gauche, classement cumulatif à droite. */
+  .dashboard-leagues { display: flex; flex-direction: column; gap: 20px; }
+  .dashboard-league-card { overflow: visible; }
+  .dashboard-league-body { gap: 14px !important; }
+  .dashboard-feature,
+  .dashboard-secondary,
+  .dashboard-ranking {
+    border: 1px solid rgba(255,255,255,.055);
+    border-radius: 8px !important;
+    background: rgba(10,10,10,.38) !important;
+  }
+  .dashboard-feature { overflow: hidden; }
+  .dashboard-feature img,
+  .dashboard-secondary img { transition: transform .4s cubic-bezier(.22,1,.36,1), filter .3s ease; }
+  .dashboard-feature:hover img,
+  .dashboard-secondary:hover img { transform: scale(1.025); filter: brightness(1.06); }
+  @media (min-width: 1000px) {
+    .dashboard-league-body {
+      display: grid !important;
+      grid-template-columns: minmax(280px,.72fr) minmax(0,1.5fr);
+      grid-template-rows: auto 1fr;
+      align-items: start;
+    }
+    .dashboard-feature { grid-column: 1; grid-row: 1; }
+    .dashboard-secondary-grid { grid-column: 1; grid-row: 2; }
+    .dashboard-ranking { grid-column: 2; grid-row: 1 / span 2; }
+    .dashboard-feature img { max-height: 238px; object-fit: cover; object-position: center; }
+    .dashboard-secondary img { height: 105px !important; object-fit: cover; }
+  }
+
+  /* Catalogue : moins de bruit, photos plus présentes, filtres conservés. */
+  .catalog-toolbar {
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    box-shadow: 0 14px 35px rgba(0,0,0,.3);
+  }
+  .car-catalog-grid { grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap: 14px; }
+  .car-catalog-card {
+    border-width: 1px !important;
+    border-radius: 9px !important;
+    box-shadow: 0 10px 25px rgba(0,0,0,.22);
+    transition: transform .2s cubic-bezier(.22,1,.36,1), box-shadow .2s ease, border-color .2s ease;
+  }
+  .car-catalog-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 18px 36px rgba(0,0,0,.38), 0 0 0 1px rgba(212,175,55,.12);
+  }
+  .car-catalog-card img { transition: transform .45s cubic-bezier(.22,1,.36,1), filter .3s ease; }
+  .car-catalog-card:hover img { transform: scale(1.035); filter: saturate(1.06) brightness(1.04); }
+
+  /* Le profil conserve l'animation d'origine et devient une vraie fiche sur grand écran. */
+  .car-profile-modal { background: rgba(0,0,0,.86); backdrop-filter: blur(8px); }
+  .car-profile-card { border-color: rgba(212,175,55,.58); box-shadow: 0 30px 90px rgba(0,0,0,.75), 0 0 45px rgba(212,175,55,.09); }
+  .car-stat-item { border: 1px solid rgba(255,255,255,.045); border-radius: 7px; }
+
+  @media (max-width: 767px) {
+    .header { min-height: 52px; }
+    .header-logo img { width: 30px !important; height: 30px !important; }
+    .header-divider { display: none; }
+    .header-actions { margin-left: auto; }
+    .header-actions > div { gap: 5px !important; }
+    .header-actions > div > span { padding: 4px 7px !important; font-size: 10px !important; }
+    .season-bar { padding: 8px 10px; gap: 6px; }
+    .season-label { position: sticky; left: 0; z-index: 2; background: #0b0b0b; padding-right: 5px; }
+    .tabs { padding-inline: 10px; }
+    #tabs-main .tab { padding: 12px 15px; }
+    .content { padding-top: 18px; }
+    .section-title { font-size: 24px; margin-bottom: 18px; }
+    .card-header { min-height: 52px; padding: 12px 14px; }
+    .card-body { padding: 12px; }
+    .dashboard-leagues { gap: 14px; }
+    .dashboard-league-body { gap: 10px !important; }
+    .car-profile-modal { padding: 0; align-items: stretch; }
+    .car-profile-card { max-width: none; max-height: 100dvh; min-height: 100dvh; border: 0; border-radius: 0; }
+    .car-profile-card.is-champion .car-profile-header,
+    .car-photo-box { border-radius: 0; }
+    .car-photo-box { height: min(260px, 34dvh); }
+    .car-profile-info { padding-inline: 18px; }
+    .car-stat-grid { gap: 7px; padding: 14px 12px; }
+    .car-stat-item { padding: 9px 5px; }
+    .car-stat-item .val { font-size: 20px; }
+    .car-stat-item .lbl { font-size: 9px; letter-spacing: .7px; }
+    .car-catalog-grid { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+    .car-catalog-card:hover { transform: none; }
+  }
+  @media (max-width: 370px) {
+    .header-logo { font-size: 17px; }
+    .header-actions > div > span { display: none; }
+    .car-catalog-grid { grid-template-columns: 1fr; }
   }
 `;
 
@@ -7151,10 +7337,10 @@ function AppInner() {
 
   function Dashboard() {
     return (
-      <div>
+      <div className="dashboard-shell">
         <h1 className="section-title">Tableau de Bord — Saison {currentSeason.season}</h1>
 
-        <div style={{ display:'flex',flexDirection:'column',gap:16 }}>
+        <div className="dashboard-leagues" style={{ display:'flex',flexDirection:'column',gap:16 }}>
           {LEAGUES.map(l => {
             const champId = currentSeason.champions[l];
             const relId = currentSeason.relegated[l];
@@ -7185,7 +7371,7 @@ function AppInner() {
               .slice(0, 5);
 
             return (
-              <div key={l} className="card">
+              <div key={l} className="card dashboard-league-card">
                 <div className="card-header">
                   <div className="card-title">{l}</div>
                   <div style={{ flex:1 }} />
@@ -7196,10 +7382,10 @@ function AppInner() {
                     <span className="text-dim" style={{ fontSize:11 }}>{played}/{total} ({pct}%)</span>
                   </div>
                 </div>
-                <div className="card-body" style={{ display:'flex',flexDirection:'column',gap:12 }}>
+                <div className="card-body dashboard-league-body" style={{ display:'flex',flexDirection:'column',gap:12 }}>
 
                   {/* Champion playoff — pleine largeur en haut */}
-                  <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
+                  <div className="dashboard-feature" style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>🏆 Champion Playoff</div>
                     {champ ? (
                       <>
@@ -7225,10 +7411,10 @@ function AppInner() {
                   </div>
 
                   {/* Z et Relégué — côte à côte */}
-                  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'stretch' }}>
+                  <div className="dashboard-secondary-grid" style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,alignItems:'stretch' }}>
 
                     {/* Z — Meilleur de la ligue */}
-                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
+                    <div className="dashboard-secondary" style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
                       <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8 }}>
                         <span style={{ background:'#c9a84c',color:'#000',borderRadius:2,padding:'0 4px',fontSize:10,marginRight:4 }}>Z</span>
                         {' '}Meilleur
@@ -7251,7 +7437,7 @@ function AppInner() {
                     </div>
 
                     {/* Relégué */}
-                    <div style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
+                    <div className="dashboard-secondary" style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column' }}>
                       <div style={{ fontSize:10,color:'#e74c3c',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,minHeight:16 }}>⬇ Relégué</div>
                       {rel ? (
                         <div style={{ display:'flex',flexDirection:'column',flex:1,cursor:'pointer' }}
@@ -7272,7 +7458,7 @@ function AppInner() {
                   </div>
 
                   {/* Top 5 pts annexes cumulatif — calculé en direct */}
-                  <div style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
+                  <div className="dashboard-ranking" style={{ background:'var(--dark3)',borderRadius:4,padding:10 }}>
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:10 }}>🏆 Classement Pts Annexes — Total Cumulatif</div>
                     {(() => {
                       const allBonus = computeAllSeasonsBonus(l);
