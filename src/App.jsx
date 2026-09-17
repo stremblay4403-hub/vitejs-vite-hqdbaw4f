@@ -2982,6 +2982,17 @@ const css = `
   .catalog-admin-actions { flex-wrap: wrap; }
   .catalog-league-filters { flex-wrap: wrap; }
   .catalog-mobile-filter { display: none; }
+  .catalog-alphabet {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    min-height: 50px;
+    align-items: center;
+    position: relative !important;
+    top: auto !important;
+    z-index: 2 !important;
+    background: linear-gradient(90deg, rgba(212,175,55,.055), rgba(16,16,16,.98) 28%, rgba(16,16,16,.98)) !important;
+  }
   .car-catalog-card > div:last-child {
     min-height: 60px;
     display: flex;
@@ -3160,10 +3171,20 @@ const css = `
     .dashboard-feature { grid-column: 1; grid-row: 1; }
     .dashboard-secondary-grid { grid-column: 2; grid-row: 1; align-self: stretch; }
     .dashboard-ranking { grid-column: 1 / -1; grid-row: 2; }
-    .dashboard-feature-photo,
-    .dashboard-secondary-photo { aspect-ratio: 16 / 9; }
+    .dashboard-feature,
+    .dashboard-secondary-grid { height: 100%; min-height: 0; }
+    .dashboard-feature-photo {
+      flex: 1 1 auto;
+      min-height: 250px;
+      aspect-ratio: auto;
+    }
+    .dashboard-secondary-photo {
+      flex: 1 1 auto;
+      min-height: 112px;
+      aspect-ratio: auto;
+    }
     .dashboard-secondary-grid { gap: 10px !important; height: 100%; }
-    .dashboard-secondary { min-width: 0; }
+    .dashboard-secondary { min-width: 0; min-height: 0; }
     .dashboard-mini-empty { min-height: 0; }
     .dashboard-ranking-row { gap: 7px !important; }
 
@@ -3173,6 +3194,15 @@ const css = `
     .catalog-admin-actions { width: 100%; }
     .catalog-league-filters { width: 100%; }
     .catalog-league-filters .btn { min-height: 38px; }
+    .catalog-alphabet {
+      flex-wrap: nowrap !important;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
+      padding-block: 10px !important;
+    }
+    .catalog-alphabet .btn { flex: 0 0 auto; min-height: 34px; }
 
     .car-profile-card { max-width: min(1040px, 96vw); }
     .car-profile-info { padding: 40px 44px 32px; }
@@ -3190,6 +3220,30 @@ const css = `
     .car-profile-card .car-stat-item { padding: 14px 10px; }
     .car-profile-card .car-stat-item .val { font-size: 26px; }
     .car-profile-card .car-stat-item:nth-child(5) .val { font-size: 34px; }
+  }
+
+  /* Grand écran : le top 20 fixe la hauteur de la rangée. Les trois cartes
+     photographiques occupent cette hauteur au lieu de laisser un vide à gauche. */
+  @media (min-width: 1181px) {
+    .dashboard-league-body {
+      grid-template-columns: minmax(360px,.8fr) minmax(0,1.55fr) !important;
+      grid-template-rows: minmax(0,1.42fr) minmax(0,.78fr) !important;
+      align-items: stretch !important;
+    }
+    .dashboard-feature,
+    .dashboard-secondary-grid,
+    .dashboard-secondary { min-height: 0; height: 100%; }
+    .dashboard-feature-photo {
+      flex: 1 1 auto;
+      min-height: 280px;
+      aspect-ratio: auto;
+    }
+    .dashboard-secondary-photo {
+      flex: 1 1 auto;
+      min-height: 145px;
+      aspect-ratio: auto;
+    }
+    .dashboard-secondary-grid { align-self: stretch; }
   }
 `;
 
