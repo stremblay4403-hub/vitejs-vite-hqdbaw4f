@@ -3245,6 +3245,106 @@ const css = `
     }
     .dashboard-secondary-grid { align-self: stretch; }
   }
+
+  /* Portails de navigation — présence visuelle sans modifier le comportement. */
+  .portal-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+  .portal-card {
+    --portal-accent:var(--gold); position:relative; min-height:154px; padding:22px;
+    display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-end; gap:5px;
+    overflow:hidden; text-align:left; color:var(--text); cursor:pointer;
+    border:1px solid color-mix(in srgb,var(--portal-accent) 55%,var(--border)); border-radius:14px;
+    background:linear-gradient(145deg,color-mix(in srgb,var(--portal-accent) 16%,transparent),transparent 58%),radial-gradient(circle at 86% 18%,color-mix(in srgb,var(--portal-accent) 17%,transparent),transparent 30%),var(--dark2);
+    box-shadow:inset 0 1px rgba(255,255,255,.035),0 12px 30px rgba(0,0,0,.22);
+    transition:transform .24s cubic-bezier(.22,1,.36,1),border-color .24s ease,box-shadow .24s ease;
+  }
+  .portal-card::before { content:''; position:absolute; inset:0; pointer-events:none; opacity:.26; background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px); background-size:24px 24px; mask-image:linear-gradient(to left,#000,transparent 78%); }
+  .portal-card::after { content:attr(data-index); position:absolute; top:4px; right:16px; font-family:'Bebas Neue',sans-serif; font-size:74px; line-height:1; color:var(--portal-accent); opacity:.08; pointer-events:none; }
+  .portal-card:hover { transform:translateY(-3px); border-color:var(--portal-accent); box-shadow:inset 0 1px rgba(255,255,255,.06),0 18px 38px rgba(0,0,0,.35),0 0 24px color-mix(in srgb,var(--portal-accent) 12%,transparent); }
+  .portal-card-icon { position:absolute; top:18px; left:20px; display:grid; place-items:center; width:42px; height:42px; border:1px solid color-mix(in srgb,var(--portal-accent) 45%,transparent); border-radius:12px; background:color-mix(in srgb,var(--portal-accent) 10%,rgba(0,0,0,.36)); font-size:20px; box-shadow:inset 0 1px rgba(255,255,255,.05); }
+  .portal-card-kicker { position:relative; color:var(--portal-accent); font-family:'Bebas Neue',sans-serif; font-size:11px; letter-spacing:2px; text-transform:uppercase; }
+  .portal-card-title { position:relative; font-family:'Bebas Neue',sans-serif; font-size:clamp(20px,2.2vw,28px); line-height:1; letter-spacing:1.2px; }
+  .portal-card-sub { position:relative; max-width:calc(100% - 34px); color:var(--text-dim); font-size:12px; line-height:1.3; }
+  .portal-card-arrow { position:absolute; right:18px; bottom:18px; color:var(--portal-accent); font-size:18px; transition:transform .2s ease; }
+  .portal-card:hover .portal-card-arrow { transform:translateX(4px); }
+
+  .comparison-view { max-width:1120px; margin:0 auto; }
+  .cmp-empty-stage { position:relative; min-height:230px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:18px; padding:22px; overflow:hidden; border:1px solid var(--border); border-radius:14px; background:radial-gradient(circle at 50% 50%,rgba(212,175,55,.09),transparent 45%),var(--dark2); }
+  .cmp-empty-car { min-height:152px; display:grid; place-items:center; align-content:center; gap:8px; border:1px dashed rgba(212,175,55,.32); border-radius:12px; color:var(--text-dim); background:rgba(255,255,255,.018); }
+  .cmp-empty-car span:first-child { font-size:38px; filter:grayscale(.35); opacity:.55; }
+  .cmp-empty-car strong { font-family:'Bebas Neue',sans-serif; letter-spacing:1.5px; font-size:16px; }
+  .cmp-empty-vs { width:52px; height:52px; display:grid; place-items:center; border:1px solid var(--gold-dim); border-radius:50%; background:#090909; color:var(--gold); font-family:'Bebas Neue',sans-serif; font-size:20px; box-shadow:0 0 28px rgba(212,175,55,.15); }
+  .cmp-empty-copy { grid-column:1/-1; text-align:center; color:var(--text-dim); font-size:12px; margin-top:-4px; }
+
+  .car-catalog-card { position:relative; }
+  .car-catalog-card::after { content:attr(data-league); position:absolute; top:9px; right:9px; z-index:2; padding:3px 7px; border:1px solid rgba(255,255,255,.18); border-radius:999px; background:rgba(5,5,5,.76); backdrop-filter:blur(6px); color:#fff; font-family:'Bebas Neue',sans-serif; font-size:11px; letter-spacing:1px; pointer-events:none; }
+  .car-profile-info { position:relative; isolation:isolate; overflow:hidden; }
+  .car-profile-info::before { content:''; position:absolute; inset:14% auto 14% 0; width:3px; border-radius:3px; background:linear-gradient(transparent,var(--gold),transparent); opacity:.7; }
+  .car-profile-info::after { content:''; position:absolute; z-index:-1; width:210px; height:210px; right:-92px; bottom:-105px; border:1px solid rgba(212,175,55,.12); border-radius:50%; box-shadow:0 0 0 20px rgba(212,175,55,.025),0 0 0 42px rgba(212,175,55,.018); }
+  .brand-titles-list .mq-podium { --podium-accent:var(--gold); position:relative; border-color:color-mix(in srgb,var(--podium-accent) 52%,var(--border)) !important; }
+  .brand-titles-list .mq-podium::before { content:attr(data-rank); position:absolute; right:54px; top:-17px; font-family:'Bebas Neue',sans-serif; font-size:88px; color:var(--podium-accent); opacity:.055; pointer-events:none; }
+  .brand-titles-list .mq-podium-1 { --podium-accent:#d4af37; background:linear-gradient(90deg,rgba(212,175,55,.12),var(--dark3) 52%) !important; }
+  .brand-titles-list .mq-podium-2 { --podium-accent:#bfc3c8; background:linear-gradient(90deg,rgba(191,195,200,.09),var(--dark3) 52%) !important; }
+  .brand-titles-list .mq-podium-3 { --podium-accent:#b87333; background:linear-gradient(90deg,rgba(184,115,51,.1),var(--dark3) 52%) !important; }
+  .map-controls { position:absolute; right:10px; bottom:10px; display:flex; flex-direction:column; gap:5px; padding:5px; border:1px solid rgba(212,175,55,.22); border-radius:12px; background:rgba(5,5,10,.72); backdrop-filter:blur(8px); box-shadow:0 8px 24px rgba(0,0,0,.28); }
+  .map-control-button { width:38px !important; height:38px !important; padding:0 !important; border-radius:8px !important; font-size:18px !important; }
+  .map-control-button:last-child { font-size:14px !important; }
+  .records-view { max-width:1180px; margin:0 auto; }
+  .records-view .records-card { overflow:hidden; box-shadow:0 12px 30px rgba(0,0,0,.16); }
+  .records-view .records-card tbody tr { transition:background .18s ease; }
+  .records-view .records-card tbody tr:hover { background:rgba(212,175,55,.045); }
+
+  @media (min-width:900px) { .portal-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
+  @media (max-width:640px) {
+    .portal-grid { grid-template-columns:1fr; gap:10px; }
+    .portal-card { min-height:118px; padding:17px 18px; }
+    .portal-card-icon { top:15px; left:17px; width:36px; height:36px; font-size:17px; }
+    .portal-card::after { font-size:60px; }
+    .cmp-empty-stage { grid-template-columns:1fr; min-height:0; gap:10px; padding:14px; }
+    .cmp-empty-car { min-height:95px; }
+    .cmp-empty-vs { width:42px; height:42px; justify-self:center; }
+    .cmp-empty-copy { grid-column:auto; }
+    .car-profile-info::before { inset:0 18% auto 18%; width:auto; height:2px; }
+  }
+  @media (prefers-reduced-motion:reduce) { .portal-card,.portal-card-arrow,.records-view .records-card tbody tr { transition:none !important; } }
+
+  /* Téléphones et tablettes tactiles : empêcher les cartes vedettes d'étirer
+     les photos en portraits très étroits. Les images restent grandes, mais
+     retrouvent toujours un cadre paysage régulier. */
+  @media (hover:none) and (pointer:coarse) {
+    .dashboard-feature,
+    .dashboard-secondary,
+    .dashboard-secondary-grid { height:auto !important; }
+    .dashboard-feature-photo,
+    .dashboard-secondary-photo {
+      flex:0 0 auto !important;
+      min-height:0 !important;
+      aspect-ratio:16 / 9 !important;
+    }
+    .dashboard-feature-photo img,
+    .dashboard-secondary-photo img {
+      width:100% !important;
+      height:100% !important;
+      min-height:0 !important;
+      object-fit:cover !important;
+      object-position:center !important;
+    }
+  }
+  @media (min-width:768px) and (max-width:1180px) and (hover:none) and (pointer:coarse) {
+    .dashboard-feature { align-self:start !important; }
+    .dashboard-secondary-grid {
+      grid-template-columns:1fr !important;
+      grid-template-rows:auto auto !important;
+      align-self:start !important;
+    }
+  }
+  @media (max-width:767px) and (hover:none) and (pointer:coarse) {
+    .dashboard-secondary-grid { grid-template-columns:1fr !important; }
+  }
+  @media (min-width:1181px) and (hover:none) and (pointer:coarse) {
+    .dashboard-league-body { grid-template-rows:auto auto !important; }
+    .dashboard-feature,
+    .dashboard-secondary-grid { align-self:start !important; }
+  }
 `;
 
 const STORAGE_KEY = 'tournoi-voitures-db';
@@ -14808,7 +14908,7 @@ function AppInner() {
                 const key = `${c.league}||${c.name}`;
                 const isEditing = editKey === key;
                 return (
-                  <div key={c.carId || `${c.league}-${c.name}`} className="car-catalog-card" style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
+                  <div key={c.carId || `${c.league}-${c.name}`} className="car-catalog-card" data-league={c.league.replace('Voitures ', 'V')} style={{ borderRadius:8,border:`2px solid ${leagueColors[c.league] || 'var(--border)'}`,background:'var(--dark3)',overflow:'hidden',display:'flex',flexDirection:'column' }}>
                     <button type="button" aria-label={`Ouvrir le profil de ${c.name}`} style={{ width:'100%',aspectRatio:'16/9',padding:0,border:0,background:'var(--dark2)',overflow:'hidden',cursor: c.carId ? 'pointer' :'default',display:'flex',alignItems:'center',justifyContent:'center' }}
                       onClick={() => !isEditing && c.carId && openProfileCar({ leagueName: c.league, carId: c.carId })}>
                       {photo
@@ -15247,7 +15347,7 @@ function AppInner() {
             placeholder="Rechercher une marque..."
             style={{ width:'calc(100% - 24px)',margin:'0 12px 10px',fontSize:16 }}
           />
-          <div className="card mq-list" style={{ padding:8 }}>
+          <div className="card mq-list brand-titles-list" style={{ padding:8 }}>
             {brandsWithTitles.length === 0 && (
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucun titre enregistré pour une marque taguée pour l'instant.</div>
             )}
@@ -15255,7 +15355,7 @@ function AppInner() {
               <div style={{ padding:40,textAlign:'center',color:'var(--text-dim)' }}>Aucune marque ne correspond à "{marquesSearch}".</div>
             )}
             {displayedTitles.map(b => (
-              <div key={b.brand} className="mq-card" style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
+              <div key={b.brand} data-rank={b.rank} className={`mq-card${b.rank <= 3 ? ` mq-podium mq-podium-${b.rank}` : ''}`} style={{ borderRadius:10,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:10,overflow:'hidden',cursor:'pointer' }}
                 onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandLeagueTab('titres'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div className="mq-toprow" style={{ padding:'14px 14px',display:'flex',alignItems:'center',gap:12 }}>
                   <span className="mq-rank" style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
@@ -15691,10 +15791,10 @@ function AppInner() {
                 {hover.name}
               </div>
             )}
-            <div style={{ position:'absolute', right:8, bottom:8, display:'flex', flexDirection:'column', gap:6 }}>
-              <button className="btn btn-dark btn-sm" style={{ width:36,height:36,padding:0,fontSize:18 }} onClick={() => zoomBy(1.5)}>+</button>
-              <button className="btn btn-dark btn-sm" style={{ width:36,height:36,padding:0,fontSize:18 }} onClick={() => zoomBy(1/1.5)}>−</button>
-              <button className="btn btn-dark btn-sm" style={{ width:36,height:36,padding:0,fontSize:12 }} onClick={resetView}>⟲</button>
+            <div className="map-controls">
+              <button className="btn btn-dark btn-sm map-control-button" onClick={() => zoomBy(1.5)}>+</button>
+              <button className="btn btn-dark btn-sm map-control-button" onClick={() => zoomBy(1/1.5)}>−</button>
+              <button className="btn btn-dark btn-sm map-control-button" style={{ fontSize:12 }} onClick={resetView}>⟲</button>
             </div>
           </div>
         );
@@ -16296,7 +16396,7 @@ function AppInner() {
     );
 
     return (
-      <div style={{padding:16}}>
+      <div className="comparison-view" style={{padding:16}}>
         <h1 style={{fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold)',letterSpacing:3,marginBottom:16}}>⚡ COMPARAISON TÊTE-À-TÊTE</h1>
 
         {/* Sélecteurs */}
@@ -16437,8 +16537,11 @@ function AppInner() {
         )}
 
         {(!carA || !carB) && (
-          <div style={{textAlign:'center',color:'var(--text-dim)',padding:40,fontSize:13}}>
-            Sélectionne deux voitures pour comparer leurs statistiques.
+          <div className="cmp-empty-stage">
+            <div className="cmp-empty-car"><span>🏎️</span><strong>{carA ? carA.name : 'Voiture A'}</strong></div>
+            <div className="cmp-empty-vs">VS</div>
+            <div className="cmp-empty-car"><span>🏁</span><strong>{carB ? carB.name : 'Voiture B'}</strong></div>
+            <div className="cmp-empty-copy">Recherche et sélectionne deux voitures ci-dessus pour lancer le duel statistique.</div>
           </div>
         )}
       </div>
@@ -16669,7 +16772,7 @@ function AppInner() {
       const isExp = expanded === id;
       const shown = isExp ? rows : rows.slice(0, 5);
       return (
-        <div className="card" style={{ marginBottom:16, borderLeft: accent ? `3px solid ${accent}` : undefined }}>
+        <div className="card records-card" style={{ marginBottom:16, borderLeft: accent ? `3px solid ${accent}` : undefined }}>
           <div className="card-header"><div className="card-title" style={accent ? { color: accent } : undefined}>{title}</div></div>
           <div className="card-body" style={{ padding:0 }}>
             <table className="tbl" style={{ width:'100%' }}>
@@ -16704,7 +16807,7 @@ function AppInner() {
     const glowStat = { textShadow: '0 0 10px rgba(212,175,55,0.25)' };
 
     return (
-      <div style={{ padding:12 }}>
+      <div ref={recordsRef} className="records-view" style={{ padding:12 }}>
         <div style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:22,letterSpacing:2,color:'var(--gold)',marginBottom:16 }}>🏅 Records</div>
 
         <ExpandableSection id="champs" title="🏆 Plus de Championnats V1-V4" accent="var(--gold)" rows={topChamps} renderRow={(e, i) => (
@@ -18409,18 +18512,20 @@ function AppInner() {
         {((mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && leagueMenuOpen) || (mainTab === 'bonus' && leagueMenuOpen)) && (
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>{mainTab === 'bonus' ? 'Points Annexes — Choisir une ligue' : 'Ligues Principales'}</div>
-            <div className="menu-grid">
-              {LEAGUES.map(l => (
+            <div className="portal-grid">
+              {LEAGUES.map((l, index) => (
                 <button key={l}
+                  className="portal-card"
+                  data-index={`0${index + 1}`}
                   onClick={() => { setLeagueTab(l); setLeagueMenuOpen(false); if (mainTab === 'ligues') setSectionMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setLeagueMenuOpen(true)); }}
                   style={{
-                    aspectRatio:'1.3',
-                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
-                    background: MAIN_LEAGUE_COLORS[l] ? `${MAIN_LEAGUE_COLORS[l]}22` : 'var(--dark2)',
-                    border:`1px solid ${MAIN_LEAGUE_COLORS[l] || 'var(--border)'}`, borderRadius:10,
-                    color:'var(--text)', cursor:'pointer',
+                    '--portal-accent': MAIN_LEAGUE_COLORS[l] || 'var(--gold)',
                   }}>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1 }}>{l}</span>
+                  <span className="portal-card-icon">{mainTab === 'bonus' ? '⭐' : '🏁'}</span>
+                  <span className="portal-card-kicker">{mainTab === 'bonus' ? 'Points annexes' : 'Ligue principale'}</span>
+                  <span className="portal-card-title">{l}</span>
+                  <span className="portal-card-sub">{mainTab === 'bonus' ? 'Classement cumulatif et progression' : 'Classement, groupes et phases finales'}</span>
+                  <span className="portal-card-arrow">→</span>
                 </button>
               ))}
             </div>
@@ -18437,21 +18542,24 @@ function AppInner() {
         {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && sectionMenuOpen && (
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>{leagueTab} — Choisir une section</div>
-            <div className="menu-grid">
+            <div className="portal-grid">
               {[
-                { key: 'groupes', label: 'Phase de Groupes' },
-                { key: 'playoffs', label: 'Playoffs' },
-                { key: 'relegation', label: 'Barrage Relégation' },
-              ].map(t => (
+                { key: 'groupes', label: 'Phase de Groupes', icon:'▦', sub:'Groupes, classement et matchs' },
+                { key: 'playoffs', label: 'Playoffs', icon:'🏆', sub:'Tableau final du championnat' },
+                { key: 'relegation', label: 'Barrage Relégation', icon:'⬇', sub:'Duel décisif pour le maintien' },
+              ].map((t, index) => (
                 <button key={t.key}
+                  className="portal-card"
+                  data-index={`0${index + 1}`}
                   onClick={() => { setSectionTab(t.key); setSectionMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setSectionMenuOpen(true)); }}
                   style={{
-                    aspectRatio:'1.3',
-                    display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
-                    background:'var(--dark2)', border:'1px solid var(--border)', borderRadius:10,
-                    color:'var(--text)', cursor:'pointer',
+                    '--portal-accent': MAIN_LEAGUE_COLORS[leagueTab] || 'var(--gold)',
                   }}>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:18, letterSpacing:1 }}>{t.label}</span>
+                  <span className="portal-card-icon">{t.icon}</span>
+                  <span className="portal-card-kicker">{leagueTab}</span>
+                  <span className="portal-card-title">{t.label}</span>
+                  <span className="portal-card-sub">{t.sub}</span>
+                  <span className="portal-card-arrow">→</span>
                 </button>
               ))}
             </div>
@@ -18470,17 +18578,20 @@ function AppInner() {
         {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && actuellesMenuOpen && (
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>Actuelles</div>
-            <div className="menu-grid">
-              {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map(l => (
+            <div className="portal-grid">
+              {AUXILIARY_LEAGUES.filter(l => l.startsWith('Actuelles')).map((l, index) => (
                 <button key={l}
+                  className="portal-card"
+                  data-index={String(index + 1).padStart(2, '0')}
                   onClick={() => { setActuellesLeague(l); setActSubTab('classement'); setActOpenDay(null); setActuellesMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setActuellesMenuOpen(true)); }}
                   style={{
-                    aspectRatio:'1.3',
-                    display:'flex',alignItems:'center',justifyContent:'center',
-                    background:'var(--dark2)', border:'1px solid var(--border)', borderRadius:10,
-                    color:'var(--text)', cursor:'pointer', textAlign:'center', padding:8,
+                    '--portal-accent':'#e67e22',
                   }}>
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:17, letterSpacing:1 }}>{l}</span>
+                  <span className="portal-card-icon">🚗</span>
+                  <span className="portal-card-kicker">Championnat actuel</span>
+                  <span className="portal-card-title">{l}</span>
+                  <span className="portal-card-sub">Classement et calendrier de la ligue</span>
+                  <span className="portal-card-arrow">→</span>
                 </button>
               ))}
             </div>
