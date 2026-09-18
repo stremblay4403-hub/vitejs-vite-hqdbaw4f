@@ -1807,6 +1807,9 @@ const css = `
   }
   .season-bar::-webkit-scrollbar { display: none; }
   .season-label { font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; color: var(--gold-dim); font-size: 14px; white-space: nowrap; flex-shrink: 0; }
+  .season-desktop-list { display:flex; align-items:center; gap:8px; }
+  .season-mobile-picker { display:none; }
+  .season-actions { display:flex; align-items:center; gap:8px; }
 
   /* Group tabs */
   .group-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 12px; }
@@ -2550,8 +2553,59 @@ const css = `
     .header-actions { margin-left: auto; }
     .header-actions > div { gap: 5px !important; }
     .header-actions > div > span { padding: 4px 7px !important; font-size: 10px !important; }
-    .season-bar { padding: 8px 10px; gap: 6px; }
-    .season-label { position: sticky; left: 0; z-index: 2; background: #0b0b0b; padding-right: 5px; }
+    .season-bar {
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      align-items:center;
+      gap:9px 12px;
+      padding:10px 14px;
+      overflow:visible;
+      white-space:normal;
+    }
+    .season-label { position:static; background:transparent; padding:0; }
+    .season-desktop-list { display:none; }
+    .season-mobile-picker {
+      position:relative;
+      display:block;
+      width:100%;
+      max-width:230px;
+    }
+    .season-mobile-select {
+      width:100%;
+      min-height:48px;
+      appearance:none;
+      -webkit-appearance:none;
+      padding:9px 44px 9px 16px;
+      border:1px solid var(--gold-dim);
+      border-radius:10px;
+      outline:none;
+      background:linear-gradient(135deg,rgba(212,175,55,.13),rgba(20,20,20,.96));
+      color:var(--text);
+      font-family:'Bebas Neue',sans-serif;
+      font-size:20px;
+      letter-spacing:2px;
+      box-shadow:inset 0 1px rgba(255,255,255,.04),0 7px 22px rgba(0,0,0,.24);
+    }
+    .season-mobile-select:focus { border-color:var(--gold); box-shadow:0 0 0 3px rgba(212,175,55,.12); }
+    .season-mobile-chevron {
+      position:absolute;
+      right:16px;
+      top:50%;
+      translate:0 -53%;
+      color:var(--gold);
+      font-size:19px;
+      pointer-events:none;
+    }
+    .season-actions {
+      grid-column:1 / -1;
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:7px;
+      width:100%;
+    }
+    .season-actions:empty { display:none; }
+    .season-actions > .btn { width:100%; min-width:0; white-space:normal; line-height:1.1; }
+    .season-actions > span { grid-column:1 / -1; display:flex !important; flex-wrap:wrap; }
     .tabs { padding-inline: 10px; }
     #tabs-main .tab { padding: 12px 15px; }
     .content { padding-top: 18px; }
@@ -18246,15 +18300,26 @@ function AppInner() {
         {/* Season bar */}
         <div className="season-bar">
           <span className="season-label">Saison:</span>
-          {db.seasons.map((s, idx) => (
-            <button key={idx}
-              className={`btn btn-sm ${db.currentSeasonIdx === idx ? 'btn-gold' : 'btn-dark'}`}
-              style={{ flexShrink:0 }}
-              onClick={() => switchSeason(idx)}>
-              S{s.season}
-            </button>
-          ))}
-          {!isPublicMode && (
+          <div className="season-desktop-list">
+            {db.seasons.map((s, idx) => (
+              <button key={idx}
+                className={`btn btn-sm ${db.currentSeasonIdx === idx ? 'btn-gold' : 'btn-dark'}`}
+                style={{ flexShrink:0 }}
+                onClick={() => switchSeason(idx)}>
+                S{s.season}
+              </button>
+            ))}
+          </div>
+          <label className="season-mobile-picker">
+            <select className="season-mobile-select" aria-label="Choisir la saison"
+              value={db.currentSeasonIdx}
+              onChange={e => switchSeason(Number(e.target.value))}>
+              {db.seasons.map((s, idx) => <option key={idx} value={idx}>S{s.season}</option>)}
+            </select>
+            <span className="season-mobile-chevron" aria-hidden="true">⌄</span>
+          </label>
+          <div className="season-actions">
+            {!isPublicMode && (
             !confirmSimTout
               ? <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(201,168,76,0.15)',borderColor:'var(--gold-dim)',color:'var(--gold)' }}
                   onClick={() => setConfirmSimTout(true)}>⚡ Simuler Tout</button>
@@ -18265,8 +18330,8 @@ function AppInner() {
                   <button className="btn btn-dark btn-sm" style={{ fontSize:12 }}
                     onClick={() => setConfirmSimTout(false)}>✕ Non</button>
                 </span>
-          )}
-          {!isPublicMode && (
+            )}
+            {!isPublicMode && (
             !confirmResetSeason
               ? <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(231,76,60,0.12)',borderColor:'#c0392b',color:'#e74c3c' }}
                   onClick={() => setConfirmResetSeason(true)}>♻️ Reset saison</button>
@@ -18277,12 +18342,13 @@ function AppInner() {
                   <button className="btn btn-dark btn-sm" style={{ fontSize:12 }}
                     onClick={() => setConfirmResetSeason(false)}>✕ Non</button>
                 </span>
-          )}
-          {!isPublicMode && seasonReady && (
-            <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(39,174,96,0.2)',borderColor:'var(--green)',color:'var(--green)',opacity:isProcessing ? 0.5 :1 }} onClick={handleNextSeason} disabled={isProcessing}>
-              {isProcessing ? '⏳ En cours...' : '🏁 Saison Suivante'}
-            </button>
-          )}
+            )}
+            {!isPublicMode && seasonReady && (
+              <button className="btn btn-sm" style={{ flexShrink:0,background:'rgba(39,174,96,0.2)',borderColor:'var(--green)',color:'var(--green)',opacity:isProcessing ? 0.5 :1 }} onClick={handleNextSeason} disabled={isProcessing}>
+                {isProcessing ? '⏳ En cours...' : '🏁 Saison Suivante'}
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Navigation adaptative : complète sur ordinateur, compacte sur téléphone. */}
