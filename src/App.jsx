@@ -3071,7 +3071,24 @@ const css = `
       letter-spacing: 1.5px;
     }
     .header-logo img { margin-right: 5px !important; }
-    .header-actions { gap: 5px; }
+    .header-actions {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      gap: 5px;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scrollbar-width: none;
+      scroll-snap-type: x proximity;
+      padding: 1px 10px 3px 0;
+    }
+    .header-actions::-webkit-scrollbar { display: none; }
+    .header-actions > * {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
     .header-actions > div { gap: 5px !important; }
     .header-public-badge,
     .header-login-button {
