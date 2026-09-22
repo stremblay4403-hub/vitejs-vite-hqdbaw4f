@@ -3041,12 +3041,20 @@ const css = `
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
+    grid-column: 1 / -1;
+    width: 100%;
     min-height: 50px;
     align-items: center;
     position: relative !important;
     top: auto !important;
     z-index: 2 !important;
     background: linear-gradient(90deg, rgba(212,175,55,.055), rgba(16,16,16,.98) 28%, rgba(16,16,16,.98)) !important;
+  }
+  .catalog-alphabet .btn:disabled {
+    opacity: .3;
+    color: var(--text-dim) !important;
+    border-color: rgba(212,175,55,.18) !important;
+    background: rgba(255,255,255,.025) !important;
   }
   .car-catalog-card > div:last-child {
     min-height: 60px;
@@ -3305,6 +3313,9 @@ const css = `
   /* Grand écran : la colonne vedette reste indépendante du top 20 afin que
      les photos conservent un vrai cadre 16:9 sans être étirées en carré. */
   @media (min-width: 1181px) {
+    .car-catalog-grid {
+      grid-template-columns: repeat(4,minmax(0,1fr)) !important;
+    }
     .dashboard-league-body {
       grid-template-columns: minmax(410px,1fr) minmax(0,1.55fr) !important;
       grid-template-rows: auto !important;
@@ -14973,7 +14984,6 @@ function AppInner() {
                 </button>
               ))}
             </div>
-          </div>
 
           {/* Barre alphabet */}
           <div className="catalog-alphabet" style={{ display:'flex',flexWrap:'wrap',gap:4,padding:'8px 12px',borderBottom:'1px solid var(--border)',position:'sticky',top:0,background:'var(--dark2)',zIndex:10 }}>
@@ -14985,8 +14995,11 @@ function AppInner() {
               onClick={() => setActiveLetterPersist('TOUS')}>
               Tous
             </button>
-            {ALPHABET.filter(l => activeLetters.has(l)).map(letter => (
-              <button key={letter} className="btn btn-xs"
+            {ALPHABET.map(letter => {
+              const isAvailable = activeLetters.has(letter);
+              return (
+              <button key={letter} className="btn btn-xs" disabled={!isAvailable}
+                aria-label={isAvailable ? `Afficher les voitures commençant par ${letter}` : `Aucune voiture commençant par ${letter}`}
                 style={{ fontFamily:"'Bebas Neue',sans-serif",fontSize:14,minWidth:24,padding:'2px 6px',
                   background: displayLetter === letter ? 'var(--gold)' : 'var(--dark3)',
                   color: displayLetter === letter ? '#000' : 'var(--gold)',
@@ -14994,7 +15007,9 @@ function AppInner() {
                 onClick={() => setActiveLetterPersist(letter)}>
                 {letter}
               </button>
-            ))}
+              );
+            })}
+          </div>
           </div>
 
           {/* Grille */}
