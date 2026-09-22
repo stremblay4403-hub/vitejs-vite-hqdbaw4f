@@ -2495,6 +2495,7 @@ const css = `
   .dashboard-leagues { display: flex; flex-direction: column; gap: 20px; }
   .dashboard-league-card { overflow: visible; }
   .dashboard-league-body { gap: 14px !important; }
+  .dashboard-showcase { display: contents; }
   .dashboard-feature,
   .dashboard-secondary,
   .dashboard-ranking {
@@ -3301,28 +3302,45 @@ const css = `
     .car-profile-card .car-stat-item:nth-child(5) .val { font-size: 34px; }
   }
 
-  /* Grand écran : le top 20 fixe la hauteur de la rangée. Les trois cartes
-     photographiques occupent cette hauteur au lieu de laisser un vide à gauche. */
+  /* Grand écran : la colonne vedette reste indépendante du top 20 afin que
+     les photos conservent un vrai cadre 16:9 sans être étirées en carré. */
   @media (min-width: 1181px) {
     .dashboard-league-body {
-      grid-template-columns: minmax(360px,.8fr) minmax(0,1.55fr) !important;
-      grid-template-rows: minmax(0,1.42fr) minmax(0,.78fr) !important;
-      align-items: stretch !important;
+      grid-template-columns: minmax(410px,1fr) minmax(0,1.55fr) !important;
+      grid-template-rows: auto !important;
+      align-items: start !important;
+    }
+    .dashboard-showcase {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      grid-column: 1;
+      grid-row: 1;
+      min-width: 0;
+    }
+    .dashboard-ranking {
+      grid-column: 2;
+      grid-row: 1;
+      align-self: start;
     }
     .dashboard-feature,
     .dashboard-secondary-grid,
-    .dashboard-secondary { min-height: 0; height: 100%; }
-    .dashboard-feature-photo {
-      flex: 1 1 auto;
-      min-height: 280px;
-      aspect-ratio: auto;
-    }
+    .dashboard-secondary { min-height: 0; height: auto; }
+    .dashboard-feature-photo,
     .dashboard-secondary-photo {
-      flex: 1 1 auto;
-      min-height: 145px;
-      aspect-ratio: auto;
+      flex: 0 0 auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
     }
-    .dashboard-secondary-grid { align-self: stretch; }
+    .dashboard-feature-photo img,
+    .dashboard-secondary-photo img {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      object-fit: cover !important;
+      object-position: center !important;
+    }
+    .dashboard-secondary-grid { align-self: start; width: 100%; }
   }
 
   /* Portails de navigation — présence visuelle sans modifier le comportement. */
@@ -8243,6 +8261,8 @@ function AppInner() {
                 </div>
                 <div className="card-body dashboard-league-body" style={{ display:'flex',flexDirection:'column',gap:12 }}>
 
+                  <div className="dashboard-showcase">
+
                   {/* Champion playoff — pleine largeur en haut */}
                   <div className="dashboard-feature" style={{ background:'var(--dark3)',borderRadius:4,padding:10,display:'flex',flexDirection:'column',alignItems:'center' }}>
                     <div style={{ fontSize:10,color:'var(--gold-dim)',fontFamily:"'Bebas Neue',sans-serif",letterSpacing:2,marginBottom:8,alignSelf:'flex-start' }}>🏆 Champion Playoff</div>
@@ -8314,6 +8334,7 @@ function AppInner() {
                         <div className="dashboard-mini-empty"><span className="text-dim" style={{ fontSize:11 }}>Non terminé</span></div>
                       )}
                     </div>
+                  </div>
                   </div>
 
                   {/* Top 5 pts annexes cumulatif — calculé en direct */}
