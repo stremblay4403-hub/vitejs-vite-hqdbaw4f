@@ -3234,27 +3234,35 @@ const css = `
 
     .dashboard-league-body {
       display: grid !important;
-      grid-template-columns: minmax(0,1.15fr) minmax(280px,.85fr) !important;
+      grid-template-columns: minmax(0,1.4fr) minmax(230px,.6fr) !important;
       grid-template-rows: auto auto !important;
-      align-items: stretch !important;
+      align-items: start !important;
       gap: 14px !important;
     }
     .dashboard-feature { grid-column: 1; grid-row: 1; }
     .dashboard-secondary-grid { grid-column: 2; grid-row: 1; align-self: stretch; }
     .dashboard-ranking { grid-column: 1 / -1; grid-row: 2; }
     .dashboard-feature,
-    .dashboard-secondary-grid { height: 100%; min-height: 0; }
+    .dashboard-secondary-grid { height: auto; min-height: 0; align-self: start; }
     .dashboard-feature-photo {
-      flex: 1 1 auto;
-      min-height: 250px;
-      aspect-ratio: auto;
+      flex: 0 0 auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
     }
     .dashboard-secondary-photo {
-      flex: 1 1 auto;
-      min-height: 112px;
-      aspect-ratio: auto;
+      flex: 0 0 auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
     }
-    .dashboard-secondary-grid { gap: 10px !important; height: 100%; }
+    .dashboard-feature-photo img,
+    .dashboard-secondary-photo img {
+      width: 100% !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      object-fit: cover !important;
+      object-position: center !important;
+    }
+    .dashboard-secondary-grid { gap: 10px !important; height: auto; }
     .dashboard-secondary { min-width: 0; min-height: 0; }
     .dashboard-mini-empty { min-height: 0; }
     .dashboard-ranking-row { gap: 7px !important; }
