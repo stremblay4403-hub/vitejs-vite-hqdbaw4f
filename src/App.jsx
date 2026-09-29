@@ -2988,6 +2988,9 @@ const css = `
     object-fit: cover !important;
     object-position: center;
   }
+  /* Cartouche de consécration de la marque : volontairement absent des petits
+     écrans. Il occupe l'espace disponible sous les cartes Meilleur/Relégué. */
+  .dashboard-brand-champion { display: none; }
   .dashboard-empty-photo {
     aspect-ratio: 16 / 9;
     height: auto !important;
@@ -3352,6 +3355,123 @@ const css = `
       object-position: center !important;
     }
     .dashboard-secondary-grid { align-self: start; width: 100%; }
+    .dashboard-brand-champion {
+      position: relative;
+      display: grid;
+      grid-template-columns: minmax(132px,.9fr) minmax(0,1.25fr) auto;
+      align-items: center;
+      gap: 17px;
+      min-height: 126px;
+      padding: 14px 16px;
+      overflow: hidden;
+      border: 1px solid color-mix(in srgb,var(--league-accent) 34%,rgba(255,255,255,.08));
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 18% 15%,color-mix(in srgb,var(--league-accent) 13%,transparent),transparent 43%),
+        linear-gradient(135deg,rgba(29,26,17,.96),rgba(8,8,8,.98) 64%);
+      box-shadow: inset 0 1px rgba(255,255,255,.04),0 14px 34px rgba(0,0,0,.25);
+    }
+    .dashboard-brand-champion::before {
+      content: '';
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      background: linear-gradient(to bottom,var(--gold2),var(--league-accent),transparent);
+      box-shadow: 0 0 15px color-mix(in srgb,var(--league-accent) 38%,transparent);
+    }
+    .dashboard-brand-champion::after {
+      content: 'CHAMPION';
+      position: absolute;
+      right: 14px;
+      bottom: -16px;
+      color: var(--gold);
+      opacity: .035;
+      font-family: 'Bebas Neue',sans-serif;
+      font-size: 62px;
+      letter-spacing: 3px;
+      pointer-events: none;
+    }
+    .dashboard-brand-flag {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      place-items: center;
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px;
+      background: #151515;
+      box-shadow: 0 8px 22px rgba(0,0,0,.42);
+    }
+    .dashboard-brand-flag .country-flag {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+    }
+    .dashboard-brand-flag-fallback { font-size: 54px; }
+    .dashboard-brand-copy {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+    .dashboard-brand-kicker {
+      color: var(--gold-dim);
+      font-family: 'Bebas Neue',sans-serif;
+      font-size: 11px;
+      letter-spacing: 2.2px;
+      text-transform: uppercase;
+    }
+    .dashboard-brand-copy strong {
+      overflow: hidden;
+      color: #fff;
+      font-family: 'Bebas Neue',sans-serif;
+      font-size: clamp(27px,2.05vw,38px);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 1.5px;
+      text-overflow: ellipsis;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .dashboard-brand-copy > span:last-child:not(.dashboard-brand-kicker) {
+      color: var(--text-dim);
+      font-size: 11px;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+    }
+    .dashboard-brand-titles {
+      position: relative;
+      z-index: 1;
+      min-width: 82px;
+      padding-left: 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border-left: 1px solid rgba(212,175,55,.2);
+      text-align: center;
+    }
+    .dashboard-brand-titles strong {
+      color: var(--gold);
+      font-family: 'Bebas Neue',sans-serif;
+      font-size: 50px;
+      font-weight: 400;
+      line-height: .88;
+      text-shadow: 0 0 22px rgba(212,175,55,.2);
+    }
+    .dashboard-brand-titles span {
+      margin-top: 6px;
+      color: var(--gold-dim);
+      font-family: 'Bebas Neue',sans-serif;
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
   }
 
   /* Portails de navigation — présence visuelle sans modifier le comportement. */
@@ -8234,6 +8354,19 @@ function AppInner() {
             const relId = currentSeason.relegated[l];
             const champ = champId ? getCar(l, champId) : null;
             const rel = relId ? getCar(l, relId) : null;
+            const championBrand = champId ? getCarBrand(champId) : '';
+            const championBrandCountry = championBrand ? getBrandCountry(championBrand) : '';
+            const championBrandCountryName = championBrandCountry
+              ? (COUNTRY_LIST.find(c => c.code === championBrandCountry)?.name || championBrandCountry)
+              : '';
+            const championBrandStat = championBrand
+              ? brandStats.find(stat => stat.brand === championBrand)
+              : null;
+            // brandStats balaie toutes les saisons, y compris la saison courante :
+            // le titre qui vient d'être gagné est donc déjà compris, sans ajout en double.
+            const championBrandTitles = championBrand
+              ? Math.max(1, championBrandStat?.titles || 0)
+              : 0;
             const league = getLeague(l);
             const allMatches = Object.values(league.groupResults || {}).flat();
             const played = allMatches.filter(m => m.homeGoals !== null).length;
@@ -8346,6 +8479,29 @@ function AppInner() {
                       )}
                     </div>
                   </div>
+
+                  {champ && championBrand && (
+                    <div
+                      className="dashboard-brand-champion"
+                      role="group"
+                      aria-label={`${championBrand}, marque championne, ${championBrandTitles} ${championBrandTitles === 1 ? 'titre' : 'titres'}`}
+                    >
+                      <div className="dashboard-brand-flag" aria-hidden="true">
+                        {championBrandCountry
+                          ? <CountryFlag code={championBrandCountry} size={148} />
+                          : <span className="dashboard-brand-flag-fallback">🏁</span>}
+                      </div>
+                      <div className="dashboard-brand-copy">
+                        <span className="dashboard-brand-kicker">Marque championne</span>
+                        <strong>{championBrand}</strong>
+                        {championBrandCountryName && <span>{championBrandCountryName}</span>}
+                      </div>
+                      <div className="dashboard-brand-titles">
+                        <strong>{championBrandTitles}</strong>
+                        <span>{championBrandTitles === 1 ? 'titre' : 'titres'}</span>
+                      </div>
+                    </div>
+                  )}
                   </div>
 
                   {/* Top 5 pts annexes cumulatif — calculé en direct */}
