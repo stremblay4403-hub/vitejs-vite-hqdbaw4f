@@ -3524,8 +3524,52 @@ const css = `
   @media (min-width:900px) { .portal-grid { grid-template-columns:repeat(3,minmax(0,1fr)); } }
   @media (max-width:640px) {
     .portal-grid { grid-template-columns:1fr; gap:10px; }
-    .portal-card { min-height:118px; padding:17px 18px; }
-    .portal-card-icon { top:15px; left:17px; width:36px; height:36px; font-size:17px; }
+    /* Sur téléphone, l'icône fait partie de la grille au lieu de flotter
+       au-dessus du libellé. Les emojis et le texte ne peuvent plus se croiser. */
+    .portal-card {
+      min-height:128px;
+      padding:17px 52px 17px 18px;
+      display:grid;
+      grid-template-columns:40px minmax(0,1fr);
+      grid-template-rows:auto auto auto;
+      column-gap:12px;
+      row-gap:3px;
+      align-content:center;
+      justify-content:stretch;
+    }
+    .portal-card-icon {
+      position:relative;
+      top:auto;
+      left:auto;
+      grid-column:1;
+      grid-row:1 / span 2;
+      align-self:center;
+      width:38px;
+      height:38px;
+      font-size:18px;
+    }
+    .portal-card-kicker {
+      grid-column:2;
+      grid-row:1;
+      align-self:end;
+      min-width:0;
+      line-height:1.15;
+    }
+    .portal-card-title {
+      grid-column:2;
+      grid-row:2;
+      min-width:0;
+      line-height:1.08;
+    }
+    .portal-card-sub {
+      grid-column:1 / -1;
+      grid-row:3;
+      max-width:none;
+      min-width:0;
+      margin-top:4px;
+      padding-right:8px;
+    }
+    .portal-card-arrow { right:18px; bottom:19px; }
     .portal-card::after { font-size:60px; }
     .cmp-empty-stage { grid-template-columns:1fr; min-height:0; gap:10px; padding:14px; }
     .cmp-empty-car { min-height:95px; }
