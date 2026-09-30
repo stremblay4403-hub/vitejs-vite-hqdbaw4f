@@ -3020,6 +3020,35 @@ const css = `
   .car-profile-card .tbl th { color: #bfa760; background: #202020; }
   .car-profile-card .tbl tbody tr:nth-child(even) td { background: rgba(255,255,255,.022); }
   .car-profile-card .tbl td { padding-block: 11px; }
+  /* Historique du profil : la colonne PTS ANN. doit recouvrir complètement
+     BP/BC lorsqu'ils défilent dessous sur Safari mobile. */
+  .car-profile-history-scroll { position: relative; isolation: isolate; }
+  .car-profile-history-table { min-width: 680px; }
+  .car-profile-history-table th.sticky-right,
+  .car-profile-history-table td.sticky-right {
+    width: 76px;
+    min-width: 76px;
+    max-width: 76px;
+    right: 0;
+    z-index: 6;
+    overflow: hidden;
+    text-align: center;
+    white-space: nowrap;
+    background: #171717 !important;
+    border-left: 1px solid rgba(212,175,55,.32);
+    box-shadow: -12px 0 18px rgba(0,0,0,.72);
+    transform: translateZ(0);
+  }
+  .car-profile-history-table th.sticky-right {
+    z-index: 8;
+    background: #202020 !important;
+  }
+  .car-profile-history-table tbody tr:nth-child(even) td.sticky-right {
+    background: #1b1b1b !important;
+  }
+  .car-profile-history-table tr.row-gold td.sticky-right { background: #2b2513 !important; }
+  .car-profile-history-table tr.row-silver td.sticky-right { background: #29292d !important; }
+  .car-profile-history-table tr.row-bronze td.sticky-right { background: #271d17 !important; }
 
   /* Catalogue : groupes distincts afin que les filtres restent toujours
      accessibles, même sur un écran étroit. */
@@ -11081,8 +11110,8 @@ function AppInner() {
             <div className="font-bebas" style={{ fontSize:14,color:'var(--gold-dim)',marginBottom:8,letterSpacing:2 }}>
               Historique Matchs — S33+
             </div>
-            <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
-            <table className="tbl">
+            <div className="car-profile-history-scroll" style={{ overflowX:'auto', WebkitOverflowScrolling:'touch' }}>
+            <table className="tbl car-profile-history-table">
               <thead><tr><th title="Saison">S.</th><th>Ligue</th><th title="Classement">Rang</th><th title="Points">Pts</th><th title="Pourcentage de points">%</th><th title="Victoires">V</th><th title="Nuls">N</th><th title="Défaites">D</th><th title="Buts pour">BP</th><th title="Buts contre">BC</th><th className="sticky-right" title="Points annexes">Pts Ann.</th></tr></thead>
               <tbody>
                 {db.seasons.slice().reverse().map(s => {
