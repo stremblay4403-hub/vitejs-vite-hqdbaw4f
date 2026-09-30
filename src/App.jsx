@@ -3104,16 +3104,20 @@ const css = `
       overflow: hidden;
     }
     .header-logo {
-      flex: 1 1 auto;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      flex: 0 0 auto;
+      min-width: max-content;
+      max-width: none;
+      display: flex;
+      align-items: center;
+      overflow: visible;
+      text-overflow: clip;
+      white-space: nowrap;
       font-size: clamp(14px,4.3vw,19px);
       letter-spacing: 1.5px;
     }
     .header-logo img { margin-right: 5px !important; }
     .header-actions {
-      flex: 1 1 auto;
+      flex: 1 1 0;
       min-width: 0;
       max-width: 100%;
       gap: 5px;
