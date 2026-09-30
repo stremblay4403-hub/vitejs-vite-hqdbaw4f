@@ -5228,11 +5228,10 @@ function AppInner() {
   const [countryDetail, setCountryDetail] = useState(null);
   const [brandDetailSort, setBrandDetailSort] = useState('points');
 
-  // Une fiche marque/pays ne doit jamais survivre à un changement de section. Sans ce
-  // nettoyage, la vue de détail pouvait recouvrir la destination choisie et donner
-  // l'impression que Menu, Pays ou la recherche globale étaient bloqués.
+  // Une fiche de marque peut être ouverte depuis une fiche Pays. La conserver
+  // jusqu'au retour, puis nettoyer les détails lors d'un vrai changement d'onglet.
   React.useEffect(() => {
-    if (mainTab !== 'marques' && brandDetail !== null) setBrandDetail(null);
+    if (mainTab !== 'marques' && mainTab !== 'pays' && brandDetail !== null) setBrandDetail(null);
     if (mainTab !== 'pays' && countryDetail !== null) setCountryDetail(null);
   }, [mainTab, brandDetail, countryDetail]);
   const [brandLeagueTab, setBrandLeagueTab] = useState('toutes');
@@ -15500,7 +15499,7 @@ function AppInner() {
           <div className="card" style={{ padding:8 }}>
             {ranked.map(b => (
               <div key={b.brand} style={{ borderRadius:8,border:'1px solid var(--border)',background:'var(--dark3)',marginBottom:8,overflow:'hidden',cursor:'pointer' }}
-                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort('points'); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
+                onClick={() => { saveScrollForTab(); setBrandDetail(b.brand); setBrandDetailSort(detailSort); setBrandLeagueTab('toutes'); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => { setBrandDetail(null); restoreScrollForTab(`${mainTab}|${ligueSubTab}|${leagueTab}|${sectionTab}|${histSubTab}`); }); }}>
                 <div style={{ padding:'10px 12px',display:'flex',alignItems:'center',gap:10 }}>
                   <div style={{ display:'flex',flexDirection:'column',alignItems:'center' }}>
                     <RankBadge rank={b.rank} />
@@ -15587,7 +15586,7 @@ function AppInner() {
       return (
         <div>
           <div style={{ padding:'10px 12px' }}>
-            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour aux marques</button>
+            <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour {mainTab === 'pays' && countryDetail ? 'au pays' : 'aux marques'}</button>
           </div>
 
           <div style={{ display:'flex',flexDirection:'column',alignItems:'center',gap:8,padding:'8px 12px 18px' }}>
@@ -18510,7 +18509,7 @@ function AppInner() {
                           <div key={`country-${r.code}`} role="button" tabIndex={0}
                             style={{ borderRadius:8, border:'1px solid var(--gold-dim)', background:'var(--dark3)', overflow:'hidden', display:'flex', flexDirection:'column', cursor:'pointer' }}
                             onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') e.currentTarget.click(); }}
-                            onClick={() => { closeGlobalSearch(); setMainTab('pays'); setCountryDetail(r.code); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setCountryDetail(null)); }}>
+                            onClick={() => { closeGlobalSearch(); setMainTab('pays'); setBrandDetail(null); setCountryDetail(r.code); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setCountryDetail(null)); }}>
                             <div style={{ width:'100%', aspectRatio:'16/9', background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
                               <CountryFlag code={r.code} size={26} />
                               <span style={{ fontSize:11, color:'var(--text-dim)' }}>🌍 Pays</span>
@@ -18720,7 +18719,7 @@ function AppInner() {
           <button
             className="btn btn-sm primary-nav-home"
             style={{ background: (mainTab === 'dashboard' && !menuOpen) ? 'var(--gold)' : 'var(--dark3)', color: (mainTab === 'dashboard' && !menuOpen) ? '#1a1305' : 'var(--text)', fontWeight:700 }}
-            onClick={() => { setMainTab('dashboard'); setMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
+            onClick={() => { setMainTab('dashboard'); setBrandDetail(null); setCountryDetail(null); setMenuOpen(false); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
             🏠 Tableau de Bord
           </button>
           <div className="primary-nav-links" aria-label="Navigation principale">
@@ -18736,6 +18735,8 @@ function AppInner() {
                 className={`primary-nav-link ${mainTab === t.key && !menuOpen ? 'active' : ''}`}
                 onClick={() => {
                   setMainTab(t.key);
+                  setBrandDetail(null);
+                  setCountryDetail(null);
                   setMenuOpen(false);
                   if (t.key === 'ligues') setLiguesMenuOpen(true);
                   if (t.key === 'bonus') setLeagueMenuOpen(true);
@@ -18772,7 +18773,7 @@ function AppInner() {
                 { key: 'pays', label: 'Pays', icon: '🌍' },
               ].map(t => (
                 <button key={t.key}
-                  onClick={() => { setMainTab(t.key); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); if (t.key === 'bonus') setLeagueMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setMenuOpen(true)); }}
+                  onClick={() => { setMainTab(t.key); setBrandDetail(null); setCountryDetail(null); setMenuOpen(false); if (t.key === 'ligues') setLiguesMenuOpen(true); if (t.key === 'bonus') setLeagueMenuOpen(true); requestAnimationFrame(() => window.scrollTo(0, 0)); navPush(() => setMenuOpen(true)); }}
                   style={{
                     aspectRatio:'1.3',
                     display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:8,
