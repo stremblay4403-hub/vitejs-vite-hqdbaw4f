@@ -3645,6 +3645,76 @@ const css = `
   @media (max-width:767px) and (hover:none) and (pointer:coarse) {
     .dashboard-secondary-grid { grid-template-columns:1fr !important; }
   }
+  /* Profil de voiture sur téléphone tourné à l'horizontale : ne jamais laisser
+     la limite de 34dvh écraser la photo en une bande panoramique. Le portrait
+     mobile reste inchangé; en paysage, l'en-tête devient une fiche côte à côte
+     et la photo conserve un vrai cadre 16:9. */
+  @media (orientation:landscape) and (max-height:520px) and (hover:none) and (pointer:coarse) {
+    .car-profile-modal {
+      padding:0 !important;
+      align-items:stretch !important;
+    }
+    .car-profile-card {
+      width:100% !important;
+      max-width:none !important;
+      min-height:100dvh !important;
+      max-height:100dvh !important;
+      border:0 !important;
+      border-radius:0 !important;
+    }
+    .car-profile-header {
+      min-height:0 !important;
+      flex-direction:row !important;
+      align-items:stretch !important;
+      text-align:left !important;
+      padding:0 !important;
+    }
+    .car-photo-box {
+      flex:0 0 62% !important;
+      width:62% !important;
+      height:auto !important;
+      min-height:0 !important;
+      aspect-ratio:16 / 9 !important;
+      border-radius:0 !important;
+    }
+    .car-photo-box img {
+      width:100% !important;
+      height:100% !important;
+      object-fit:cover !important;
+      object-position:center !important;
+    }
+    .car-profile-info {
+      flex:1 1 38% !important;
+      width:38% !important;
+      min-width:0 !important;
+      margin-top:0 !important;
+      padding:28px 38px 22px 24px !important;
+      display:flex !important;
+      flex-direction:column !important;
+      justify-content:center !important;
+      align-items:flex-start !important;
+    }
+    .car-profile-info::before {
+      inset:14% auto 14% 0 !important;
+      width:3px !important;
+      height:auto !important;
+    }
+    .car-profile-name {
+      font-size:clamp(25px,4.1vw,38px) !important;
+      line-height:1 !important;
+      overflow-wrap:anywhere;
+    }
+    .car-profile-league { font-size:14px !important; }
+    .car-profile-brand-row,
+    .car-profile-badges {
+      justify-content:flex-start !important;
+    }
+    .car-profile-brand { font-size:18px !important; }
+    .car-profile-actions {
+      top:10px !important;
+      right:10px !important;
+    }
+  }
   @media (min-width:1181px) and (hover:none) and (pointer:coarse) {
     .dashboard-league-body { grid-template-rows:auto auto !important; }
     .dashboard-feature,
