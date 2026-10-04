@@ -4823,7 +4823,8 @@ function AppInner() {
   const relegationViewImplRef = React.useRef(null);
   const StableRelegationView = React.useRef((props) => relegationViewImplRef.current ? relegationViewImplRef.current(props) : null).current;
   const bonusViewImplRef = React.useRef(null);
-  const StableBonusView = React.useRef((props) => bonusViewImplRef.current ? bonusViewImplRef.current(props) : null).current;
+  // La table historique est volumineuse : un modal ne doit pas recalculer tous ses rangs et ses photos.
+  const StableBonusView = React.useRef(React.memo((props) => bonusViewImplRef.current ? bonusViewImplRef.current(props) : null)).current;
   const successeursViewImplRef = React.useRef(null);
   const StableSuccesseursView = React.useRef((props) => successeursViewImplRef.current ? successeursViewImplRef.current(props) : null).current;
   const allCarsViewImplRef = React.useRef(null);
@@ -8138,6 +8139,28 @@ function AppInner() {
 
   function getLeague(l) { return currentSeason.leagues[l]; }
   function getCar(l, id) { return getLeague(l)?.cars?.find(c => c.id === id); }
+
+  // Les lignes d'historique ont parfois un identifiant provisoire (hist-Nom). Retrouver
+  // l'identifiant Firebase de la voiture, même si elle a quitté les quatre ligues principales.
+  function findProfileCarEntry(requestedId, name, preferredLeague) {
+    const leagues = [...new Set([preferredLeague, ...LEAGUES, ...AUXILIARY_LEAGUES].filter(Boolean))];
+    let nameMatch = null;
+    let brandedMatch = null;
+    for (let si = db.seasons.length - 1; si >= 0; si--) {
+      const season = db.seasons[si];
+      for (const leagueName of leagues) {
+        for (const entry of season.leagues[leagueName]?.cars || []) {
+          const found = { leagueName, carId: entry.id, name: entry.name };
+          if (requestedId && entry.id === requestedId) return found;
+          if (name && namesMatch(entry.name, name)) {
+            if (!nameMatch) nameMatch = found;
+            if (!brandedMatch && db.brands?.[entry.id]) brandedMatch = found;
+          }
+        }
+      }
+    }
+    return brandedMatch || nameMatch;
+  }
   function getGroupCars(l, g) { return getLeague(l)?.cars?.filter(c => c.group === g) || []; }
   function getGroupMatches(l, g) { return getLeague(l)?.groupResults?.[g] || []; }
   function getGroupStandings(l, g) { return computeStandings(getGroupCars(l, g), getGroupMatches(l, g)); }
@@ -10669,31 +10692,15 @@ function AppInner() {
     const [showRankChart, setShowRankChart] = useState(false);
     const mountTimeRef = React.useRef(Date.now());
     if (!profileCar) return null;
-    const { leagueName, carId, histName } = profileCar;
+    const { leagueName, carId: requestedCarId, histName } = profileCar;
+    const requestedCar = getCar(leagueName, requestedCarId);
+    const matchedCar = findProfileCarEntry(requestedCarId, histName || requestedCar?.name, leagueName);
+    const carId = matchedCar?.carId || requestedCarId;
     const car = getCar(leagueName, carId);
-    
-    const effectiveName = car?.name || histName;
-    if (!effectiveName) {
-      for (const s of db.seasons) {
-        for (const l of LEAGUES) {
-          const f = s.leagues[l]?.cars.find(c => c.id === carId);
-          if (f) { openProfileCar({ leagueName: l, carId }); return null; }
-        }
-      }
-      return null;
-    }
-    const photo = getCarPhoto(carId) || (car ? null : getCarPhotoByName(effectiveName));
-
-    // Pour les voitures inactives, trouver leur carId dans les anciennes saisons
-    const resolvedCarId = carId || (() => {
-      for (const s of db.seasons) {
-        for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
-          const f = s.leagues[l]?.cars.find(c => namesMatch(c.name, effectiveName));
-          if (f) return f.id;
-        }
-      }
-      return null;
-    })();
+    const effectiveName = car?.name || histName || matchedCar?.name;
+    if (!effectiveName) return null;
+    const resolvedCarId = carId;
+    const photo = getCarPhoto(carId) || getCarPhotoByName(effectiveName);
 
     let totalW = 0, totalD = 0, totalL = 0, totalGF = 0, totalGA = 0, totalGP = 0;
     let totalBonusPts = 0, champCount = 0, relCount = 0;
@@ -11386,22 +11393,9 @@ function AppInner() {
     });
 
     function openProfile(entry) {
-      const findInLeague = (l) => {
-        for (const s of db.seasons) {
-          const f = s.leagues[l]?.cars.find(c =>
-            c.id === entry.id || namesMatch(c.name, entry.name)
-          );
-          if (f) return { leagueName: l, carId: f.id };
-        }
-        return null;
-      };
-      const inThis = findInLeague(leagueTab);
-      if (inThis) { setProfileCar(inThis); return; }
-      for (const l of LEAGUES.filter(l => l !== leagueTab)) {
-        const found = findInLeague(l);
-        if (found) { setProfileCar(found); return; }
-      }
-      openProfileCar({ leagueName: leagueTab, carId: entry.id, histName: entry.name });
+      const found = findProfileCarEntry(entry.id, entry.name, leagueTab);
+      openProfileCar({ leagueName: found?.leagueName || leagueTab,
+        carId: found?.carId || entry.id, histName: entry.name });
     }
 
     return (
@@ -11529,7 +11523,7 @@ function AppInner() {
                         <td style={{ padding:0,width:130 }}>
                           <div style={{ width:130,height:90,overflow:'hidden',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                             {photo
-                              ? <img src={photo} alt="" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
+                              ? <img src={photo} alt="" loading="lazy" decoding="async" style={{ width:'100%',height:'100%',objectFit:'cover',display:'block' }} />
                               : <span style={{ fontSize:36 }}>🚗</span>}
                           </div>
                         </td>
@@ -19147,7 +19141,7 @@ function AppInner() {
             </div>
           )}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && <StableActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
-          {mainTab === 'bonus' && !leagueMenuOpen && <StableBonusView />}
+          {mainTab === 'bonus' && !leagueMenuOpen && <StableBonusView dbVersion={db} leagueName={leagueTab} />}
           {mainTab === 'voitures' && <StableAllCarsView />}
           {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
           {mainTab === 'pays' && <StableMarquesView subTab="pays" />}
