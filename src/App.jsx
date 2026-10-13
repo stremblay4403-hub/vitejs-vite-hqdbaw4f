@@ -2209,6 +2209,51 @@ const css = `
   }
   .bracket-car-arrived { animation: bracketArrive 1.8s cubic-bezier(0.34,1.56,0.64,1) both; z-index: 3; }
 
+  /* Playoffs : les photos restent au premier plan, sans grille de 64 matchs géante. */
+  .po-overview { display:grid; grid-template-columns:minmax(0,1.4fr) minmax(270px,1fr); gap:16px; margin-bottom:18px; }
+  .po-hero, .po-final-preview { min-width:0; border:1px solid var(--border); border-radius:12px; overflow:hidden; background:var(--dark2); }
+  .po-hero { border-color:var(--gold-dim); background:linear-gradient(145deg,rgba(201,168,76,.13),var(--dark2) 60%); }
+  .po-hero-photo { width:100%; aspect-ratio:16/9; object-fit:contain; display:block; background:var(--dark3); }
+  .po-hero-content { padding:16px 20px 20px; }
+  .po-kicker { color:var(--gold); font-family:'Bebas Neue',sans-serif; letter-spacing:2px; font-size:15px; }
+  .po-hero-name { color:var(--gold); font-family:'Bebas Neue',sans-serif; font-size:clamp(25px,3vw,38px); letter-spacing:1px; line-height:1.12; margin:7px 0 3px; }
+  .po-final-preview { padding:16px; display:flex; flex-direction:column; gap:12px; }
+  .po-final-preview .po-match-card { margin:0; }
+  .po-round-nav { display:flex; gap:8px; overflow-x:auto; padding:2px 2px 12px; margin-bottom:8px; scrollbar-width:thin; -webkit-overflow-scrolling:touch; }
+  .po-round-tab { flex:0 0 auto; min-width:94px; text-align:left; padding:9px 12px; border:1px solid var(--border); border-radius:8px; color:var(--text-dim); background:var(--dark3); cursor:pointer; }
+  .po-round-tab strong { display:block; font:17px 'Bebas Neue',sans-serif; letter-spacing:1px; color:var(--text); }
+  .po-round-tab small { display:block; margin-top:2px; font-size:11px; }
+  .po-round-tab[aria-selected="true"] { background:rgba(201,168,76,.16); border-color:var(--gold); box-shadow:inset 0 -2px var(--gold); }
+  .po-round-tab[aria-selected="true"] strong { color:var(--gold); }
+  .po-bracket-nav { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 18px; }
+  .po-bracket-tab { border:1px solid var(--border); color:var(--text); background:var(--dark3); border-radius:7px; padding:9px 13px; cursor:pointer; font:15px 'Bebas Neue',sans-serif; letter-spacing:1px; }
+  .po-bracket-tab[aria-pressed="true"] { color:var(--gold); border-color:var(--gold); background:rgba(201,168,76,.15); }
+  .po-bracket-flow { display:flex; flex-direction:column; gap:0; }
+  .po-phase { min-width:0; background:var(--dark2); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .po-phase:last-child { border-color:var(--gold-dim); }
+  .po-phase-title { display:flex; justify-content:space-between; gap:8px; color:var(--gold); font:19px 'Bebas Neue',sans-serif; letter-spacing:1px; border-bottom:1px solid var(--border); padding:4px 2px 10px; margin-bottom:12px; }
+  .po-phase-title small { color:var(--text-dim); font:12px sans-serif; letter-spacing:0; align-self:center; }
+  .po-stage-matches { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  .po-stage-matches[data-count="1"] { grid-template-columns:minmax(0,580px); justify-content:center; }
+  .po-stage-matches[data-count="2"] { grid-template-columns:repeat(2,minmax(0,450px)); justify-content:center; }
+  .po-stage-matches .po-match-card { margin:0 !important; }
+  .po-stage-arrow { align-self:center; display:flex; align-items:center; gap:12px; color:var(--gold); font:14px 'Bebas Neue',sans-serif; letter-spacing:1px; padding:8px 0; }
+  .po-stage-arrow::before, .po-stage-arrow::after { content:''; width:36px; height:1px; background:var(--gold-dim); }
+  .po-match-card { border-radius:8px !important; transition:border-color .2s,transform .2s; }
+  .po-match-card:hover { border-color:var(--gold) !important; transform:translateY(-2px); }
+  .po-team-photo { width:96px; aspect-ratio:16/9; border-radius:4px; border:1px solid var(--border); background:var(--dark2); overflow:hidden; flex:none; display:flex; align-items:center; justify-content:center; }
+  .po-team-photo img { width:100%; height:100%; object-fit:contain; display:block; }
+  @media (max-width:1050px) { .po-stage-matches { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:700px) {
+    .po-overview { grid-template-columns:minmax(0,1fr); gap:10px; }
+    .po-hero-content { padding:14px 16px 17px; }
+    .po-final-preview { padding:13px; }
+    .po-stage-matches, .po-stage-matches[data-count="1"], .po-stage-matches[data-count="2"] { grid-template-columns:minmax(0,1fr); }
+    .po-team-photo { width:86px; }
+    .po-bracket-nav { flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:8px; }
+    .po-bracket-tab { flex:0 0 auto; }
+  }
+
 
   .hist-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); }
   @media (min-width: 640px) { .hist-summary-grid { grid-template-columns: repeat(4, 1fr); } }
@@ -9901,6 +9946,32 @@ function AppInner() {
     const sf = allMatches.filter(m => m.round === 'sf').sort((a,b) => a.bracketPos - b.bracketPos);
     const fin = allMatches.find(m => m.round === 'final');
     // showBracket lives in App state to persist across re-renders
+    const [selectedPlayoffRound, setSelectedPlayoffRound] = useState('overview');
+    const [bracketRegion, setBracketRegion] = useState('finales');
+    React.useEffect(() => { setSelectedPlayoffRound('overview'); setBracketRegion('finales'); }, [leagueTab, currentSeason?.season]);
+    const playoffRounds = [
+      { key:'r1', short:'Ronde 1', label:'Ronde 1 (64→32)', matches:r1 },
+      { key:'r2', short:'Ronde 2', label:'Ronde 2 (32→16)', matches:r2 },
+      { key:'r3', short:'Ronde 3', label:'Ronde 3 (16→8)', matches:r3 },
+      { key:'qf', short:'Quarts', label:'Quarts de Finale (8→4)', matches:qf },
+      { key:'sf', short:'Demies', label:'Demi-Finales (4→2)', matches:sf },
+      { key:'final', short:'Finale', label:'Finale', matches:fin ? [fin] : [] },
+    ];
+    const finalPlayed = fin?.homeGoals !== null && fin?.homeGoals !== undefined && fin?.awayGoals !== null && fin?.awayGoals !== undefined;
+    const championId = finalPlayed && fin.homeGoals !== fin.awayGoals ? (fin.homeGoals > fin.awayGoals ? fin.homeId : fin.awayId) : null;
+    const champion = championId ? getCar(leagueTab, championId) : null;
+    const championPhoto = championId ? getCarPhoto(championId) : null;
+    const playedTotal = allMatches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
+    const currentRound = playoffRounds.find(({ matches }) => matches.some(m => m.homeId && (m.homeGoals === null || m.homeGoals === undefined)));
+    const regionIdx = bracketRegion === 'finales' ? -1 : Number(bracketRegion);
+    const bracketStages = regionIdx < 0
+      ? playoffRounds.filter(({ key }) => ['qf','sf','final'].includes(key))
+      : [
+          { key:'r1', short:'Ronde 1', matches:r1.slice(regionIdx * 8, regionIdx * 8 + 8) },
+          { key:'r2', short:'Ronde 2', matches:r2.slice(regionIdx * 4, regionIdx * 4 + 4) },
+          { key:'r3', short:'Ronde 3', matches:r3.slice(regionIdx * 2, regionIdx * 2 + 2) },
+          { key:'qf', short:'Quart de finale', matches:qf.slice(regionIdx, regionIdx + 1) },
+        ];
 
     // Voiture qui vient de se qualifier — reçoit un effet "arrivée" (glow + léger déplacement)
     // là où elle apparaît, aussi bien dans le match qu'elle vient de gagner que dans son nouveau
@@ -10168,7 +10239,9 @@ function AppInner() {
               #{seed}
             </div>
             {/* Photo */}
-            <CarThumb photo={photo} size={compact ? 52 : 64} />
+            <div className="po-team-photo">
+              {photo ? <img src={photo} alt="" loading="lazy" /> : <span aria-hidden="true">🚗</span>}
+            </div>
             {/* Name + stats */}
             <div style={{ flex:1,minWidth:0 }}>
               <div style={{ fontSize:compact ? 17 :20,fontWeight:700,color:isWinner ? 'var(--gold)' :'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
@@ -10200,7 +10273,9 @@ function AppInner() {
       const homeStats = getGroupStatsForCar(m.homeId, leagueTab);
       const awayStats = getGroupStatsForCar(m.awayId, leagueTab);
       return (
-        <div style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:6,cursor:'pointer' }}
+        <div className="po-match-card" role="button" tabIndex={0} aria-label={`${home?.name || 'En attente'} contre ${away?.name || 'En attente'}`}
+          style={{ background:'var(--dark3)',border:`1px solid ${isPlayed ? 'var(--gold-dim)' :'var(--border)'}`,borderRadius:4,overflow:'hidden',marginBottom:6,cursor:'pointer' }}
+          onKeyDown={e => { if(e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } }}
           onClick={() => openMatchModal({
             homeName: home?.name, awayName: away?.name,
             homeId: m.homeId, awayId: m.awayId,
@@ -10229,9 +10304,7 @@ function AppInner() {
               ⚡ Simuler {label}
             </button>
           </div>
-          <div className="card-body" style={{ maxHeight:round === 'r1' ? 520 :420,overflowY:'auto' }}
-            ref={el => { if (el) el.scrollTop = poRoundScrollRef.current[round] || 0; }}
-            onScroll={e => { poRoundScrollRef.current[round] = e.currentTarget.scrollTop; }}>
+          <div className="card-body">
             <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round === 'r1' ? 240 :round === 'r2' ? 260 :280}px,1fr))`,gap:12 }}>
               {matches.map(m => <StablePOMatchCard key={m.id} m={m} compact={round === 'r1'} />)}
             </div>
@@ -10273,43 +10346,69 @@ function AppInner() {
                 ⚡⚡ Tous les playoffs
               </button>
             </div>
-            {/* Toggle bracket */}
-            <div style={{ marginBottom:12 }}>
-              <button className="btn btn-sm" style={{ background: showBracket ? 'rgba(201,168,76,0.2)' : 'var(--dark3)', borderColor: showBracket ? 'var(--gold)' : 'var(--border)', color: showBracket ? 'var(--gold)' : 'var(--text-dim)' }}
-                onClick={() => setShowBracket(b => !b)}>
-                🏆 {showBracket ? 'Masquer' : 'Voir'} le Bracket
-              </button>
+            <div className="po-overview">
+              <div className="po-hero">
+                {championPhoto || (fin?.homeId && getCarPhoto(fin.homeId))
+                  ? <img className="po-hero-photo" src={championPhoto || getCarPhoto(fin.homeId)} alt={champion ? `Voiture championne : ${champion.name}` : 'Une voiture finaliste'} />
+                  : <div className="po-hero-photo" style={{ display:'grid',placeItems:'center',fontSize:72 }} aria-hidden="true">🏆</div>}
+                <div className="po-hero-content">
+                  <div className="po-kicker">{champion ? '🏆 Champion des playoffs' : '🏁 Course au titre'}</div>
+                  <div className="po-hero-name">{champion?.name || (fin?.homeId ? 'La finale se prépare' : 'Les playoffs sont en cours')}</div>
+                  <div className="text-dim" style={{ fontSize:13 }}>
+                    {champion ? `${leagueTab} · Finale ${fin.homeGoals} – ${fin.awayGoals}` : `${leagueTab} · ${playedTotal}/${allMatches.length} matchs joués${currentRound ? ` · ${currentRound.short} en cours` : ''}`}
+                  </div>
+                  {champion && <button className="btn btn-sm" style={{ marginTop:12 }} onClick={() => openProfileCar({ leagueName:leagueTab, carId:championId })}>Voir le profil du champion →</button>}
+                </div>
+              </div>
+              <div className="po-final-preview">
+                <div className="po-kicker">🏆 La finale</div>
+                {fin ? <StablePOMatchCard m={fin} /> : <div className="text-dim">Les finalistes apparaîtront après les demi-finales.</div>}
+                <div className="text-dim" style={{ fontSize:12 }}>Touchez un duel pour voir ses détails et les voitures.</div>
+              </div>
             </div>
-            {showBracket && (
-              <div className="card" style={{ marginBottom:12 }}>
-                <div className="card-header"><div className="card-title">🏆 Bracket — {leagueTab}</div></div>
-                <div className="card-body" style={{ padding:8 }}>
-                  <StableBracketView />
-                </div>
+            <div className="po-round-nav" role="tablist" aria-label="Choisir une ronde des playoffs">
+              <button className="po-round-tab" role="tab" aria-selected={selectedPlayoffRound === 'overview'} onClick={() => setSelectedPlayoffRound('overview')}>
+                <strong>Vue d'ensemble</strong><small>Phases finales</small>
+              </button>
+              {playoffRounds.map(({ key, short, matches }) => (
+                <button key={key} className="po-round-tab" role="tab" aria-selected={selectedPlayoffRound === key} onClick={() => setSelectedPlayoffRound(key)}>
+                  <strong>{short}</strong><small>{matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length}/{matches.length} joués</small>
+                </button>
+              ))}
+            </div>
+            {selectedPlayoffRound === 'overview' && <>
+              <div className="po-kicker" style={{ marginTop:10 }}>Bracket · Le chemin vers le titre</div>
+              <div className="text-dim" style={{ fontSize:12,marginTop:4 }}>Chaque paire de duels mène au duel suivant. Les tableaux 1 et 2 mènent à la première demi-finale; les tableaux 3 et 4 à la seconde.</div>
+              <div className="po-bracket-nav" role="group" aria-label="Choisir une partie du bracket">
+                <button className="po-bracket-tab" aria-pressed={bracketRegion === 'finales'} onClick={() => setBracketRegion('finales')}>🏆 Phases finales</button>
+                {[0,1,2,3].map(i => <button key={i} className="po-bracket-tab" aria-pressed={bracketRegion === String(i)} onClick={() => setBracketRegion(String(i))}>Tableau {i + 1} · 16 voitures</button>)}
               </div>
-            )}
-            <StableRoundSection label="Ronde 1 (64→32)" matches={r1} round="r1" />
-            <StableRoundSection label="Ronde 2 (32→16)" matches={r2} round="r2" />
-            <StableRoundSection label="Ronde 3 (16→8)" matches={r3} round="r3" />
-            <StableRoundSection label="Quarts de Finale (8→4)" matches={qf} round="qf" />
-            <StableRoundSection label="Demi-Finales (4→2)" matches={sf} round="sf" />
-            {fin && (
-              <div className="card mb-16">
-                <div className="card-header">
-                  <div className="card-title">🏆 Finale</div>
-                  <div style={{ flex:1 }} />
-                  <button className="btn btn-sm btn-sim" style={{ display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRound('final'); }}>🎲 Simuler</button>
-                </div>
-                <div className="card-body" style={{ maxWidth:320 }}>
-                  <StablePOMatchCard m={fin} compact={false} />
-                  {fin.homeGoals !== null && (
-                    <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display: isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>
-                      ✓ Enregistrer le Champion
-                    </button>
-                  )}
-                </div>
+              <div className="po-bracket-flow" aria-label={bracketRegion === 'finales' ? 'Bracket des phases finales' : `Bracket du tableau ${regionIdx + 1}`}>
+                {bracketStages.map(({ key, short, matches }, index) => <React.Fragment key={key}>
+                  {index > 0 && <div className="po-stage-arrow" aria-hidden="true">↓ Les vainqueurs avancent ↓</div>}
+                  <section className="po-phase" aria-label={short}>
+                    <div className="po-phase-title"><span>{key === 'final' ? '🏆 ' : ''}{short}</span><small>{matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length}/{matches.length} joués</small></div>
+                    {matches.length
+                      ? <div className="po-stage-matches" data-count={matches.length}>{matches.map(m => <StablePOMatchCard key={m.id} m={m} compact />)}</div>
+                      : <div className="text-dim" style={{ padding:12 }}>En attente des rondes précédentes</div>}
+                  </section>
+                </React.Fragment>)}
               </div>
-            )}
+            </>}
+            {selectedPlayoffRound !== 'overview' && selectedPlayoffRound !== 'final' && (() => {
+              const chosen = playoffRounds.find(({ key }) => key === selectedPlayoffRound);
+              return chosen && <StableRoundSection label={chosen.label} matches={chosen.matches} round={chosen.key} />;
+            })()}
+            {selectedPlayoffRound === 'final' && <div className="card mb-16">
+              <div className="card-header">
+                <div className="card-title">🏆 Finale</div><div style={{ flex:1 }} />
+                {fin && <button className="btn btn-sm btn-sim" style={{ display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRound('final'); }}>🎲 Simuler</button>}
+              </div>
+              <div className="card-body" style={{ maxWidth:600 }}>
+                {fin ? <StablePOMatchCard m={fin} /> : <div className="text-dim">En attente des demi-finales.</div>}
+                {finalPlayed && <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>✓ Enregistrer le Champion</button>}
+              </div>
+            </div>}
           </div>
         )}
       </div>
