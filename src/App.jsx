@@ -2228,25 +2228,28 @@ const css = `
   .po-bracket-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:9px; padding:12px; border-bottom:1px solid var(--border); }
   .po-bracket-controls button { min-height:36px; }
   .po-bracket-scroll { overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; background:radial-gradient(ellipse at 50% 45%,rgba(201,168,76,.08),transparent 58%),var(--dark2); scrollbar-width:thin; }
-  .po-bracket-canvas { width:1380px; height:1090px; position:relative; margin:auto; background:linear-gradient(90deg,transparent 49.95%,rgba(201,168,76,.10) 50%,transparent 50.05%); }
+  .po-bracket-canvas { width:1380px; height:1210px; position:relative; margin:auto; background:linear-gradient(90deg,transparent 49.95%,rgba(201,168,76,.10) 50%,transparent 50.05%); }
   .po-bracket-lines { position:absolute; inset:0; pointer-events:none; }
   .po-bracket-label { position:absolute; top:10px; width:168px; text-align:center; font:14px 'Bebas Neue',sans-serif; color:var(--gold); letter-spacing:2px; }
   .po-bracket-match { position:absolute; width:168px; display:flex; flex-direction:column; gap:4px; z-index:1; }
-  .po-bracket-team { width:168px; height:118px; background:var(--dark3); border:2px solid var(--border); border-radius:7px; color:var(--text); padding:0; overflow:hidden; text-align:left; }
+  .po-bracket-team { width:168px; height:136px; background:var(--dark3); border:2px solid var(--border); border-radius:7px; color:var(--text); padding:0; overflow:hidden; text-align:left; }
   .po-bracket-team:hover, .po-bracket-team:focus-within { border-color:var(--gold); }
   .po-bracket-team.is-winner { border-color:var(--gold); background:rgba(201,168,76,.18); }
   .po-bracket-photo { display:block; width:100%; height:92px; padding:0; border:0; cursor:pointer; background:var(--dark3); }
   .po-bracket-photo img, .po-bracket-photo .po-bracket-placeholder { display:block; width:100%; height:92px; object-fit:cover; object-position:center; background:var(--dark3); }
   .po-bracket-team .po-bracket-placeholder { display:grid; place-items:center; color:var(--text-dim); font-size:20px; }
-  .po-bracket-team-footer { display:flex; align-items:center; gap:4px; width:100%; border:0; background:transparent; color:var(--text); text-align:left; cursor:pointer; padding:1px 5px; font-size:12px; font-weight:700; }
-  .po-bracket-team-footer span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-  .po-bracket-team-footer strong { color:var(--green); font:18px 'Bebas Neue',sans-serif; }
-  .po-bracket-champion { position:absolute; left:596px; top:737px; width:188px; text-align:center; padding:10px; border:1px solid var(--gold-dim); border-radius:10px; background:linear-gradient(145deg,rgba(201,168,76,.2),var(--dark3)); }
+  .po-bracket-team-footer { display:flex; align-items:center; gap:5px; width:100%; min-height:40px; border:0; background:transparent; color:var(--text); text-align:left; cursor:pointer; padding:2px 6px; font-size:12px; font-weight:700; }
+  .po-bracket-team-footer span:first-child { min-width:0; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-height:1.2; flex:1; overflow-wrap:anywhere; }
+  .po-bracket-team-footer strong { flex:0 0 22px; text-align:right; color:var(--green); font:20px 'Bebas Neue',sans-serif; }
+  .po-bracket-champion { position:absolute; left:399px; top:475px; width:188px; text-align:center; padding:10px; border:1px solid var(--gold-dim); border-radius:10px; background:linear-gradient(145deg,rgba(201,168,76,.2),var(--dark3)); }
   .po-bracket-champion img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:5px; display:block; margin:5px 0; }
   .po-match-card { border-radius:8px !important; transition:border-color .2s,transform .2s; }
   .po-match-card:hover { border-color:var(--gold) !important; transform:translateY(-2px); }
   .po-team-photo { width:96px; aspect-ratio:16/9; border-radius:4px; border:1px solid var(--border); background:var(--dark2); overflow:hidden; flex:none; display:flex; align-items:center; justify-content:center; }
   .po-team-photo img { width:100%; height:100%; object-fit:cover; object-position:center; display:block; }
+  .po-round-match-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:12px; }
+  .po-bracket-region-tabs { display:flex; gap:7px; overflow-x:auto; padding:0 12px 12px; -webkit-overflow-scrolling:touch; }
+  .po-bracket-region-tabs button { flex:0 0 auto; }
   @media (max-width:700px) {
     .po-overview { grid-template-columns:minmax(0,1fr); gap:10px; }
     .po-hero-content { padding:14px 16px 17px; }
@@ -9962,6 +9965,7 @@ function AppInner() {
     const championPhoto = championId ? getCarPhoto(championId) : null;
     const playedTotal = allMatches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
     const currentRound = playoffRounds.find(({ matches }) => matches.some(m => m.homeId && (m.homeGoals === null || m.homeGoals === undefined)));
+    const shownRound = selectedPlayoffRound || currentRound?.key || (finalPlayed ? 'final' : 'r1');
 
     // Voiture qui vient de se qualifier — reçoit un effet "arrivée" (glow + léger déplacement)
     // là où elle apparaît, aussi bien dans le match qu'elle vient de gagner que dans son nouveau
@@ -10162,26 +10166,36 @@ function AppInner() {
         </div>
       );
     }
-    // Tableau visuel compact : 16 voitures encore en lice, deux branches puis la finale.
-    // Les rondes 1 et 2 restent consultables dans les onglets, avec leurs 48 matchs et photos.
+    // Chaque branche montre la progression réelle dès la ronde 1. Les quatre branches
+    // gardent le bracket lisible sur téléphone et se parcourent par glissement horizontal.
     function VisualBracketView() {
       const scrollerRef = React.useRef(null);
+      const [region, setRegion] = React.useState(0);
       const W = 168;
-      const X = [15,212,409,606,803,1000,1197];
-      const yFirst = [50,310,570,830];
-      const yQuarters = [180,700];
-      const ySemi = 440;
-      const centerY = y => y + 120;
+      const finals = region === 'finales';
+      const X = finals ? [15,212,409,606,803] : [15,212,409,606,803,1000,1197];
+      const yFirst = [50,338,626,914];
+      const ySecond = [194,770];
+      const yMiddle = 482;
+      const yFinalQuarters = [40,340];
+      const yFinalMiddle = 190;
+      const centerY = y => y + 138;
       const winnerFor = m => m && m.homeGoals !== null && m.homeGoals !== undefined && m.awayGoals !== null && m.awayGoals !== undefined
         ? (m.homeGoals > m.awayGoals ? m.homeId : m.awayGoals > m.homeGoals ? m.awayId : null) : null;
-      const stages = [
-        { x:X[0], title:'Ronde 3', matches:r3.slice(0,4), tops:yFirst },
-        { x:X[1], title:'Quarts', matches:qf.slice(0,2), tops:yQuarters },
-        { x:X[2], title:'Demie', matches:sf.slice(0,1), tops:[ySemi] },
-        { x:X[3], title:'Finale', matches:fin ? [fin] : [], tops:[ySemi] },
-        { x:X[4], title:'Demie', matches:sf.slice(1,2), tops:[ySemi] },
-        { x:X[5], title:'Quarts', matches:qf.slice(2,4), tops:yQuarters },
-        { x:X[6], title:'Ronde 3', matches:r3.slice(4,8), tops:yFirst },
+      const stages = finals ? [
+        { x:X[0], title:'Quarts', matches:qf.slice(0,2), tops:yFinalQuarters },
+        { x:X[1], title:'Demi-finale', matches:sf.slice(0,1), tops:[yFinalMiddle] },
+        { x:X[2], title:'Finale', matches:fin ? [fin] : [], tops:[yFinalMiddle] },
+        { x:X[3], title:'Demi-finale', matches:sf.slice(1,2), tops:[yFinalMiddle] },
+        { x:X[4], title:'Quarts', matches:qf.slice(2,4), tops:yFinalQuarters },
+      ] : [
+        { x:X[0], title:'Ronde 1', matches:r1.slice(region*8,region*8+4), tops:yFirst },
+        { x:X[1], title:'Ronde 2', matches:r2.slice(region*4,region*4+2), tops:ySecond },
+        { x:X[2], title:'Ronde 3', matches:r3.slice(region*2,region*2+1), tops:[yMiddle] },
+        { x:X[3], title:'Quart', matches:qf.slice(region,region+1), tops:[yMiddle] },
+        { x:X[4], title:'Ronde 3', matches:r3.slice(region*2+1,region*2+2), tops:[yMiddle] },
+        { x:X[5], title:'Ronde 2', matches:r2.slice(region*4+2,region*4+4), tops:ySecond },
+        { x:X[6], title:'Ronde 1', matches:r1.slice(region*8+4,region*8+8), tops:yFirst },
       ];
       function branch(fromX, topA, topB, toX, toTop, leftToRight) {
         const start = leftToRight ? fromX + W : fromX;
@@ -10191,12 +10205,18 @@ function AppInner() {
         return `M ${start} ${a} H ${elbow} M ${start} ${b} H ${elbow} M ${elbow} ${a} V ${b} M ${elbow} ${(a+b)/2} V ${target} H ${end}`;
       }
       const lines = [];
-      [0,1].forEach(i => {
-        lines.push(branch(X[0],yFirst[i*2],yFirst[i*2+1],X[1],yQuarters[i],true));
-        lines.push(branch(X[6],yFirst[i*2],yFirst[i*2+1],X[5],yQuarters[i],false));
-      });
-      lines.push(branch(X[1],yQuarters[0],yQuarters[1],X[2],ySemi,true));
-      lines.push(branch(X[5],yQuarters[0],yQuarters[1],X[4],ySemi,false));
+      if (finals) {
+        lines.push(branch(X[0],yFinalQuarters[0],yFinalQuarters[1],X[1],yFinalMiddle,true));
+        lines.push(branch(X[4],yFinalQuarters[0],yFinalQuarters[1],X[3],yFinalMiddle,false));
+      } else {
+        [0,1].forEach(i => {
+          lines.push(branch(X[0],yFirst[i*2],yFirst[i*2+1],X[1],ySecond[i],true));
+          lines.push(branch(X[6],yFirst[i*2],yFirst[i*2+1],X[5],ySecond[i],false));
+        });
+        lines.push(branch(X[1],ySecond[0],ySecond[1],X[2],yMiddle,true));
+        lines.push(branch(X[5],ySecond[0],ySecond[1],X[4],yMiddle,false));
+        lines.push(`M ${X[2]+W} ${centerY(yMiddle)} H ${X[3]} M ${X[4]} ${centerY(yMiddle)} H ${X[3]+W}`);
+      }
 
       function openBracketMatch(m) {
         if (!m?.homeId) return;
@@ -10229,40 +10249,39 @@ function AppInner() {
           <Team m={m} carId={m?.awayId} goals={m?.awayGoals} />
         </div>;
       }
-      const moveTo = fraction => {
-        const el = scrollerRef.current;
-        if (el) el.scrollTo({ left:Math.max(0,(el.scrollWidth-el.clientWidth)*fraction),behavior:'smooth' });
+      const selectRegion = value => {
+        setRegion(value);
+        if (scrollerRef.current) scrollerRef.current.scrollLeft = 0;
       };
       return <div className="card" style={{ marginBottom:16,overflow:'hidden' }}>
         <div className="po-bracket-controls">
-          <div><div className="po-kicker">🏆 Bracket des 16 dernières voitures</div><div className="text-dim" style={{ fontSize:12 }}>Glisse pour suivre les branches. Touche une photo pour le profil, le nom ou le score pour le match.</div></div>
-          <div style={{ display:'flex',gap:6 }}>
-            <button className="btn btn-sm" onClick={() => moveTo(0)}>← Gauche</button>
-            <button className="btn btn-sm" onClick={() => moveTo(.5)}>🏆 Centre</button>
-            <button className="btn btn-sm" onClick={() => moveTo(1)}>Droite →</button>
-          </div>
+          <div><div className="po-kicker">🏆 Bracket complet · 64 voitures</div><div className="text-dim" style={{ fontSize:12 }}>Choisis un tableau, puis glisse latéralement pour voir la progression. Touche une photo pour le profil, le nom ou le score pour le match.</div></div>
+        </div>
+        <div className="po-bracket-region-tabs" role="group" aria-label="Choisir une branche du bracket">
+          {[0,1,2,3].map(i => <button key={i} type="button" className={`btn btn-sm ${region === i ? 'btn-gold' : ''}`} aria-pressed={region === i} onClick={() => selectRegion(i)}>Tableau {i+1}</button>)}
+          <button type="button" className={`btn btn-sm ${finals ? 'btn-gold' : ''}`} aria-pressed={finals} onClick={() => selectRegion('finales')}>🏆 Phases finales</button>
         </div>
         <div className="po-bracket-scroll" ref={el => {
           scrollerRef.current = el;
           if (el && !el.dataset.positioned) {
             el.dataset.positioned = '1';
-            requestAnimationFrame(() => { if (el.isConnected) el.scrollLeft = Math.max(0,(el.scrollWidth-el.clientWidth)/2); });
+            requestAnimationFrame(() => { if (el.isConnected) el.scrollLeft = 0; });
           }
         }} aria-label="Bracket visuel défilant horizontalement">
-          <div className="po-bracket-canvas">
-            <svg className="po-bracket-lines" width="1380" height="1090" aria-hidden="true">
+          <div className="po-bracket-canvas" style={{ width:finals ? 986 : 1380,height:finals ? 680 : 1210 }}>
+            <svg className="po-bracket-lines" width={finals ? 986 : 1380} height={finals ? 680 : 1210} aria-hidden="true">
               {lines.map((d,i) => <path key={i} d={d} fill="none" stroke="rgba(201,168,76,.65)" strokeWidth="2" />)}
-              <path d={`M ${X[2]+W} ${centerY(ySemi)} H ${X[3]} M ${X[4]} ${centerY(ySemi)} H ${X[3]+W} M ${X[3]+W/2} ${ySemi+244} V 734`} fill="none" stroke="rgba(201,168,76,.65)" strokeWidth="2" />
+              {finals && <path d={`M ${X[1]+W} ${centerY(yFinalMiddle)} H ${X[2]} M ${X[3]} ${centerY(yFinalMiddle)} H ${X[2]+W}`} fill="none" stroke="rgba(201,168,76,.65)" strokeWidth="2" />}
             </svg>
             {stages.map((stage,i) => <React.Fragment key={i}>
               <div className="po-bracket-label" style={{ left:stage.x }}>{stage.title}</div>
               {stage.matches.map((m,j) => <Match key={m?.id || j} m={m} x={stage.x} y={stage.tops[j]} />)}
             </React.Fragment>)}
-            <div className="po-bracket-champion">
+            {finals && <div className="po-bracket-champion">
               <div className="po-kicker">🏆 Champion</div>
               {championPhoto && <img src={championPhoto} alt="" />}
               <div style={{ color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",fontSize:19 }}>{champion?.name || 'À déterminer'}</div>
-            </div>
+            </div>}
           </div>
         </div>
       </div>;
@@ -10339,7 +10358,7 @@ function AppInner() {
             </div>
             {/* Name + stats */}
             <div style={{ flex:1,minWidth:0 }}>
-              <div style={{ fontSize:compact ? 17 :20,fontWeight:700,color:isWinner ? 'var(--gold)' :'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
+              <div style={{ fontSize:compact ? 17 :20,fontWeight:700,color:isWinner ? 'var(--gold)' :'var(--text)',lineHeight:1.15,overflowWrap:'anywhere' }}>
                 {car?.name || '?'}
               </div>
               <div style={{ display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:2 }}>
@@ -10400,7 +10419,7 @@ function AppInner() {
             </button>
           </div>
           <div className="card-body">
-            <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round === 'r1' ? 240 :round === 'r2' ? 260 :280}px,1fr))`,gap:12 }}>
+            <div className="po-round-match-grid">
               {matches.map(m => <StablePOMatchCard key={m.id} m={m} compact={round === 'r1'} />)}
             </div>
           </div>
@@ -10441,6 +10460,28 @@ function AppInner() {
                 ⚡⚡ Tous les playoffs
               </button>
             </div>
+            <div className="po-kicker" style={{ margin:'12px 0 5px' }}>Tous les matchs par ronde</div>
+            <div className="po-round-nav" role="group" aria-label="Choisir une ronde des playoffs">
+              {playoffRounds.map(({ key, short, matches }) => (
+                <button key={key} className="po-round-tab" aria-pressed={shownRound === key} onClick={() => setSelectedPlayoffRound(key)}>
+                  <strong>{short}</strong><small>{matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length}/{matches.length} joués</small>
+                </button>
+              ))}
+            </div>
+            {shownRound !== 'final' && (() => {
+              const chosen = playoffRounds.find(({ key }) => key === shownRound);
+              return chosen && <StableRoundSection label={chosen.label} matches={chosen.matches} round={chosen.key} />;
+            })()}
+            {shownRound === 'final' && <div className="card mb-16">
+              <div className="card-header">
+                <div className="card-title">🏆 Finale</div><div style={{ flex:1 }} />
+                {fin && <button className="btn btn-sm btn-sim" style={{ display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRound('final'); }}>🎲 Simuler</button>}
+              </div>
+              <div className="card-body" style={{ maxWidth:600 }}>
+                {fin ? <StablePOMatchCard m={fin} /> : <div className="text-dim">En attente des demi-finales.</div>}
+                {finalPlayed && <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>✓ Enregistrer le Champion</button>}
+              </div>
+            </div>}
             <div className="po-overview">
               <div className="po-hero">
                 {championPhoto || (fin?.homeId && getCarPhoto(fin.homeId))
@@ -10462,28 +10503,6 @@ function AppInner() {
               </div>
             </div>
             <StableBracketView />
-            <div className="po-kicker" style={{ margin:'12px 0 5px' }}>Tous les matchs par ronde</div>
-            <div className="po-round-nav" role="group" aria-label="Choisir une ronde des playoffs">
-              {playoffRounds.map(({ key, short, matches }) => (
-                <button key={key} className="po-round-tab" aria-pressed={selectedPlayoffRound === key} onClick={() => setSelectedPlayoffRound(current => current === key ? null : key)}>
-                  <strong>{short}</strong><small>{matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length}/{matches.length} joués</small>
-                </button>
-              ))}
-            </div>
-            {selectedPlayoffRound && selectedPlayoffRound !== 'final' && (() => {
-              const chosen = playoffRounds.find(({ key }) => key === selectedPlayoffRound);
-              return chosen && <StableRoundSection label={chosen.label} matches={chosen.matches} round={chosen.key} />;
-            })()}
-            {selectedPlayoffRound === 'final' && <div className="card mb-16">
-              <div className="card-header">
-                <div className="card-title">🏆 Finale</div><div style={{ flex:1 }} />
-                {fin && <button className="btn btn-sm btn-sim" style={{ display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) simRound('final'); }}>🎲 Simuler</button>}
-              </div>
-              <div className="card-body" style={{ maxWidth:600 }}>
-                {fin ? <StablePOMatchCard m={fin} /> : <div className="text-dim">En attente des demi-finales.</div>}
-                {finalPlayed && <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>✓ Enregistrer le Champion</button>}
-              </div>
-            </div>}
           </div>
         )}
       </div>
