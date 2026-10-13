@@ -2226,25 +2226,28 @@ const css = `
   .po-round-tab[aria-pressed="true"] { background:rgba(201,168,76,.16); border-color:var(--gold); box-shadow:inset 0 -2px var(--gold); }
   .po-round-tab[aria-pressed="true"] strong { color:var(--gold); }
   .po-bracket-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:9px; padding:12px; border-bottom:1px solid var(--border); }
-  .po-bracket-controls button { min-height:36px; }
+  .po-bracket-regions { display:flex; gap:7px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--border); -webkit-overflow-scrolling:touch; }
+  .po-bracket-regions button { flex:none; min-height:38px; }
+  .po-bracket-regions button[aria-pressed="true"] { color:var(--gold); border-color:var(--gold); background:rgba(201,168,76,.16); }
   .po-bracket-scroll { overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; background:radial-gradient(ellipse at 50% 45%,rgba(201,168,76,.08),transparent 58%),var(--dark2); scrollbar-width:thin; }
   .po-bracket-canvas { width:1380px; height:1090px; position:relative; margin:auto; background:linear-gradient(90deg,transparent 49.95%,rgba(201,168,76,.10) 50%,transparent 50.05%); }
   .po-bracket-lines { position:absolute; inset:0; pointer-events:none; }
   .po-bracket-label { position:absolute; top:10px; width:168px; text-align:center; font:14px 'Bebas Neue',sans-serif; color:var(--gold); letter-spacing:2px; }
   .po-bracket-match { position:absolute; width:168px; display:flex; flex-direction:column; gap:4px; z-index:1; }
-  .po-bracket-team { width:168px; height:118px; background:var(--dark3); border:2px solid var(--border); border-radius:7px; color:var(--text); padding:0; overflow:hidden; text-align:left; }
+  .po-bracket-team { width:168px; height:136px; background:var(--dark3); border:2px solid var(--border); border-radius:7px; color:var(--text); padding:0; overflow:hidden; text-align:left; }
   .po-bracket-team:hover, .po-bracket-team:focus-within { border-color:var(--gold); }
   .po-bracket-team.is-winner { border-color:var(--gold); background:rgba(201,168,76,.18); }
-  .po-bracket-photo { display:block; width:100%; height:92px; padding:0; border:0; cursor:pointer; background:var(--dark3); }
-  .po-bracket-photo img, .po-bracket-photo .po-bracket-placeholder { display:block; width:100%; height:92px; object-fit:cover; object-position:center; background:var(--dark3); }
+  .po-bracket-photo { display:block; width:100%; height:90px; padding:0; border:0; cursor:pointer; background:var(--dark3); }
+  .po-bracket-photo img, .po-bracket-photo .po-bracket-placeholder { display:block; width:100%; height:90px; object-fit:cover; object-position:center; background:var(--dark3); }
   .po-bracket-team .po-bracket-placeholder { display:grid; place-items:center; color:var(--text-dim); font-size:20px; }
-  .po-bracket-team-footer { display:flex; align-items:center; gap:4px; width:100%; border:0; background:transparent; color:var(--text); text-align:left; cursor:pointer; padding:1px 5px; font-size:12px; font-weight:700; }
-  .po-bracket-team-footer span:first-child { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
-  .po-bracket-team-footer strong { color:var(--green); font:18px 'Bebas Neue',sans-serif; }
+  .po-bracket-team-footer { display:flex; align-items:center; gap:4px; width:100%; height:42px; border:0; background:transparent; color:var(--text); text-align:left; cursor:pointer; padding:2px 5px; font-size:12px; font-weight:700; line-height:1.1; }
+  .po-bracket-team-footer span:first-child { min-width:0; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; line-clamp:2; overflow-wrap:anywhere; flex:1; }
+  .po-bracket-team-footer strong { flex:none; min-width:18px; text-align:right; color:var(--green); font:21px 'Bebas Neue',sans-serif; line-height:1; }
   .po-bracket-champion { position:absolute; left:596px; top:737px; width:188px; text-align:center; padding:10px; border:1px solid var(--gold-dim); border-radius:10px; background:linear-gradient(145deg,rgba(201,168,76,.2),var(--dark3)); }
   .po-bracket-champion img { width:100%; aspect-ratio:16/9; object-fit:cover; border-radius:5px; display:block; margin:5px 0; }
   .po-match-card { border-radius:8px !important; transition:border-color .2s,transform .2s; }
   .po-match-card:hover { border-color:var(--gold) !important; transform:translateY(-2px); }
+  .po-round-match-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr)); gap:12px; }
   .po-team-photo { width:96px; aspect-ratio:16/9; border-radius:4px; border:1px solid var(--border); background:var(--dark2); overflow:hidden; flex:none; display:flex; align-items:center; justify-content:center; }
   .po-team-photo img { width:100%; height:100%; object-fit:cover; object-position:center; display:block; }
   @media (max-width:700px) {
@@ -9946,8 +9949,6 @@ function AppInner() {
     const qf = allMatches.filter(m => m.round === 'qf').sort((a,b) => a.bracketPos - b.bracketPos);
     const sf = allMatches.filter(m => m.round === 'sf').sort((a,b) => a.bracketPos - b.bracketPos);
     const fin = allMatches.find(m => m.round === 'final');
-    const [selectedPlayoffRound, setSelectedPlayoffRound] = useState(null);
-    React.useEffect(() => { setSelectedPlayoffRound(null); }, [leagueTab, currentSeason?.season]);
     const playoffRounds = [
       { key:'r1', short:'Ronde 1', label:'Ronde 1 (64→32)', matches:r1 },
       { key:'r2', short:'Ronde 2', label:'Ronde 2 (32→16)', matches:r2 },
@@ -9962,6 +9963,9 @@ function AppInner() {
     const championPhoto = championId ? getCarPhoto(championId) : null;
     const playedTotal = allMatches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
     const currentRound = playoffRounds.find(({ matches }) => matches.some(m => m.homeId && (m.homeGoals === null || m.homeGoals === undefined)));
+    const defaultPlayoffRound = currentRound?.key || (fin ? 'final' : 'r1');
+    const [selectedPlayoffRound, setSelectedPlayoffRound] = useState(defaultPlayoffRound);
+    React.useEffect(() => { setSelectedPlayoffRound(defaultPlayoffRound); }, [leagueTab, currentSeason?.season]);
 
     // Voiture qui vient de se qualifier — reçoit un effet "arrivée" (glow + léger déplacement)
     // là où elle apparaît, aussi bien dans le match qu'elle vient de gagner que dans son nouveau
@@ -9980,224 +9984,63 @@ function AppInner() {
 
     const ROUND_LABELS = { r1: 'Ronde 1', r2: 'Ronde 2', r3: 'Ronde 3', qf: 'Quarts de Finale', sf: 'Demi-Finales', final: 'Finale' };
 
-    // Bracket visual component — symétrique gauche/droite
-    function BracketView() {
-      // R1: pos 1-16 = left half, pos 17-32 = right half
-      const leftR1  = r1.filter(m => m.bracketPos <= 16).sort((a,b) => a.bracketPos - b.bracketPos);
-      const rightR1 = r1.filter(m => m.bracketPos > 16).sort((a,b) => a.bracketPos - b.bracketPos);
-      const leftR2  = r2.slice(0, 8);
-      const rightR2 = r2.slice(8, 16);
-      const leftR3  = r3.slice(0, 4);
-      const rightR3 = r3.slice(4, 8);
-      const leftQF  = qf.slice(0, 2);
-      const rightQF = qf.slice(2, 4);
-      const leftSF  = sf[0] ? [sf[0]] : [];
-      const rightSF = sf[1] ? [sf[1]] : [];
-
-      // Card dimensions
-      const CARD_W = 110;
-      const CARD_H = 108;
-      const MATCH_GAP = 3;
-      const MATCH_H = CARD_H * 2 + MATCH_GAP;
-      const COL_GAP = 24;
-
-      function getWinnerId(m) {
-        if (!m || m.homeGoals === null) return null;
-        return m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
-      }
-
-      function CarCard({ carId, isWinner, goals }) {
-        const IMG_H = 55;
-        const justArrived = carId && carId === justDecidedCarId;
-        if (!carId) return (
-          <div style={{ width:CARD_W, height:CARD_H, background:'var(--dark3)', border:'1px solid var(--border)', borderRadius:6, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.3 }}>
-            <span style={{ fontSize:9, color:'var(--text-dim)' }}>En attente</span>
-          </div>
-        );
-        const car = getCar(leagueTab, carId);
-        const name = car?.name || '?';
-        const photo = getCarPhoto(carId);
-        const stats = getCarStats(carId, Object.values(league.groupResults || {}).flat());
-        const carObj = league.cars?.find(c => c.id === carId);
-        const groupCars = carObj ? (league.cars || []).filter(c => c.group === carObj.group) : [];
-        const groupMatches = (league.groupResults?.[carObj?.group] || []);
-        const groupStandings = computeStandings(groupCars, groupMatches);
-        const groupRank = groupStandings.findIndex(s => s.id === carId) + 1;
-        const groupPts = groupStandings.find(s => s.id === carId)?.pts ?? 0;
-        return (
-          <div className="car-tilt-wrap" style={{ display:'inline-block', flexShrink:0 }}>
-          <div className={`car-tilt ${justArrived ? 'bracket-car-arrived' : ''}`} style={{ width:CARD_W, height:CARD_H, background: isWinner ? 'rgba(201,168,76,0.18)' : 'var(--dark3)', border:`2px solid ${isWinner ? 'var(--gold)' : 'var(--border)'}`, borderRadius:6, overflow:'hidden', cursor:'pointer', position:'relative' }}
-            onClick={e => { e.stopPropagation(); openProfileCar({ leagueName: leagueTab, carId }); }}>
-            <div className="photo-vignette" style={{ width:'100%', height:IMG_H, background:'var(--dark2)', overflow:'hidden', display:'flex', alignItems:'center', justifyContent:'center', position:'relative' }}>
-              {photo
-                ? <img src={photo} alt="" style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'center' }} />
-                : <span style={{ fontSize:22 }}>🚗</span>}
-            </div>
-            <div style={{ padding:'2px 5px' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:3 }}>
-                <span style={{ fontSize:9, fontWeight:700, color: isWinner ? 'var(--gold)' : 'var(--text)', flex:1, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</span>
-                {goals !== null && goals !== undefined && (
-                  <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, color: isWinner ? 'var(--green)' : 'var(--text-dim)', flexShrink:0 }}>{goals}</span>
-                )}
-              </div>
-              <div style={{ display:'flex', gap:3, marginTop:1, flexWrap:'wrap' }}>
-                {groupRank > 0 && <span style={{ fontSize:8, color:'var(--gold-dim)' }}>#{groupRank} G{(carObj?.group ?? 0)+1}</span>}
-                {groupPts > 0 && <span style={{ fontSize:8, color:'var(--gold)' }}>{groupPts}pts</span>}
-                <span style={{ fontSize:8, color:'var(--green)' }}>{stats.w}V</span>
-                <span style={{ fontSize:8, color:'var(--text-dim)' }}>{stats.d}N</span>
-                <span style={{ fontSize:8, color:'#e74c3c' }}>{stats.l}D</span>
-              </div>
-            </div>
-          </div>
-          </div>
-        );
-      }
-      carCardImplRef.current = CarCard;
-
-      function MatchBlock({ m, onConfirm, mirror, rIdx, i, betweenGap, isLast }) {
-        if (!m) return null;
-        const winnerId = getWinnerId(m);
-        const lineColor = "rgba(201,168,76,0.35)";
-
-        return (
-          <div style={{ position:'relative', marginTop: i === 0 ? betweenGap/2 : 0 }}>
-            <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
-              onClick={() => openMatchModal({
-                homeName: getCar(leagueTab, m?.homeId)?.name,
-                awayName: getCar(leagueTab, m?.awayId)?.name,
-                homeId: m?.homeId, awayId: m?.awayId,
-                homePhoto: getCarPhoto(m?.homeId),
-                awayPhoto: getCarPhoto(m?.awayId),
-                homeGoals: m?.homeGoals, awayGoals: m?.awayGoals,
-                onConfirm,
-              })}>
-              <StableCarCard carId={m?.homeId} isWinner={winnerId === m?.homeId} goals={m?.homeGoals} />
-              <StableCarCard carId={m?.awayId} isWinner={winnerId === m?.awayId} goals={m?.awayGoals} />
-            </div>
-            {!isLast && (
-              <svg style={{ position:'absolute', [mirror ? 'right' : 'left']: CARD_W, top:0, overflow:'visible', pointerEvents:'none' }} width={COL_GAP} height={MATCH_H}>
-                <line x1={mirror ? COL_GAP : 0} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
-                {i % 2 === 0
-                  ? <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={MATCH_H + betweenGap + MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
-                  : <line x1={COL_GAP/2} y1={MATCH_H/2} x2={COL_GAP/2} y2={-(betweenGap + MATCH_H/2)} stroke={lineColor} strokeWidth="1.5" />
-                }
-                <line x1={COL_GAP/2} y1={MATCH_H/2} x2={mirror ? 0 : COL_GAP} y2={MATCH_H/2} stroke={lineColor} strokeWidth="1.5" />
-              </svg>
-            )}
-          </div>
-        );
-      }
-      matchBlockImplRef.current = MatchBlock;
-
-      function HalfBracket({ roundSets, labels, mirror }) {
-        // mirror=false: R1 on left, SF on right (→ toward center)
-        // mirror=true:  SF on left, R1 on right (← toward center)
-        const cols = mirror ? [...roundSets].reverse() : roundSets;
-        const colLabels = mirror ? [...labels].reverse() : labels;
-
-        return (
-          <div style={{ display:'flex', flexDirection:'row', gap:0 }}>
-            {cols.map((roundMatches, colIdx) => {
-              const rIdx = mirror ? roundSets.length - 1 - colIdx : colIdx;
-              const spacing = Math.pow(2, rIdx);
-              const betweenGap = (MATCH_H + MATCH_GAP) * spacing - MATCH_H;
-              const isLast = mirror ? colIdx === 0 : colIdx === cols.length - 1;
-
-              return (
-                <div key={colIdx} style={{ display:'flex', flexDirection:'column', alignItems:'center', marginRight: !mirror && !isLast ? COL_GAP : 0, marginLeft: mirror && !isLast ? COL_GAP : 0 }}>
-                  <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:9, color:'var(--gold-dim)', letterSpacing:1, marginBottom:6, textAlign:'center', width:CARD_W }}>
-                    {colLabels[colIdx]}
-                  </div>
-                  <div style={{ display:'flex', flexDirection:'column', gap:betweenGap }}>
-                    {roundMatches.map((m, i) => (
-                      <StableMatchBlock key={m?.id || i} m={m} mirror={mirror} rIdx={rIdx} i={i} betweenGap={betweenGap} isLast={isLast}
-                        onConfirm={m ? confirmWithAnim(m, leagueTab) : undefined} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      }
-      halfBracketImplRef.current = HalfBracket;
-
-      const leftRounds = [leftR1, leftR2, leftR3, leftQF, leftSF];
-      const rightRounds = [rightR1, rightR2, rightR3, rightQF, rightSF];
-      const roundLabels = ['R1', 'R2', 'R3', 'QF', 'SF'];
-
-      return (
-        <div style={{ overflowX:'auto', WebkitOverflowScrolling:'touch', background:'var(--dark2)', borderRadius:8, padding:12 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:0 }}>
-            {/* Left: R1→SF (left to right) */}
-            <StableHalfBracket roundSets={leftRounds} labels={roundLabels} mirror={false} />
-
-            {/* Center: Finale */}
-            <div style={{ display:'flex', flexDirection:'column', alignItems:'center', margin:`0 ${COL_GAP}px`, flexShrink:0 }}>
-              <div style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:11, color:'var(--gold)', letterSpacing:2, marginBottom:6, textAlign:'center' }}>🏆 FINALE</div>
-              {fin ? (
-                <div style={{ cursor:'pointer', display:'flex', flexDirection:'column', gap:MATCH_GAP }}
-                  onClick={() => openMatchModal({
-                    homeName: getCar(leagueTab, fin.homeId)?.name,
-                    awayName: getCar(leagueTab, fin.awayId)?.name,
-                    homeId: fin.homeId, awayId: fin.awayId,
-                    homePhoto: getCarPhoto(fin.homeId),
-                    awayPhoto: getCarPhoto(fin.awayId),
-                    homeGoals: fin.homeGoals, awayGoals: fin.awayGoals,
-                    onConfirm: confirmWithAnim(fin, leagueTab),
-                  })}>
-                  <StableCarCard carId={fin.homeId} isWinner={getWinnerId(fin) === fin.homeId} goals={fin.homeGoals} />
-                  <StableCarCard carId={fin.awayId} isWinner={getWinnerId(fin) === fin.awayId} goals={fin.awayGoals} />
-                </div>
-              ) : (
-                <div style={{ width:CARD_W, height:MATCH_H, background:'var(--dark3)', border:'1px solid var(--gold-dim)', borderRadius:8, display:'flex', alignItems:'center', justifyContent:'center', opacity:0.4 }}>
-                  <span style={{ fontSize:10, color:'var(--gold-dim)' }}>En attente</span>
-                </div>
-              )}
-            </div>
-
-            {/* Right: SF→R1 (mirrored, right to left) */}
-            <StableHalfBracket roundSets={rightRounds} labels={roundLabels} mirror={true} />
-          </div>
-        </div>
-      );
-    }
-    // Tableau visuel compact : 16 voitures encore en lice, deux branches puis la finale.
-    // Les rondes 1 et 2 restent consultables dans les onglets, avec leurs 48 matchs et photos.
-    function VisualBracketView() {
-      const scrollerRef = React.useRef(null);
+    function RegionalBracketView() {
+      const [region, setRegion] = React.useState(0);
+      const scrollRef = React.useRef(null);
+      React.useEffect(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollLeft = region === 'finales' ? Math.max(0,(el.scrollWidth-el.clientWidth)/2) : 0;
+      }, [region]);
       const W = 168;
-      const X = [15,212,409,606,803,1000,1197];
-      const yFirst = [50,310,570,830];
-      const yQuarters = [180,700];
-      const ySemi = 440;
-      const centerY = y => y + 120;
-      const winnerFor = m => m && m.homeGoals !== null && m.homeGoals !== undefined && m.awayGoals !== null && m.awayGoals !== undefined
-        ? (m.homeGoals > m.awayGoals ? m.homeId : m.awayGoals > m.homeGoals ? m.awayId : null) : null;
-      const stages = [
-        { x:X[0], title:'Ronde 3', matches:r3.slice(0,4), tops:yFirst },
-        { x:X[1], title:'Quarts', matches:qf.slice(0,2), tops:yQuarters },
-        { x:X[2], title:'Demie', matches:sf.slice(0,1), tops:[ySemi] },
-        { x:X[3], title:'Finale', matches:fin ? [fin] : [], tops:[ySemi] },
-        { x:X[4], title:'Demie', matches:sf.slice(1,2), tops:[ySemi] },
-        { x:X[5], title:'Quarts', matches:qf.slice(2,4), tops:yQuarters },
-        { x:X[6], title:'Ronde 3', matches:r3.slice(4,8), tops:yFirst },
+      const isFinals = region === 'finales';
+      const X = isFinals ? [15,212,409,606,803] : [15,212,409,606,803,1000,1197];
+      const yFirst = [50,338,626,914];
+      const ySecond = [194,770];
+      const yMiddle = 482;
+      const yFinalsQuarters = [40,340];
+      const yFinalsMiddle = 190;
+      const centerY = y => y + 138;
+      const offset = isFinals ? 0 : region;
+      const stages = isFinals ? [
+        { x:X[0], title:'Quarts', matches:qf.slice(0,2), tops:yFinalsQuarters },
+        { x:X[1], title:'Demi-finale', matches:sf.slice(0,1), tops:[yFinalsMiddle] },
+        { x:X[2], title:'Finale', matches:fin ? [fin] : [], tops:[yFinalsMiddle] },
+        { x:X[3], title:'Demi-finale', matches:sf.slice(1,2), tops:[yFinalsMiddle] },
+        { x:X[4], title:'Quarts', matches:qf.slice(2,4), tops:yFinalsQuarters },
+      ] : [
+        { x:X[0], title:'Ronde 1', matches:r1.slice(offset*8,offset*8+4), tops:yFirst },
+        { x:X[1], title:'Ronde 2', matches:r2.slice(offset*4,offset*4+2), tops:ySecond },
+        { x:X[2], title:'Ronde 3', matches:r3.slice(offset*2,offset*2+1), tops:[yMiddle] },
+        { x:X[3], title:'Quart', matches:qf.slice(offset,offset+1), tops:[yMiddle] },
+        { x:X[4], title:'Ronde 3', matches:r3.slice(offset*2+1,offset*2+2), tops:[yMiddle] },
+        { x:X[5], title:'Ronde 2', matches:r2.slice(offset*4+2,offset*4+4), tops:ySecond },
+        { x:X[6], title:'Ronde 1', matches:r1.slice(offset*8+4,offset*8+8), tops:yFirst },
       ];
-      function branch(fromX, topA, topB, toX, toTop, leftToRight) {
-        const start = leftToRight ? fromX + W : fromX;
-        const end = leftToRight ? toX : toX + W;
-        const elbow = (start + end) / 2;
-        const a = centerY(topA), b = centerY(topB), target = centerY(toTop);
+      function pairPath(fromX, aTop, bTop, toX, toTop, towardsRight) {
+        const start = towardsRight ? fromX+W : fromX;
+        const end = towardsRight ? toX : toX+W;
+        const elbow = (start+end)/2;
+        const a = centerY(aTop), b = centerY(bTop), target = centerY(toTop);
         return `M ${start} ${a} H ${elbow} M ${start} ${b} H ${elbow} M ${elbow} ${a} V ${b} M ${elbow} ${(a+b)/2} V ${target} H ${end}`;
       }
-      const lines = [];
-      [0,1].forEach(i => {
-        lines.push(branch(X[0],yFirst[i*2],yFirst[i*2+1],X[1],yQuarters[i],true));
-        lines.push(branch(X[6],yFirst[i*2],yFirst[i*2+1],X[5],yQuarters[i],false));
-      });
-      lines.push(branch(X[1],yQuarters[0],yQuarters[1],X[2],ySemi,true));
-      lines.push(branch(X[5],yQuarters[0],yQuarters[1],X[4],ySemi,false));
-
+      const paths = [];
+      if (isFinals) {
+        paths.push(pairPath(X[0],yFinalsQuarters[0],yFinalsQuarters[1],X[1],yFinalsMiddle,true));
+        paths.push(pairPath(X[4],yFinalsQuarters[0],yFinalsQuarters[1],X[3],yFinalsMiddle,false));
+      } else {
+        [0,1].forEach(i => {
+          paths.push(pairPath(X[0],yFirst[i*2],yFirst[i*2+1],X[1],ySecond[i],true));
+          paths.push(pairPath(X[6],yFirst[i*2],yFirst[i*2+1],X[5],ySecond[i],false));
+        });
+        paths.push(pairPath(X[1],ySecond[0],ySecond[1],X[2],yMiddle,true));
+        paths.push(pairPath(X[5],ySecond[0],ySecond[1],X[4],yMiddle,false));
+      }
+      const midTop = isFinals ? yFinalsMiddle : yMiddle;
+      const midX = isFinals ? X[2] : X[3];
+      const leftX = isFinals ? X[1] : X[2];
+      const rightX = isFinals ? X[3] : X[4];
+      const winnerFor = m => m && m.homeGoals != null && m.awayGoals != null
+        ? (m.homeGoals > m.awayGoals ? m.homeId : m.awayGoals > m.homeGoals ? m.awayId : null) : null;
       function openBracketMatch(m) {
         if (!m?.homeId) return;
         openMatchModal({
@@ -10215,59 +10058,47 @@ function AppInner() {
         const isWinner = carId && winnerFor(m) === carId;
         return <div className={`po-bracket-team ${isWinner ? 'is-winner' : ''} ${carId === justDecidedCarId ? 'bracket-car-arrived' : ''}`}>
           <button type="button" className="po-bracket-photo" disabled={!carId} aria-label={`Voir le profil de ${car?.name || 'la voiture'}`}
-            onClick={() => openProfileCar({ leagueName:leagueTab,carId })}>
+            onClick={() => openProfileCar({ leagueName:leagueTab, carId })}>
             {photo ? <img src={photo} alt="" loading="lazy" /> : <span className="po-bracket-placeholder" aria-hidden="true">{carId ? '🚗' : '—'}</span>}
           </button>
           <button type="button" className="po-bracket-team-footer" disabled={!carId}
-            aria-label={`Ouvrir le match de ${car?.name || 'la voiture'}${goals !== null && goals !== undefined ? `, ${goals} buts` : ''}`}
-            onClick={() => openBracketMatch(m)}><span>{car?.name || 'En attente'}</span><strong>{goals !== null && goals !== undefined ? goals : ''}</strong></button>
+            aria-label={`Ouvrir le match de ${car?.name || 'la voiture'}${goals != null ? `, ${goals} buts` : ''}`}
+            onClick={() => openBracketMatch(m)}><span>{car?.name || 'En attente'}</span><strong>{goals != null ? goals : ''}</strong></button>
         </div>;
       }
-      function Match({ m, x, y }) {
-        return <div className="po-bracket-match" style={{ left:x, top:y }}>
-          <Team m={m} carId={m?.homeId} goals={m?.homeGoals} />
-          <Team m={m} carId={m?.awayId} goals={m?.awayGoals} />
-        </div>;
-      }
-      const moveTo = fraction => {
-        const el = scrollerRef.current;
-        if (el) el.scrollTo({ left:Math.max(0,(el.scrollWidth-el.clientWidth)*fraction),behavior:'smooth' });
-      };
       return <div className="card" style={{ marginBottom:16,overflow:'hidden' }}>
         <div className="po-bracket-controls">
-          <div><div className="po-kicker">🏆 Bracket des 16 dernières voitures</div><div className="text-dim" style={{ fontSize:12 }}>Glisse pour suivre les branches. Touche une photo pour le profil, le nom ou le score pour le match.</div></div>
-          <div style={{ display:'flex',gap:6 }}>
-            <button className="btn btn-sm" onClick={() => moveTo(0)}>← Gauche</button>
-            <button className="btn btn-sm" onClick={() => moveTo(.5)}>🏆 Centre</button>
-            <button className="btn btn-sm" onClick={() => moveTo(1)}>Droite →</button>
-          </div>
+          <div className="po-kicker">🏆 Bracket complet · 64 voitures</div>
+          <div className="text-dim" style={{ fontSize:12 }}>Chaque tableau de 16 mène à un quart de finale; leurs vainqueurs se retrouvent dans les phases finales.</div>
         </div>
-        <div className="po-bracket-scroll" ref={el => {
-          scrollerRef.current = el;
-          if (el && !el.dataset.positioned) {
-            el.dataset.positioned = '1';
-            requestAnimationFrame(() => { if (el.isConnected) el.scrollLeft = Math.max(0,(el.scrollWidth-el.clientWidth)/2); });
-          }
-        }} aria-label="Bracket visuel défilant horizontalement">
-          <div className="po-bracket-canvas">
-            <svg className="po-bracket-lines" width="1380" height="1090" aria-hidden="true">
-              {lines.map((d,i) => <path key={i} d={d} fill="none" stroke="rgba(201,168,76,.65)" strokeWidth="2" />)}
-              <path d={`M ${X[2]+W} ${centerY(ySemi)} H ${X[3]} M ${X[4]} ${centerY(ySemi)} H ${X[3]+W} M ${X[3]+W/2} ${ySemi+244} V 734`} fill="none" stroke="rgba(201,168,76,.65)" strokeWidth="2" />
+        <div className="po-bracket-regions" role="group" aria-label="Parties du bracket">
+          {[0,1,2,3].map(i => <button key={i} className="btn btn-sm" aria-pressed={region === i} onClick={() => setRegion(i)}>Tableau {i+1} · R1 à quart</button>)}
+          <button className="btn btn-sm" aria-pressed={isFinals} onClick={() => setRegion('finales')}>🏆 Quarts à finale</button>
+        </div>
+        <div className="text-dim" style={{ fontSize:12,padding:'8px 12px' }}>Glisse horizontalement pour suivre les lignes. Photo : profil · nom ou score : match.</div>
+        <div className="po-bracket-scroll" ref={scrollRef} aria-label="Bracket défilant tactilement">
+          <div className="po-bracket-canvas" style={{ width:isFinals ? 986 : 1380,height:isFinals ? 660 : 1210 }}>
+            <svg className="po-bracket-lines" width={isFinals ? 986 : 1380} height={isFinals ? 660 : 1210} aria-hidden="true">
+              {paths.map((d,i) => <path key={i} d={d} fill="none" stroke="rgba(201,168,76,.7)" strokeWidth="2" />)}
+              <path d={`M ${leftX+W} ${centerY(midTop)} H ${midX} M ${rightX} ${centerY(midTop)} H ${midX+W}${isFinals ? ` M ${midX+W/2} ${midTop+276} V 498` : ''}`} fill="none" stroke="rgba(201,168,76,.7)" strokeWidth="2" />
             </svg>
-            {stages.map((stage,i) => <React.Fragment key={i}>
+            {stages.map((stage,i) => <React.Fragment key={`${region}-${i}`}>
               <div className="po-bracket-label" style={{ left:stage.x }}>{stage.title}</div>
-              {stage.matches.map((m,j) => <Match key={m?.id || j} m={m} x={stage.x} y={stage.tops[j]} />)}
+              {stage.matches.map((m,j) => <div key={m?.id || j} className="po-bracket-match" style={{ left:stage.x,top:stage.tops[j] }}>
+                <Team m={m} carId={m?.homeId} goals={m?.homeGoals} />
+                <Team m={m} carId={m?.awayId} goals={m?.awayGoals} />
+              </div>)}
             </React.Fragment>)}
-            <div className="po-bracket-champion">
+            {isFinals && <div className="po-bracket-champion" style={{ left:399,top:500 }}>
               <div className="po-kicker">🏆 Champion</div>
               {championPhoto && <img src={championPhoto} alt="" />}
               <div style={{ color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",fontSize:19 }}>{champion?.name || 'À déterminer'}</div>
-            </div>
+            </div>}
           </div>
         </div>
       </div>;
     }
-    bracketViewImplRef.current = VisualBracketView;
+    bracketViewImplRef.current = RegionalBracketView;
 
       // Card dimensions
       const CARD_W = 110;
@@ -10339,7 +10170,7 @@ function AppInner() {
             </div>
             {/* Name + stats */}
             <div style={{ flex:1,minWidth:0 }}>
-              <div style={{ fontSize:compact ? 17 :20,fontWeight:700,color:isWinner ? 'var(--gold)' :'var(--text)',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis' }}>
+              <div title={car?.name} style={{ fontSize:compact ? 17 :20,fontWeight:700,color:isWinner ? 'var(--gold)' :'var(--text)',lineHeight:1.12,overflowWrap:'anywhere' }}>
                 {car?.name || '?'}
               </div>
               <div style={{ display:'flex',gap:6,alignItems:'center',flexWrap:'wrap',marginTop:2 }}>
@@ -10400,7 +10231,7 @@ function AppInner() {
             </button>
           </div>
           <div className="card-body">
-            <div style={{ display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${round === 'r1' ? 240 :round === 'r2' ? 260 :280}px,1fr))`,gap:12 }}>
+            <div className="po-round-match-grid">
               {matches.map(m => <StablePOMatchCard key={m.id} m={m} compact={round === 'r1'} />)}
             </div>
           </div>
@@ -10441,27 +10272,6 @@ function AppInner() {
                 ⚡⚡ Tous les playoffs
               </button>
             </div>
-            <div className="po-overview">
-              <div className="po-hero">
-                {championPhoto || (fin?.homeId && getCarPhoto(fin.homeId))
-                  ? <img className="po-hero-photo" src={championPhoto || getCarPhoto(fin.homeId)} alt={champion ? `Voiture championne : ${champion.name}` : 'Une voiture finaliste'} />
-                  : <div className="po-hero-photo" style={{ display:'grid',placeItems:'center',fontSize:72 }} aria-hidden="true">🏆</div>}
-                <div className="po-hero-content">
-                  <div className="po-kicker">{champion ? '🏆 Champion des playoffs' : '🏁 Course au titre'}</div>
-                  <div className="po-hero-name">{champion?.name || (fin?.homeId ? 'La finale se prépare' : 'Les playoffs sont en cours')}</div>
-                  <div className="text-dim" style={{ fontSize:13 }}>
-                    {champion ? `${leagueTab} · Finale ${fin.homeGoals} – ${fin.awayGoals}` : `${leagueTab} · ${playedTotal}/${allMatches.length} matchs joués${currentRound ? ` · ${currentRound.short} en cours` : ''}`}
-                  </div>
-                  {champion && <button className="btn btn-sm" style={{ marginTop:12 }} onClick={() => openProfileCar({ leagueName:leagueTab, carId:championId })}>Voir le profil du champion →</button>}
-                </div>
-              </div>
-              <div className="po-final-preview">
-                <div className="po-kicker">🏆 La finale</div>
-                {fin ? <StablePOMatchCard m={fin} /> : <div className="text-dim">Les finalistes apparaîtront après les demi-finales.</div>}
-                <div className="text-dim" style={{ fontSize:12 }}>Touchez un duel pour voir ses détails et les voitures.</div>
-              </div>
-            </div>
-            <StableBracketView />
             <div className="po-kicker" style={{ margin:'12px 0 5px' }}>Tous les matchs par ronde</div>
             <div className="po-round-nav" role="group" aria-label="Choisir une ronde des playoffs">
               {playoffRounds.map(({ key, short, matches }) => (
@@ -10484,6 +10294,27 @@ function AppInner() {
                 {finalPlayed && <button className="btn btn-gold" style={{ marginTop:10,width:'100%', display:isPublicMode ? 'none' : undefined }} onClick={() => { if(!isPublicMode) finalizeChampion(leagueTab); }}>✓ Enregistrer le Champion</button>}
               </div>
             </div>}
+            <div className="po-overview">
+              <div className="po-hero">
+                {championPhoto || (fin?.homeId && getCarPhoto(fin.homeId))
+                  ? <img className="po-hero-photo" src={championPhoto || getCarPhoto(fin.homeId)} alt={champion ? `Voiture championne : ${champion.name}` : 'Une voiture finaliste'} />
+                  : <div className="po-hero-photo" style={{ display:'grid',placeItems:'center',fontSize:72 }} aria-hidden="true">🏆</div>}
+                <div className="po-hero-content">
+                  <div className="po-kicker">{champion ? '🏆 Champion des playoffs' : '🏁 Course au titre'}</div>
+                  <div className="po-hero-name">{champion?.name || (fin?.homeId ? 'La finale se prépare' : 'Les playoffs sont en cours')}</div>
+                  <div className="text-dim" style={{ fontSize:13 }}>
+                    {champion ? `${leagueTab} · Finale ${fin.homeGoals} – ${fin.awayGoals}` : `${leagueTab} · ${playedTotal}/${allMatches.length} matchs joués${currentRound ? ` · ${currentRound.short} en cours` : ''}`}
+                  </div>
+                  {champion && <button className="btn btn-sm" style={{ marginTop:12 }} onClick={() => openProfileCar({ leagueName:leagueTab, carId:championId })}>Voir le profil du champion →</button>}
+                </div>
+              </div>
+              <div className="po-final-preview">
+                <div className="po-kicker">🏆 La finale</div>
+                {fin ? <StablePOMatchCard m={fin} /> : <div className="text-dim">Les finalistes apparaîtront après les demi-finales.</div>}
+                <div className="text-dim" style={{ fontSize:12 }}>Touchez un duel pour voir ses détails et les voitures.</div>
+              </div>
+            </div>
+            <StableBracketView />
           </div>
         )}
       </div>
