@@ -2226,11 +2226,8 @@ const css = `
   .po-round-tab[aria-pressed="true"] { background:rgba(201,168,76,.16); border-color:var(--gold); box-shadow:inset 0 -2px var(--gold); }
   .po-round-tab[aria-pressed="true"] strong { color:var(--gold); }
   .po-bracket-controls { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:9px; padding:12px; border-bottom:1px solid var(--border); }
-  .po-bracket-regions { display:flex; gap:7px; overflow-x:auto; padding:10px 12px; border-bottom:1px solid var(--border); -webkit-overflow-scrolling:touch; }
-  .po-bracket-regions button { flex:none; min-height:38px; }
-  .po-bracket-regions button[aria-pressed="true"] { color:var(--gold); border-color:var(--gold); background:rgba(201,168,76,.16); }
-  .po-bracket-scroll { overflow-x:auto; overflow-y:hidden; -webkit-overflow-scrolling:touch; background:radial-gradient(ellipse at 50% 45%,rgba(201,168,76,.08),transparent 58%),var(--dark2); scrollbar-width:thin; }
-  .po-bracket-canvas { width:1380px; height:1090px; position:relative; margin:auto; background:linear-gradient(90deg,transparent 49.95%,rgba(201,168,76,.10) 50%,transparent 50.05%); }
+  .po-bracket-scroll { height:min(78vh,880px); min-height:410px; overflow:auto; -webkit-overflow-scrolling:touch; background:radial-gradient(ellipse at 50% 45%,rgba(201,168,76,.08),transparent 58%),var(--dark2); scrollbar-width:thin; }
+  .po-bracket-canvas { width:2252px; height:4680px; position:relative; margin:auto; background:linear-gradient(90deg,transparent 49.95%,rgba(201,168,76,.10) 50%,transparent 50.05%); }
   .po-bracket-lines { position:absolute; inset:0; pointer-events:none; }
   .po-bracket-label { position:absolute; top:10px; width:168px; text-align:center; font:14px 'Bebas Neue',sans-serif; color:var(--gold); letter-spacing:2px; }
   .po-bracket-match { position:absolute; width:168px; display:flex; flex-direction:column; gap:4px; z-index:1; }
@@ -9963,9 +9960,8 @@ function AppInner() {
     const championPhoto = championId ? getCarPhoto(championId) : null;
     const playedTotal = allMatches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
     const currentRound = playoffRounds.find(({ matches }) => matches.some(m => m.homeId && (m.homeGoals === null || m.homeGoals === undefined)));
-    const defaultPlayoffRound = currentRound?.key || (fin ? 'final' : 'r1');
-    const [selectedPlayoffRound, setSelectedPlayoffRound] = useState(defaultPlayoffRound);
-    React.useEffect(() => { setSelectedPlayoffRound(defaultPlayoffRound); }, [leagueTab, currentSeason?.season]);
+    const [selectedPlayoffRound, setSelectedPlayoffRound] = useState(null);
+    React.useEffect(() => { setSelectedPlayoffRound(null); }, [leagueTab, currentSeason?.season]);
 
     // Voiture qui vient de se qualifier — reçoit un effet "arrivée" (glow + léger déplacement)
     // là où elle apparaît, aussi bien dans le match qu'elle vient de gagner que dans son nouveau
@@ -9984,37 +9980,28 @@ function AppInner() {
 
     const ROUND_LABELS = { r1: 'Ronde 1', r2: 'Ronde 2', r3: 'Ronde 3', qf: 'Quarts de Finale', sf: 'Demi-Finales', final: 'Finale' };
 
-    function RegionalBracketView() {
-      const [region, setRegion] = React.useState(0);
-      const scrollRef = React.useRef(null);
-      React.useEffect(() => {
-        const el = scrollRef.current;
-        if (el) el.scrollLeft = region === 'finales' ? Math.max(0,(el.scrollWidth-el.clientWidth)/2) : 0;
-      }, [region]);
+    function CompleteBracketView() {
       const W = 168;
-      const isFinals = region === 'finales';
-      const X = isFinals ? [15,212,409,606,803] : [15,212,409,606,803,1000,1197];
-      const yFirst = [50,338,626,914];
-      const ySecond = [194,770];
-      const yMiddle = 482;
-      const yFinalsQuarters = [40,340];
-      const yFinalsMiddle = 190;
+      const X = [12,218,424,630,836,1042,1248,1454,1660,1866,2072];
+      const FIRST_TOP = 50;
+      const STEP = 288; // Deux cartes de 136px + 4px d'espace, puis 8px entre les duels.
       const centerY = y => y + 138;
-      const offset = isFinals ? 0 : region;
-      const stages = isFinals ? [
-        { x:X[0], title:'Quarts', matches:qf.slice(0,2), tops:yFinalsQuarters },
-        { x:X[1], title:'Demi-finale', matches:sf.slice(0,1), tops:[yFinalsMiddle] },
-        { x:X[2], title:'Finale', matches:fin ? [fin] : [], tops:[yFinalsMiddle] },
-        { x:X[3], title:'Demi-finale', matches:sf.slice(1,2), tops:[yFinalsMiddle] },
-        { x:X[4], title:'Quarts', matches:qf.slice(2,4), tops:yFinalsQuarters },
-      ] : [
-        { x:X[0], title:'Ronde 1', matches:r1.slice(offset*8,offset*8+4), tops:yFirst },
-        { x:X[1], title:'Ronde 2', matches:r2.slice(offset*4,offset*4+2), tops:ySecond },
-        { x:X[2], title:'Ronde 3', matches:r3.slice(offset*2,offset*2+1), tops:[yMiddle] },
-        { x:X[3], title:'Quart', matches:qf.slice(offset,offset+1), tops:[yMiddle] },
-        { x:X[4], title:'Ronde 3', matches:r3.slice(offset*2+1,offset*2+2), tops:[yMiddle] },
-        { x:X[5], title:'Ronde 2', matches:r2.slice(offset*4+2,offset*4+4), tops:ySecond },
-        { x:X[6], title:'Ronde 1', matches:r1.slice(offset*8+4,offset*8+8), tops:yFirst },
+      const tops = depth => Array.from({ length:16 / (2 ** depth) }, (_,i) =>
+        FIRST_TOP + ((2 ** depth - 1) / 2) * STEP + i * (2 ** depth) * STEP);
+      // Les positions suivent exactement l'ordre des bracketPos utilisé par advanceBracketPM.
+      const stageTops = [tops(0),tops(1),tops(2),tops(3),tops(4)];
+      const stages = [
+        { x:X[0], title:'Ronde 1', matches:r1.slice(0,16), tops:stageTops[0] },
+        { x:X[1], title:'Ronde 2', matches:r2.slice(0,8), tops:stageTops[1] },
+        { x:X[2], title:'Ronde 3', matches:r3.slice(0,4), tops:stageTops[2] },
+        { x:X[3], title:'Quarts', matches:qf.slice(0,2), tops:stageTops[3] },
+        { x:X[4], title:'Demi-finale', matches:sf.slice(0,1), tops:stageTops[4] },
+        { x:X[5], title:'Finale', matches:fin ? [fin] : [], tops:stageTops[4] },
+        { x:X[6], title:'Demi-finale', matches:sf.slice(1,2), tops:stageTops[4] },
+        { x:X[7], title:'Quarts', matches:qf.slice(2,4), tops:stageTops[3] },
+        { x:X[8], title:'Ronde 3', matches:r3.slice(4,8), tops:stageTops[2] },
+        { x:X[9], title:'Ronde 2', matches:r2.slice(8,16), tops:stageTops[1] },
+        { x:X[10], title:'Ronde 1', matches:r1.slice(16,32), tops:stageTops[0] },
       ];
       function pairPath(fromX, aTop, bTop, toX, toTop, towardsRight) {
         const start = towardsRight ? fromX+W : fromX;
@@ -10024,21 +10011,15 @@ function AppInner() {
         return `M ${start} ${a} H ${elbow} M ${start} ${b} H ${elbow} M ${elbow} ${a} V ${b} M ${elbow} ${(a+b)/2} V ${target} H ${end}`;
       }
       const paths = [];
-      if (isFinals) {
-        paths.push(pairPath(X[0],yFinalsQuarters[0],yFinalsQuarters[1],X[1],yFinalsMiddle,true));
-        paths.push(pairPath(X[4],yFinalsQuarters[0],yFinalsQuarters[1],X[3],yFinalsMiddle,false));
-      } else {
-        [0,1].forEach(i => {
-          paths.push(pairPath(X[0],yFirst[i*2],yFirst[i*2+1],X[1],ySecond[i],true));
-          paths.push(pairPath(X[6],yFirst[i*2],yFirst[i*2+1],X[5],ySecond[i],false));
+      for (let depth=0; depth<4; depth++) {
+        stageTops[depth+1].forEach((parentY,i) => {
+          const a = stageTops[depth][i*2], b = stageTops[depth][i*2+1];
+          paths.push(pairPath(X[depth],a,b,X[depth+1],parentY,true));
+          paths.push(pairPath(X[10-depth],a,b,X[9-depth],parentY,false));
         });
-        paths.push(pairPath(X[1],ySecond[0],ySecond[1],X[2],yMiddle,true));
-        paths.push(pairPath(X[5],ySecond[0],ySecond[1],X[4],yMiddle,false));
       }
-      const midTop = isFinals ? yFinalsMiddle : yMiddle;
-      const midX = isFinals ? X[2] : X[3];
-      const leftX = isFinals ? X[1] : X[2];
-      const rightX = isFinals ? X[3] : X[4];
+      paths.push(`M ${X[4]+W} ${centerY(stageTops[4][0])} H ${X[5]}`);
+      paths.push(`M ${X[6]} ${centerY(stageTops[4][0])} H ${X[5]+W}`);
       const winnerFor = m => m && m.homeGoals != null && m.awayGoals != null
         ? (m.homeGoals > m.awayGoals ? m.homeId : m.awayGoals > m.homeGoals ? m.awayId : null) : null;
       function openBracketMatch(m) {
@@ -10068,37 +10049,33 @@ function AppInner() {
       }
       return <div className="card" style={{ marginBottom:16,overflow:'hidden' }}>
         <div className="po-bracket-controls">
-          <div className="po-kicker">🏆 Bracket complet · 64 voitures</div>
-          <div className="text-dim" style={{ fontSize:12 }}>Chaque tableau de 16 mène à un quart de finale; leurs vainqueurs se retrouvent dans les phases finales.</div>
+          <div className="po-kicker">🏆 Bracket complet · 64 voitures → champion</div>
+          <div className="text-dim" style={{ fontSize:12 }}>Un seul tableau. Glisse dans les deux directions pour suivre les lignes de la ronde 1 à la finale.</div>
         </div>
-        <div className="po-bracket-regions" role="group" aria-label="Parties du bracket">
-          {[0,1,2,3].map(i => <button key={i} className="btn btn-sm" aria-pressed={region === i} onClick={() => setRegion(i)}>Tableau {i+1} · R1 à quart</button>)}
-          <button className="btn btn-sm" aria-pressed={isFinals} onClick={() => setRegion('finales')}>🏆 Quarts à finale</button>
-        </div>
-        <div className="text-dim" style={{ fontSize:12,padding:'8px 12px' }}>Glisse horizontalement pour suivre les lignes. Photo : profil · nom ou score : match.</div>
-        <div className="po-bracket-scroll" ref={scrollRef} aria-label="Bracket défilant tactilement">
-          <div className="po-bracket-canvas" style={{ width:isFinals ? 986 : 1380,height:isFinals ? 660 : 1210 }}>
-            <svg className="po-bracket-lines" width={isFinals ? 986 : 1380} height={isFinals ? 660 : 1210} aria-hidden="true">
+        <div className="text-dim" style={{ fontSize:12,padding:'8px 12px' }}>Photo : profil · nom ou score : match. Le cadre garde le bracket à une hauteur pratique pendant le défilement.</div>
+        <div className="po-bracket-scroll" role="region" tabIndex={0} aria-label="Bracket complet défilant horizontalement et verticalement">
+          <div className="po-bracket-canvas">
+            <svg className="po-bracket-lines" width="2252" height="4680" aria-hidden="true">
               {paths.map((d,i) => <path key={i} d={d} fill="none" stroke="rgba(201,168,76,.7)" strokeWidth="2" />)}
-              <path d={`M ${leftX+W} ${centerY(midTop)} H ${midX} M ${rightX} ${centerY(midTop)} H ${midX+W}${isFinals ? ` M ${midX+W/2} ${midTop+276} V 498` : ''}`} fill="none" stroke="rgba(201,168,76,.7)" strokeWidth="2" />
+              <path d={`M ${X[5]+W/2} ${stageTops[4][0]+276} V ${stageTops[4][0]+290}`} fill="none" stroke="rgba(201,168,76,.7)" strokeWidth="2" />
             </svg>
-            {stages.map((stage,i) => <React.Fragment key={`${region}-${i}`}>
+            {stages.map((stage,i) => <React.Fragment key={i}>
               <div className="po-bracket-label" style={{ left:stage.x }}>{stage.title}</div>
               {stage.matches.map((m,j) => <div key={m?.id || j} className="po-bracket-match" style={{ left:stage.x,top:stage.tops[j] }}>
                 <Team m={m} carId={m?.homeId} goals={m?.homeGoals} />
                 <Team m={m} carId={m?.awayId} goals={m?.awayGoals} />
               </div>)}
             </React.Fragment>)}
-            {isFinals && <div className="po-bracket-champion" style={{ left:399,top:500 }}>
+            <div className="po-bracket-champion" style={{ left:X[5]-10,top:stageTops[4][0]+290 }}>
               <div className="po-kicker">🏆 Champion</div>
               {championPhoto && <img src={championPhoto} alt="" />}
               <div style={{ color:'var(--gold)',fontFamily:"'Bebas Neue',sans-serif",fontSize:19 }}>{champion?.name || 'À déterminer'}</div>
-            </div>}
+            </div>
           </div>
         </div>
       </div>;
     }
-    bracketViewImplRef.current = RegionalBracketView;
+    bracketViewImplRef.current = CompleteBracketView;
 
       // Card dimensions
       const CARD_W = 110;
