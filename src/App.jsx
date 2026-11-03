@@ -4778,6 +4778,115 @@ class RootErrorBoundary extends React.Component {
   }
 }
 
+const CATALOG_QUEUE_LEAGUES = [
+  ...Array.from({ length: 12 }, (_, i) => 'Actuelles ' + (i + 1)),
+  'Comeback', 'Importation',
+];
+
+function CatalogQueueForm({ season, ready, isLatest, onAdd }) {
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState('');
+  const [brand, setBrand] = useState('');
+  const [league, setLeague] = useState('');
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const pending = useRef(false);
+
+  useEffect(() => {
+    if (!file) { setPreview(''); return; }
+    const url = URL.createObjectURL(file);
+    setPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  function reset() {
+    setName(''); setBrand(''); setLeague(''); setFile(null); setError('');
+  }
+
+  async function submit(e) {
+    e.preventDefault();
+    if (pending.current || !ready || !isLatest) return;
+    if (!name.trim() || !brand.trim() || !league) {
+      setError('Indique le nom, la marque et la ligue.');
+      return;
+    }
+    pending.current = true;
+    setBusy(true); setError(''); setNotice('');
+    try {
+      await onAdd({ name: name.trim(), brand: brand.trim(), league, file, seasonNum: season.season });
+      setNotice(name.trim() + ' : ajoutée à la file d’attente de ' + league + '.');
+      reset(); setOpen(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'L’ajout a échoué. Réessaie.');
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+
+  const fieldStyle = { display:'block', width:'100%', boxSizing:'border-box', minHeight:44, fontSize:16, marginTop:5 };
+  return (
+    <section style={{ margin:'0 0 16px', maxWidth:620 }}>
+      <button type="button" className="btn btn-gold" style={{ minHeight:44 }}
+        aria-expanded={open} aria-controls="catalog-queue-form"
+        disabled={busy} onClick={() => { setOpen(!open); setNotice(''); }}>
+        {open ? 'Fermer le formulaire' : '＋ Ajouter une voiture'}
+      </button>
+      {notice && <p role="status" style={{ margin:'10px 0', color:'var(--green)' }}>{notice}</p>}
+      {open && (
+        <form id="catalog-queue-form" onSubmit={submit}
+          style={{ padding:14, marginTop:10, border:'1px solid var(--gold-dim)', borderRadius:12, background:'var(--dark2)' }}>
+          <fieldset disabled={busy} style={{ display:'grid', gap:12, border:0, padding:0, margin:0, minWidth:0 }}>
+            <label style={{ display:'grid', gap:7 }}>
+              <span>Photo <small>(facultative)</small></span>
+              <span style={{ display:'grid', placeItems:'center', aspectRatio:'16 / 9', overflow:'hidden',
+                border:'1px dashed var(--gold-dim)', borderRadius:8, background:'var(--dark3)' }}>
+                {preview ? <img src={preview} alt="Aperçu de la voiture" style={{ display:'block', width:'100%', height:'100%', objectFit:'contain', minHeight:0 }} />
+                  : <span aria-hidden="true">📷 Choisir une photo</span>}
+              </span>
+              <input type="file" accept="image/*" style={{ ...fieldStyle, marginTop:0 }}
+                onChange={e => setFile(e.target.files?.[0] || null)} />
+            </label>
+            <label>Nom du modèle
+              <input required value={name} onChange={e => setName(e.target.value)} placeholder="Ex. C4" style={fieldStyle} />
+            </label>
+            <div style={{ display:'flex', flexWrap:'wrap', gap:10 }}>
+              <label style={{ flex:'1 1 145px', minWidth:0 }}>Marque
+                <input required value={brand} onChange={e => setBrand(e.target.value)} placeholder="Ex. Citroën" style={fieldStyle} />
+              </label>
+              <label style={{ flex:'1 1 225px', minWidth:0 }}>Ligue
+                <select required value={league} onChange={e => setLeague(e.target.value)} style={fieldStyle}>
+                  <option value="">Choisir la ligue</option>
+                  {CATALOG_QUEUE_LEAGUES.map(label => {
+                    const entry = season?.leagues?.[label];
+                    return <option key={label} value={label} disabled={!entry}>
+                      {label} — {entry?.cars?.length || 0} actives · {entry?.queue?.length || 0} en attente
+                    </option>;
+                  })}
+                </select>
+              </label>
+            </div>
+            <small style={{ color:'var(--text-dim)' }}>
+              {!ready ? 'Chargement des données…' : !isLatest ? 'Ouvre la saison la plus récente pour ajouter une voiture.' : 'La voiture rejoindra la ligue à la création de la prochaine saison.'}
+            </small>
+            {error && <p role="alert" style={{ margin:0, color:'#ff9d91' }}>{error}</p>}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:8 }}>
+              <button type="submit" className="btn btn-green" style={{ minHeight:44 }} disabled={busy || !ready || !isLatest}>
+                {busy ? 'Ajout en cours…' : 'Ajouter à la file d’attente'}
+              </button>
+              <button type="button" className="btn btn-dark" style={{ minHeight:44 }}
+                onClick={() => { reset(); setOpen(false); }}>Annuler</button>
+            </div>
+          </fieldset>
+        </form>
+      )}
+    </section>
+  );
+}
+
 export default function App() {
   return (
     <RootErrorBoundary>
@@ -14986,6 +15095,56 @@ function AppInner() {
   }
   actuellesViewImplRef.current = ActuellesView;
 
+  async function addCatalogQueueCar({ name, brand, league, file, seasonNum }) {
+    const sameName = c => c.name.toLowerCase() === name.toLowerCase();
+    const getTarget = state => {
+      const season = state?.seasons?.[state.currentSeasonIdx];
+      if (season?.season !== seasonNum || state.currentSeasonIdx !== state.seasons.length - 1) return null;
+      return season.leagues?.[league];
+    };
+    function checkTarget() {
+      if (isPublicModeRef.current || !loaded || !firebaseReadyRef.current) {
+        throw new Error('Connecte-toi en admin et attends le chargement des données.');
+      }
+      const target = getTarget(dbRef.current);
+      if (!CATALOG_QUEUE_LEAGUES.includes(league) || !target) {
+        throw new Error('La saison ou la ligue a changé. Vérifie ta sélection.');
+      }
+      if ((target.queue || []).some(sameName)) {
+        throw new Error('Cette voiture est déjà dans la file d’attente de ' + league + '.');
+      }
+    }
+
+    checkTarget();
+    let photoUrl;
+    if (file) {
+      try { photoUrl = await uploadToCloudinary(file); } catch {}
+      if (!photoUrl) throw new Error('La photo n’a pas été envoyée. Réessaie ou retire-la pour continuer sans photo.');
+    }
+    checkTarget();
+    const id = genId();
+    const timestamp = Date.now();
+    ReactDOM.flushSync(() => {
+      setDb(prev => {
+        const target = getTarget(prev);
+        if (!target || isPublicModeRef.current || (target.queue || []).some(sameName)) return prev;
+        const index = prev.currentSeasonIdx;
+        const season = prev.seasons[index];
+        const seasons = prev.seasons.slice();
+        seasons[index] = { ...season, leagues: { ...season.leagues,
+          [league]: { ...target, queue: [...(target.queue || []), { id, name }] },
+        } };
+        return { ...prev, seasons, brands: { ...prev.brands, [id]: brand },
+          ...(photoUrl ? { photos: { ...prev.photos, [id]: photoUrl },
+            photoTimes: { ...prev.photoTimes, [id]: timestamp } } : {}),
+        };
+      });
+    });
+    if (!getTarget(dbRef.current)?.queue?.some(car => car.id === id)) {
+      throw new Error('L’ajout n’a pas été enregistré. Vérifie la file puis réessaie.');
+    }
+  }
+
   function AllCarsView() {
     const [search, setSearch] = useState(allCarsSearchRef.current);
     const [leagueFilter, setLeagueFilter] = [allCarsFilter, setAllCarsFilter];
@@ -15097,6 +15256,10 @@ function AppInner() {
     return (
       <div>
         <h1 className="section-title">Voitures — Toutes les ligues</h1>
+        {!isPublicMode && (
+          <CatalogQueueForm season={currentSeason} ready={loaded && firebaseReadyRef.current}
+            isLatest={db.currentSeasonIdx === db.seasons.length - 1} onAdd={addCatalogQueueCar} />
+        )}
         {/* Onglets Actives / RIP / File d'attente */}
         <div className="catalog-status-tabs" style={{ display:'flex',borderBottom:'2px solid var(--border)',marginBottom:0 }}>
           <button onClick={() => { setRipTab(false); setVoituresQueueTab(false); }} style={{ flex:1,padding:'10px',fontFamily:"'Bebas Neue',sans-serif",fontSize:15,letterSpacing:1,background:'transparent',border:'none',borderBottom: (!ripTab && !voituresQueueTab) ? '2px solid var(--gold)' :'2px solid transparent',color: (!ripTab && !voituresQueueTab) ? 'var(--gold)' :'var(--text-dim)',cursor:'pointer' }}>
