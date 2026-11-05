@@ -2973,6 +2973,7 @@ const css = `
     font-size: clamp(23px,2.2vw,34px);
     letter-spacing: 2px;
   }
+  .dashboard-league-card > .card-header { flex-wrap: wrap; gap: 8px; }
   .dashboard-league-body { padding: clamp(14px,2vw,24px); }
   .dashboard-progress-track {
     border: 1px solid rgba(255,255,255,.07);
@@ -4794,6 +4795,7 @@ function CatalogQueueForm({ season, ready, isLatest, onAdd }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const pending = useRef(false);
+  const photoInputRef = useRef(null);
 
   useEffect(() => {
     if (!file) { setPreview(''); return; }
@@ -4840,16 +4842,23 @@ function CatalogQueueForm({ season, ready, isLatest, onAdd }) {
         <form id="catalog-queue-form" onSubmit={submit}
           style={{ padding:14, marginTop:10, border:'1px solid var(--gold-dim)', borderRadius:12, background:'var(--dark2)' }}>
           <fieldset disabled={busy} style={{ display:'grid', gap:12, border:0, padding:0, margin:0, minWidth:0 }}>
-            <label style={{ display:'grid', gap:7 }}>
+            <div style={{ display:'grid', gap:7 }}>
               <span>Photo <small>(facultative)</small></span>
-              <span style={{ display:'grid', placeItems:'center', aspectRatio:'16 / 9', overflow:'hidden',
-                border:'1px dashed var(--gold-dim)', borderRadius:8, background:'var(--dark3)' }}>
-                {preview ? <img src={preview} alt="Aperçu de la voiture" style={{ display:'block', width:'100%', height:'100%', objectFit:'contain', minHeight:0 }} />
+              <button type="button" aria-label={preview ? 'Remplacer la photo' : 'Choisir une photo'}
+                onClick={() => photoInputRef.current?.click()}
+                style={{ display:'grid', placeItems:'center', position:'relative', width:'100%', padding:0,
+                  aspectRatio:'16 / 9', overflow:'hidden', cursor:'pointer', font:'inherit', color:'inherit',
+                  border:'1px dashed var(--gold-dim)', borderRadius:8, background:'var(--dark3)' }}>
+                {preview ? <img src={preview} alt="" style={{ position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'contain' }} />
                   : <span aria-hidden="true">📷 Choisir une photo</span>}
-              </span>
-              <input type="file" accept="image/*" style={{ ...fieldStyle, marginTop:0 }}
-                onChange={e => setFile(e.target.files?.[0] || null)} />
-            </label>
+              </button>
+              <input ref={photoInputRef} type="file" accept="image/*" hidden style={{ display:'none' }}
+                onChange={e => {
+                  const selected = e.currentTarget.files?.[0];
+                  if (selected) setFile(selected);
+                  e.currentTarget.value = '';
+                }} />
+            </div>
             <label>Nom du modèle
               <input required value={name} onChange={e => setName(e.target.value)} placeholder="Ex. C4" style={fieldStyle} />
             </label>
@@ -8719,6 +8728,15 @@ function AppInner() {
               <div key={l} data-league-index={`0${LEAGUES.indexOf(l) + 1}`} className={`card dashboard-league-card dashboard-league-${LEAGUES.indexOf(l) + 1}`}>
                 <div className="card-header">
                   <div className="card-title">{l}</div>
+                  <button type="button" className="btn btn-gold btn-sm" style={{ minHeight:40, whiteSpace:'nowrap' }}
+                    aria-label={`Voir la ligue ${l}`}
+                    onClick={() => {
+                      const scroll = window.scrollY;
+                      navPush(() => { setMainTab('dashboard'); requestAnimationFrame(() => window.scrollTo(0, scroll)); });
+                      setLigueSubTab('principales'); setLiguesMenuOpen(false); setLeagueTab(l);
+                      setLeagueMenuOpen(false); setSectionMenuOpen(true); setMainTab('ligues');
+                      requestAnimationFrame(() => window.scrollTo(0, 0));
+                    }}>Voir la ligue →</button>
                   <div style={{ flex:1 }} />
                   <div style={{ display:'flex',alignItems:'center',gap:8 }}>
                     <div className="dashboard-progress-track" style={{ width:80,height:6,background:'var(--dark3)',borderRadius:3,overflow:'hidden' }}>
@@ -11427,6 +11445,65 @@ function AppInner() {
     return { active, relegatedGone, returned };
   }
 
+  function AllCarsBonusView() {
+    const [query, setQuery] = useState('');
+    const [limit, setLimit] = useState(50);
+    const rows = React.useMemo(() => {
+      const cars = new Map();
+      const byName = new Map();
+      function register(car, leagueName, active = false) {
+        if (!cars.has(car.id)) cars.set(car.id, { ...car, leagueName, total:0, active });
+        const row = cars.get(car.id);
+        if (active) Object.assign(row, { name:car.name, leagueName, active:true });
+        const nameKey = car.name.trim().toLowerCase();
+        if (!byName.has(nameKey)) byName.set(nameKey, new Set());
+        byName.get(nameKey).add(car.id);
+        return row;
+      }
+      [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
+        (currentSeason.leagues[l]?.cars || []).forEach(car => register(car, l, true));
+      });
+      const scores = LEAGUES.flatMap(l => computeAllSeasonsBonus(l).map(entry => ({ ...entry, leagueName:l })));
+      scores.filter(e => !e.historicalOnly).forEach(e => { register(e, e.leagueName).total += e.total; });
+      scores.filter(e => e.historicalOnly).forEach(e => {
+        const name = e.name.trim().toLowerCase();
+        const ids = byName.get(name);
+        const id = ids?.size === 1 ? [...ids][0] : 'historique:' + (ids?.size > 1 ? e.leagueName + ':' : '') + name;
+        if (!cars.has(id)) cars.set(id, { ...e, id, total:0, active:false });
+        cars.get(id).total += e.total;
+      });
+      return withRanks([...cars.values()].sort((a,b) => b.total - a.total || a.name.localeCompare(b.name, 'fr')), e => e.total);
+    }, [db, currentSeason]);
+    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const searchKey = normalize(query.trim());
+    const results = rows.filter(e => normalize([e.name, getCarBrand(e.id), e.leagueName].join(' ')).includes(searchKey));
+    return (
+      <div className="card" style={{ padding:16 }}>
+        <h2 className="section-title">Points annexes — Toutes les voitures</h2>
+        <p className="text-dim">Total cumulatif des points annexes, toutes saisons et ligues confondues.</p>
+        <input aria-label="Rechercher dans le classement général" placeholder="Rechercher une voiture, une marque ou une ligue…"
+          value={query} onChange={e => { setQuery(e.target.value); setLimit(50); }} style={{ width:'100%', boxSizing:'border-box', fontSize:16, margin:'12px 0' }} />
+        <div style={{ overflowX:'auto' }}>
+          <table style={{ width:'100%', textAlign:'left' }}>
+            <thead><tr><th>Rang</th><th>Voiture</th><th style={{ textAlign:'right' }}>Points</th></tr></thead>
+            <tbody>
+              {results.slice(0, limit).map(e => <tr key={e.id}>
+                <td>{e.rank}</td>
+                <td><button type="button" className="btn btn-dark btn-sm" style={{ whiteSpace:'normal', textAlign:'left' }} onClick={() => {
+                  const found = findProfileCarEntry(e.historicalOnly ? null : e.id, e.name, e.leagueName);
+                  openProfileCar({ leagueName:found?.leagueName || e.leagueName, carId:found?.carId || (e.historicalOnly ? 'hist-' + e.name : e.id), histName:e.name });
+                }}>{e.name}</button><small className="text-dim" style={{ display:'block' }}>{[getCarBrand(e.id), e.active && e.leagueName].filter(Boolean).join(' · ')}</small></td>
+                <td style={{ textAlign:'right', color:'var(--gold)', fontWeight:700 }}>{e.total}</td>
+              </tr>)}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-dim" style={{ marginTop:12 }}>{results.length ? Math.min(limit, results.length) + ' sur ' + results.length + ' voitures' : 'Aucune voiture trouvée'}</p>
+        {results.length > limit && <button type="button" className="btn btn-gold btn-sm" onClick={() => setLimit(n => n + 50)}>Afficher 50 voitures de plus</button>}
+      </div>
+    );
+  }
+
   function BonusView() {
     const [search, setSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState(null);
@@ -11703,7 +11780,7 @@ function AppInner() {
       </div>
     );
   }
-  bonusViewImplRef.current = BonusView;
+  bonusViewImplRef.current = leagueTab === 'Toutes les voitures' ? AllCarsBonusView : BonusView;
 
   function SuccesseursView() {
     const leagueName = 'Successeurs';
@@ -19083,6 +19160,14 @@ function AppInner() {
           <div style={{ padding:24 }}>
             <div className="section-title" style={{ marginBottom:16 }}>{mainTab === 'bonus' ? 'Points Annexes — Choisir une ligue' : 'Ligues Principales'}</div>
             <div className="portal-grid">
+              {mainTab === 'bonus' && <button type="button" className="portal-card"
+                onClick={() => { setLeagueTab('Toutes les voitures'); setLeagueMenuOpen(false); navPush(() => setLeagueMenuOpen(true)); requestAnimationFrame(() => window.scrollTo(0, 0)); }}>
+                <span className="portal-card-icon">🏆</span>
+                <span className="portal-card-kicker">Points annexes</span>
+                <span className="portal-card-title">Toutes les voitures</span>
+                <span className="portal-card-sub">Classement général cumulatif</span>
+                <span className="portal-card-arrow">→</span>
+              </button>}
               {LEAGUES.map((l, index) => (
                 <button key={l}
                   className="portal-card"
@@ -19286,7 +19371,7 @@ function AppInner() {
             </div>
           )}
           {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'actuelles' && !actuellesMenuOpen && <StableActuellesView leagueName={actuellesLeague} subTab={actSubTab} setSubTab={v => { setActSubTab(v); }} />}
-          {mainTab === 'bonus' && !leagueMenuOpen && <StableBonusView dbVersion={db} leagueName={leagueTab} />}
+          {mainTab === 'bonus' && !leagueMenuOpen && <StableBonusView key={leagueTab} dbVersion={db} leagueName={leagueTab} />}
           {mainTab === 'voitures' && <StableAllCarsView />}
           {mainTab === 'marques' && <StableMarquesView subTab={marquesSubTab} />}
           {mainTab === 'pays' && <StableMarquesView subTab="pays" />}
