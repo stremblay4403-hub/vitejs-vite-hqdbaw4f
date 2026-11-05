@@ -11493,8 +11493,9 @@ function AppInner() {
 
     const combinedView = leagueTab === 'Toutes les voitures';
     const includedLeagues = combinedView ? LEAGUES : [leagueTab];
-    const allBonus = combinedView ? computeCombinedMainBonus() : computeAllSeasonsBonus(leagueTab);
-    const histLeague = includedLeagues.flatMap(l => getHistLeague(l));
+    const allBonus = React.useMemo(() => combinedView ? computeCombinedMainBonus() : computeAllSeasonsBonus(leagueTab),
+      [db.seasons, db.histOverrides, db.nameMap, db.currentSeasonIdx, leagueTab]);
+    const histLeague = React.useMemo(() => includedLeagues.flatMap(l => getHistLeague(l)), [leagueTab, db.histOverrides]);
     const histSeasons = new Set();
     histLeague.forEach(c => Object.keys(c.bySeason).forEach(s => histSeasons.add(parseInt(s))));
     const histSeasonNums = [...histSeasons].sort((a,b) => a-b);
@@ -11504,14 +11505,34 @@ function AppInner() {
       ...histSeasonNums.map(n => `hist-S${n}`),
       ...appSeasonNums.map(n => `app-S${n}`)
     ];
-    const sortedBonus = sortBySeason ? [...allBonus].sort((a, b) => {
-      const keysUpTo = allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1);
-      const totalA = keysUpTo.reduce((sum, k) => sum + (a.bySeason[k] || 0), 0);
-      const totalB = keysUpTo.reduce((sum, k) => sum + (b.bySeason[k] || 0), 0);
-      return totalB - totalA;
-    }) : allBonus;
-
-    const registry = buildCarRegistry();
+    const ranking = React.useMemo(() => {
+      const keysUpTo = sortBySeason ? allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1) : null;
+      const prevKeys = allSeasonKeys.slice(0, -1);
+      const values = new Map(allBonus.map(e => [e.id || e.name, keysUpTo
+        ? keysUpTo.reduce((n,k) => n + (e.bySeason[k] || 0), 0) : e.total]));
+      const sorted = sortBySeason ? [...allBonus].sort((a,b) => values.get(b.id || b.name) - values.get(a.id || a.name)) : allBonus;
+      const ranks = new Map();
+      let last = null, rank = 0;
+      sorted.forEach((e,i) => {
+        const value = values.get(e.id || e.name);
+        if (i === 0 || value !== last) rank = i + 1;
+        ranks.set(e.id || e.name, rank); last = value;
+      });
+      const prevRanks = new Map();
+      if (prevKeys.length) {
+        const previous = allBonus.map(e => ({ id:e.id || e.name, value:prevKeys.reduce((n,k) => n + (e.bySeason[k] || 0), 0) }))
+          .sort((a,b) => b.value - a.value);
+        previous.forEach((e,i) => {
+          if (i === 0 || e.value !== previous[i-1].value) rank = i + 1;
+          prevRanks.set(e.id, rank);
+        });
+      }
+      const ties = new Map();
+      allBonus.forEach(e => ties.set(e.total, (ties.get(e.total) || 0) + 1));
+      return { sorted, ranks, prevRanks, ties };
+    }, [allBonus, sortBySeason, histSeasonNums.join(','), appSeasonNums.join(',')]);
+    const sortedBonus = ranking.sorted;
+    const registry = React.useMemo(() => buildCarRegistry(), [db.seasons, db.currentSeasonIdx]);
     const activeInThisLeagueSet = new Set(
       registry.active
         .filter(e => e.leagues.some(l => includedLeagues.includes(l.leagueName)))
@@ -11531,11 +11552,52 @@ function AppInner() {
       return 'inactive';
     };
 
-    const filtered = sortedBonus.filter(e => {
+    const filtered = React.useMemo(() => sortedBonus.filter(e => {
       if (search && !e.name.toLowerCase().includes(search.toLowerCase())) return false;
       if (statusFilter && getStatus(e) !== statusFilter) return false;
       return true;
-    });
+    }), [sortedBonus, search, statusFilter, registry]);
+    const photosByName = React.useMemo(() => {
+      const result = new Map();
+      for (const season of db.seasons) for (const l of [...LEAGUES, ...AUXILIARY_LEAGUES]) {
+        // Same first matching car per name/league as the existing photo lookup.
+        const seen = new Set();
+        for (const car of season.leagues[l]?.cars || []) {
+          for (const name of new Set([car.name.toLowerCase(), resolveHistName(car.name).toLowerCase()])) {
+            if (!seen.has(name) && !result.has(name) && db.photos?.[car.id]) result.set(name, db.photos[car.id]);
+            seen.add(name);
+          }
+        }
+      }
+      for (const [key,url] of Object.entries(db.photos || {})) {
+        if (key.startsWith('byname-')) result.set(key.slice(7),url);
+      }
+      return result;
+    }, [db.seasons, db.photos]);
+    const bodyRef = React.useRef(null);
+    const firstRowRef = React.useRef(null);
+    const [windowRows, setWindowRows] = useState({ start:0, end:50, height:90 });
+    React.useLayoutEffect(() => {
+      let frame = 0;
+      const update = () => {
+        frame = 0;
+        const top = bodyRef.current?.getBoundingClientRect().top || 0;
+        const height = firstRowRef.current?.getBoundingClientRect().height || 90;
+        const count = Math.max(1, Math.ceil(window.innerHeight / height));
+        const start = Math.max(0, Math.min(Math.max(0, filtered.length - count), Math.floor(-top / height) - 8));
+        const end = Math.min(filtered.length, start + count + 20);
+        setWindowRows(old => old.start === start && old.end === end && old.height === height ? old : { start,end,height });
+      };
+      const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+      update();
+      window.addEventListener('scroll',schedule,{ passive:true });
+      window.addEventListener('resize',schedule);
+      const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
+      if (firstRowRef.current) observer?.observe(firstRowRef.current);
+      return () => { if(frame) cancelAnimationFrame(frame); observer?.disconnect(); window.removeEventListener('scroll',schedule); window.removeEventListener('resize',schedule); };
+    }, [filtered]);
+    const visibleEntries = filtered.slice(windowRows.start, windowRows.end);
+    const columnCount = 5 + histSeasonNums.length + appSeasonNums.length;
 
     function openProfile(entry) {
       const preferredLeague = entry.sourceLeague || leagueTab;
@@ -11615,39 +11677,16 @@ function AppInner() {
                   })}
                 </tr>
               </thead>
-              <tbody>
+              <tbody ref={bodyRef}>
+                {windowRows.start > 0 && <tr aria-hidden="true"><td colSpan={columnCount} style={{ padding:0, border:0, height:windowRows.start * windowRows.height }} /></tr>}
                 {(() => {
-                  const allSeasonKeys = [
-                    ...histSeasonNums.map(n => `hist-S${n}`),
-                    ...appSeasonNums.map(n => `app-S${n}`)
-                  ];
-                  const prevKeys = allSeasonKeys.slice(0, -1);
-                  const rankPrev = {};
-                  if (prevKeys.length > 0) {
-                    const totals = allBonus.map(e => ({
-                      id: e.id || e.name,
-                      total: prevKeys.reduce((sum, sk) => sum + (e.bySeason[sk] || 0), 0)
-                    }));
-                    totals.sort((a, b) => b.total - a.total);
-                    totals.forEach((t) => {
-                      rankPrev[t.id] = totals.filter(o => o.total > t.total).length + 1;
-                    });
-                  }
-
-                  return filtered.map((entry) => {
-                    const photo = !entry.historicalOnly
-                      ? (getCarPhoto(entry.id) || getCarPhotoByName(entry.name))
-                      : getCarPhotoByName(entry.name);
+                  return visibleEntries.map((entry, rowIndex) => {
+                    const photo = (!entry.historicalOnly && getCarPhoto(entry.id)) || photosByName.get(entry.name.toLowerCase());
                     const champCount = (entry.histChampions || []).length + (entry.appChampions || []).length;
                     const relCount = (entry.histRelegated || []).length + (entry.appRelegated || []).length;
-                    const rank = (() => {
-                      const keysUpTo = sortBySeason ? allSeasonKeys.slice(0, allSeasonKeys.indexOf(sortBySeason) + 1) : null;
-                      const myTotal = keysUpTo ? keysUpTo.reduce((sum, k) => sum + (entry.bySeason[k] || 0), 0) : entry.total;
-                      const ref = keysUpTo ? sortedBonus : allBonus;
-                      return ref.filter(e => { const t = keysUpTo ? keysUpTo.reduce((sum, k) => sum + (e.bySeason[k] || 0), 0) : e.total; return t > myTotal; }).length + 1;
-                    })();
                     const entryId = entry.id || entry.name;
-                    const prevRank = rankPrev[entryId];
+                    const rank = ranking.ranks.get(entryId);
+                    const prevRank = ranking.prevRanks.get(entryId);
                     const delta = prevRank ? prevRank - rank : null;
                     const entryStatus = getStatus(entry);
                     let statusDot, statusTitle;
@@ -11657,14 +11696,14 @@ function AppInner() {
                     else { statusDot = '#e74c3c'; statusTitle = 'Inactive'; }
 
                     return (
-                      <tr key={entryId} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
+                      <tr ref={rowIndex === 0 ? firstRowRef : null} key={entryId} style={{ cursor:'pointer' }} onClick={() => openProfile(entry)}>
                         <td style={{ textAlign:'center',fontSize:11,width:32 }}>
                           {delta === null || delta === 0 ? <span style={{ color:'var(--text-dim)' }}>—</span>
                             : delta > 0 ? <span style={{ color:'var(--green)',fontWeight:700, ...(delta>=5 ? {animation:'dashPulse 1.3s ease-in-out infinite', textShadow:'0 0 8px rgba(39,174,96,0.7)'} : {}) }}>▲{delta}</span>
                             : <span style={{ color:'#e74c3c',fontWeight:700, ...(Math.abs(delta)>=5 ? {animation:'dashPulse 1.3s ease-in-out infinite', textShadow:'0 0 8px rgba(231,76,60,0.7)'} : {}) }}>▼{Math.abs(delta)}</span>}
                         </td>
                         <td style={{ width:36,fontFamily:"'Bebas Neue',sans-serif",fontSize:22,color:'var(--gold-dim)',textAlign:'center' }}>
-                          {(() => { const sameRank = sortedBonus.filter(e => e.total === entry.total).length > 1; const medal = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':null; if (medal && !sameRank) return medal; return sameRank ? `=${rank}` : rank; })()}
+                          {(() => { const sameRank = ranking.ties.get(entry.total) > 1; const medal = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':null; if (medal && !sameRank) return medal; return sameRank ? `=${rank}` : rank; })()}
                         </td>
                         <td style={{ padding:0,width:130 }}>
                           <div style={{ width:130,height:90,overflow:'hidden',background:'var(--dark3)',display:'flex',alignItems:'center',justifyContent:'center' }}>
@@ -11710,6 +11749,7 @@ function AppInner() {
                     );
                   });
                 })()}
+                {windowRows.end < filtered.length && <tr aria-hidden="true"><td colSpan={columnCount} style={{ padding:0, border:0, height:(filtered.length - windowRows.end) * windowRows.height }} /></tr>}
                 {filtered.length === 0 && (
                   <tr><td colSpan={7 + histSeasonNums.length + appSeasonNums.length} className="text-dim text-center" style={{ padding:24 }}>Aucune voiture trouvée</td></tr>
                 )}
