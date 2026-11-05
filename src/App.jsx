@@ -11445,63 +11445,38 @@ function AppInner() {
     return { active, relegatedGone, returned };
   }
 
-  function AllCarsBonusView() {
-    const [query, setQuery] = useState('');
-    const [limit, setLimit] = useState(50);
-    const rows = React.useMemo(() => {
-      const cars = new Map();
-      const byName = new Map();
-      function register(car, leagueName, active = false) {
-        if (!cars.has(car.id)) cars.set(car.id, { ...car, leagueName, total:0, active });
-        const row = cars.get(car.id);
-        if (active) Object.assign(row, { name:car.name, leagueName, active:true });
-        const nameKey = car.name.trim().toLowerCase();
-        if (!byName.has(nameKey)) byName.set(nameKey, new Set());
-        byName.get(nameKey).add(car.id);
-        return row;
-      }
-      [...LEAGUES, ...AUXILIARY_LEAGUES].forEach(l => {
-        (currentSeason.leagues[l]?.cars || []).forEach(car => register(car, l, true));
-      });
-      const scores = LEAGUES.flatMap(l => computeAllSeasonsBonus(l).map(entry => ({ ...entry, leagueName:l })));
-      scores.filter(e => !e.historicalOnly).forEach(e => { register(e, e.leagueName).total += e.total; });
-      scores.filter(e => e.historicalOnly).forEach(e => {
-        const name = e.name.trim().toLowerCase();
-        const ids = byName.get(name);
-        const id = ids?.size === 1 ? [...ids][0] : 'historique:' + (ids?.size > 1 ? e.leagueName + ':' : '') + name;
-        if (!cars.has(id)) cars.set(id, { ...e, id, total:0, active:false });
-        cars.get(id).total += e.total;
-      });
-      return withRanks([...cars.values()].sort((a,b) => b.total - a.total || a.name.localeCompare(b.name, 'fr')), e => e.total);
-    }, [db, currentSeason]);
-    const normalize = value => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    const searchKey = normalize(query.trim());
-    const results = rows.filter(e => normalize([e.name, getCarBrand(e.id), e.leagueName].join(' ')).includes(searchKey));
-    return (
-      <div className="card" style={{ padding:16 }}>
-        <h2 className="section-title">Points annexes — Toutes les voitures</h2>
-        <p className="text-dim">Total cumulatif des points annexes, toutes saisons et ligues confondues.</p>
-        <input aria-label="Rechercher dans le classement général" placeholder="Rechercher une voiture, une marque ou une ligue…"
-          value={query} onChange={e => { setQuery(e.target.value); setLimit(50); }} style={{ width:'100%', boxSizing:'border-box', fontSize:16, margin:'12px 0' }} />
-        <div style={{ overflowX:'auto' }}>
-          <table style={{ width:'100%', textAlign:'left' }}>
-            <thead><tr><th>Rang</th><th>Voiture</th><th style={{ textAlign:'right' }}>Points</th></tr></thead>
-            <tbody>
-              {results.slice(0, limit).map(e => <tr key={e.id}>
-                <td>{e.rank}</td>
-                <td><button type="button" className="btn btn-dark btn-sm" style={{ whiteSpace:'normal', textAlign:'left' }} onClick={() => {
-                  const found = findProfileCarEntry(e.historicalOnly ? null : e.id, e.name, e.leagueName);
-                  openProfileCar({ leagueName:found?.leagueName || e.leagueName, carId:found?.carId || (e.historicalOnly ? 'hist-' + e.name : e.id), histName:e.name });
-                }}>{e.name}</button><small className="text-dim" style={{ display:'block' }}>{[getCarBrand(e.id), e.active && e.leagueName].filter(Boolean).join(' · ')}</small></td>
-                <td style={{ textAlign:'right', color:'var(--gold)', fontWeight:700 }}>{e.total}</td>
-              </tr>)}
-            </tbody>
-          </table>
-        </div>
-        <p className="text-dim" style={{ marginTop:12 }}>{results.length ? Math.min(limit, results.length) + ' sur ' + results.length + ' voitures' : 'Aucune voiture trouvée'}</p>
-        {results.length > limit && <button type="button" className="btn btn-gold btn-sm" onClick={() => setLimit(n => n + 50)}>Afficher 50 voitures de plus</button>}
-      </div>
+  function computeCombinedMainBonus() {
+    // L’univers est STRICTEMENT l’union des quatre classements existants.
+    const entries = LEAGUES.flatMap(leagueName =>
+      computeAllSeasonsBonus(leagueName).map(entry => ({ ...entry, sourceLeague:leagueName }))
     );
+    const byName = new Map();
+    entries.filter(e => !e.historicalOnly).forEach(e => {
+      const key = e.name.trim().toLowerCase();
+      if (!byName.has(key)) byName.set(key, new Set());
+      byName.get(key).add(e.id);
+    });
+    const combined = new Map();
+    entries.forEach(e => {
+      const nameKey = e.name.trim().toLowerCase();
+      const ids = byName.get(nameKey);
+      const key = !e.historicalOnly ? e.id : ids?.size === 1
+        ? [...ids][0] : 'hist-all:' + (ids?.size > 1 ? e.sourceLeague + ':' : '') + nameKey;
+      if (!combined.has(key)) combined.set(key, { ...e, id:e.historicalOnly ? key : e.id, profileId:e.id, total:0, bySeason:{},
+        histChampions:[], histRelegated:[], appChampions:[], appRelegated:[] });
+      const row = combined.get(key);
+      if (!e.historicalOnly && row.historicalOnly) {
+        row.id = e.id; row.name = e.name; row.historicalOnly = false; row.sourceLeague = e.sourceLeague;
+      }
+      row.total += e.total || 0;
+      Object.entries(e.bySeason || {}).forEach(([season, points]) => {
+        row.bySeason[season] = (row.bySeason[season] || 0) + points;
+      });
+      ['histChampions','histRelegated','appChampions','appRelegated'].forEach(field => {
+        row[field] = [...new Set([...row[field], ...(e[field] || [])])];
+      });
+    });
+    return [...combined.values()].sort((a,b) => b.total - a.total || a.name.localeCompare(b.name, 'fr'));
   }
 
   function BonusView() {
@@ -11516,8 +11491,10 @@ function AppInner() {
       }
     });
 
-    const allBonus = computeAllSeasonsBonus(leagueTab);
-    const histLeague = getHistLeague(leagueTab);
+    const combinedView = leagueTab === 'Toutes les voitures';
+    const includedLeagues = combinedView ? LEAGUES : [leagueTab];
+    const allBonus = combinedView ? computeCombinedMainBonus() : computeAllSeasonsBonus(leagueTab);
+    const histLeague = includedLeagues.flatMap(l => getHistLeague(l));
     const histSeasons = new Set();
     histLeague.forEach(c => Object.keys(c.bySeason).forEach(s => histSeasons.add(parseInt(s))));
     const histSeasonNums = [...histSeasons].sort((a,b) => a-b);
@@ -11537,12 +11514,12 @@ function AppInner() {
     const registry = buildCarRegistry();
     const activeInThisLeagueSet = new Set(
       registry.active
-        .filter(e => e.leagues.some(l => l.leagueName === leagueTab))
+        .filter(e => e.leagues.some(l => includedLeagues.includes(l.leagueName)))
         .map(e => e.name.toLowerCase())
     );
     const activeInOtherLeagueMap = {};
     registry.active
-      .filter(e => !e.leagues.some(l => l.leagueName === leagueTab))
+      .filter(e => !e.leagues.some(l => includedLeagues.includes(l.leagueName)))
       .forEach(e => {
         activeInOtherLeagueMap[e.name.toLowerCase()] = e.leagues[0]?.leagueName;
       });
@@ -11561,9 +11538,10 @@ function AppInner() {
     });
 
     function openProfile(entry) {
-      const found = findProfileCarEntry(entry.id, entry.name, leagueTab);
-      openProfileCar({ leagueName: found?.leagueName || leagueTab,
-        carId: found?.carId || entry.id, histName: entry.name });
+      const preferredLeague = entry.sourceLeague || leagueTab;
+      const found = findProfileCarEntry(entry.profileId || entry.id, entry.name, preferredLeague);
+      openProfileCar({ leagueName: found?.leagueName || preferredLeague,
+        carId: found?.carId || entry.profileId || entry.id, histName: entry.name });
     }
 
     return (
@@ -11741,7 +11719,8 @@ function AppInner() {
                   // Ligne de validation : total COMPLET des points par saison (toutes voitures, non filtré).
                   // Pour une ligue principale entièrement jouée : 8 groupes × 55 = 440, + Tournoi des
                   // Champions (8 participants × 5 = 40) + champion (+5) = 485.
-                  const isMain = ['Voitures 1','Voitures 2','Voitures 3','Voitures 4'].includes(leagueTab);
+                  const isMain = combinedView || LEAGUES.includes(leagueTab);
+                  const fullTotal = combinedView ? 485 * LEAGUES.length : 485;
                   const seasonTotal = (key) => allBonus.reduce((sum, e) => sum + (e.bySeason[key] || 0), 0);
                   const grandTotal = allBonus.reduce((sum, e) => sum + (e.total || 0), 0);
                   return (
@@ -11750,7 +11729,7 @@ function AppInner() {
                       <td style={{ width:36 }}></td>
                       <td style={{ width:130 }}></td>
                       <td className="sticky-col" style={{ left:0,minWidth:180,padding:'10px 12px',background:'var(--dark3)',fontFamily:"'Bebas Neue',sans-serif",fontSize:16,letterSpacing:1,color:'var(--gold)' }}>
-                        Total saison{isMain ? ' (complet = 485)' : ''}
+                        Total saison{isMain ? ' (complet = ' + fullTotal + ')' : ''}
                       </td>
                       <td className="sticky-col pts-val" style={{ left:180,borderRight:'1px solid var(--border)',fontSize:22,textAlign:'center',color:'var(--gold)',background:'var(--dark3)' }}>
                         {grandTotal}
@@ -11761,10 +11740,10 @@ function AppInner() {
                       })}
                       {appSeasonNums.map(n => {
                         const tot = seasonTotal(`app-S${n}`);
-                        const complete = isMain && tot === 485;
-                        const pct = isMain ? Math.min((tot / 485) * 100, 100) : 0;
+                        const complete = isMain && tot === fullTotal;
+                        const pct = isMain ? Math.min((tot / fullTotal) * 100, 100) : 0;
                         return (
-                          <td key={`at${n}`} title={complete ? 'Saison complète ✓ (485)' : `${tot} pts distribués`}
+                          <td key={`at${n}`} title={complete ? 'Saison complète ✓ (' + fullTotal + ')' : `${tot} pts distribués`}
                             style={{ textAlign:'center',fontSize:14,fontFamily:"'Bebas Neue',sans-serif",fontWeight:700,color:complete ? 'var(--green)' : (tot ? 'var(--gold)' : 'var(--text-dim)'),background: isMain ? `linear-gradient(0deg, ${complete?'rgba(39,174,96,0.35)':'rgba(212,175,55,0.3)'} ${pct}%, var(--dark3) ${pct}%)` : 'var(--dark3)' }}>
                             {complete ? `✓${tot}` : (tot || '—')}
                           </td>
@@ -11780,7 +11759,7 @@ function AppInner() {
       </div>
     );
   }
-  bonusViewImplRef.current = leagueTab === 'Toutes les voitures' ? AllCarsBonusView : BonusView;
+  bonusViewImplRef.current = BonusView;
 
   function SuccesseursView() {
     const leagueName = 'Successeurs';
