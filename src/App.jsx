@@ -4213,15 +4213,17 @@ function isOldMonolithicFormat(mainParsed) {
 // Convertit la « saison affichée » (synchronisée PAR NUMÉRO dans main.viewedSeasonNum) en
 // position dans la liste LOCALE reconstituée. Défaut : saison live (dernière). Portable entre
 // appareils même si leurs listes diffèrent → corrige le visiteur qui revenait sur S33.
-function resolveViewedIdx(seasons, mainParsed) {
-  if (!Array.isArray(seasons) || seasons.length === 0) return 0;
-  const liveIdx = seasons.length - 1;
-  const num = mainParsed && typeof mainParsed.viewedSeasonNum === 'number' ? mainParsed.viewedSeasonNum : null;
-  if (num !== null) {
-    const idx = seasons.findIndex(s => s && s.season === num);
+function resolveViewedIdx(seasons, manuallyPickedSeason = null) {
+  if (!Array.isArray(seasons) || !seasons.length) return 0;
+  if (manuallyPickedSeason !== null) {
+    const idx = seasons.findIndex(s => s?.season === manuallyPickedSeason);
     if (idx >= 0) return idx;
   }
-  return liveIdx;
+  let latestIdx = 0;
+  for (let i = 1; i < seasons.length; i++) {
+    if ((seasons[i]?.season ?? -Infinity) > (seasons[latestIdx]?.season ?? -Infinity)) latestIdx = i;
+  }
+  return latestIdx;
 }
 
 // Construit le payload main allégé (saison live seule, compressée). Utilisé par la migration
@@ -4920,11 +4922,9 @@ function AppInner() {
   // Saisons archivées lues depuis Firestore (docs tournois/season_<N>), gardées pour
   // reconstituer le tableau complet à chaque snapshot de main (qui ne porte que la live).
   const archivedSeasonsRef = React.useRef([]);
-  const lastMainParsedRef = React.useRef(null); // dernier payload main reçu (pour re-reconstruire)
   const lastMainUpdatedAtRef = React.useRef(0); // updatedAt du dernier main reçu (arbitrage local/main)
   const hasAppliedMainRef = React.useRef(false); // a-t-on déjà appliqué main une fois (1er chargement) ?
-  const manualSeasonPickRef = React.useRef(false); // le visiteur a-t-il choisi une saison à la main ?
-  const pickedSeasonNumRef = React.useRef(null);   // numéro de la saison choisie manuellement (visiteur)
+  const pickedSeasonNumRef = React.useRef(null);   // numéro choisi pendant la session (admin ou visiteur)
   const [db, _setDb] = useState(() => {    const s = { seasons: [], currentSeasonIdx: 0, photos: {}, photoTimes: {}, brands: {},
       histOverrides: {}, rip: [] // voitures retraitées — juste pour les photos
     };
@@ -5695,7 +5695,7 @@ function AppInner() {
 
     // Chargement localStorage immédiat (évite l'écran blanc)
     const localSaved = storageLoad();
-    if (localSaved) applyLoadedData(localSaved);
+    if (localSaved) applyLoadedData({ ...localSaved, currentSeasonIdx: pickedSeasonIdx(localSaved.seasons) });
 
     // Listener temps réel Firebase — se met à jour automatiquement
     let photosData = {};
@@ -5758,7 +5758,7 @@ function AppInner() {
       if (!merged.brands) merged.brands = {};
       if (!merged.histOverrides) merged.histOverrides = {};
       if (!merged.rip) merged.rip = [];
-      merged.currentSeasonIdx = pickedSeasonIdx(merged.seasons, lastMainParsedRef.current || {});
+      merged.currentSeasonIdx = pickedSeasonIdx(merged.seasons);
       isLoadingFromFirebase.current = true;
       applyLoadedData(merged, true);
       setTimeout(() => { isLoadingFromFirebase.current = false; }, 1200);
@@ -5783,7 +5783,6 @@ function AppInner() {
 
             const rawMain = JSON.parse(dataSnap.data().data);
             lastAppliedUpdatedAt = u;
-            lastMainParsedRef.current = rawMain;
             lastMainUpdatedAtRef.current = u; // pour l'arbitrage local/main du re-apply après fetch archives
             const oldFormat = isOldMonolithicFormat(rawMain);
             // Si une saison live nettement plus avancée apparaît (device resté longtemps hors-ligne,
@@ -5806,7 +5805,7 @@ function AppInner() {
             if (!parsed.histOverrides) parsed.histOverrides = {};
             if (!parsed.rip) parsed.rip = [];
             // Position de la saison affichée résolue PAR NUMÉRO (portable) → défaut = saison live.
-            parsed.currentSeasonIdx = pickedSeasonIdx(parsed.seasons, rawMain);
+            parsed.currentSeasonIdx = pickedSeasonIdx(parsed.seasons);
             const savedScrollY = window.scrollY;
             const tabsEl = document.querySelector('.tabs');
             if (tabsEl) savedTabsScrollLeft.current = tabsEl.scrollLeft;
@@ -6700,27 +6699,21 @@ function AppInner() {
       const prevCars = prev.leagues[l]?.cars || [];
       ns.leagues[l] = initAuxLeague(l, prevCars);
     });
+    pickedSeasonNumRef.current = null;
     setDb(d => ({ ...d, seasons: [...d.seasons, ns], currentSeasonIdx: d.seasons.length }));
     loadedForNotifs.current = false;
     auxLoadedRef.current = false;
     firebaseReadyRef.current = false;
   }
 
-  // Résout l'index de la saison affichée. Si un VISITEUR a choisi une saison à la main, on garde
-  // son choix (par numéro) au lieu de le re-synchroniser sur la saison de l'admin (viewedSeasonNum).
-  function pickedSeasonIdx(seasons, rawMain) {
-    if (isPublicModeRef.current && manualSeasonPickRef.current && pickedSeasonNumRef.current != null) {
-      const i = (seasons || []).findIndex(s => s && s.season === pickedSeasonNumRef.current);
-      if (i >= 0) return i;
-    }
-    return resolveViewedIdx(seasons, rawMain);
+  // Au lancement, ignorer la saison affichée d'une session précédente.
+  function pickedSeasonIdx(seasons) {
+    return resolveViewedIdx(seasons, pickedSeasonNumRef.current);
   }
 
   function switchSeason(idx) {
-    // Mémoriser le choix (utile en mode visiteur pour ne pas être re-synchronisé sur la saison
-    // de l'admin au prochain snapshot Firebase).
-    manualSeasonPickRef.current = true;
-    pickedSeasonNumRef.current = (db.seasons[idx] && db.seasons[idx].season) ?? null;
+    if (!db.seasons[idx]) return;
+    pickedSeasonNumRef.current = db.seasons[idx].season;
     // Petite transition cinématique quand on change réellement de saison (pas si on reclique la même)
     const fromNum = currentSeason?.season;
     const toNum = db.seasons[idx]?.season;
@@ -7342,6 +7335,7 @@ function AppInner() {
   }
 
   function handleNextSeason() {
+    pickedSeasonNumRef.current = null;
     setIsProcessing(true);
     drawPendingRef.current = true;
     setTimeout(() => {
