@@ -2950,19 +2950,7 @@ const css = `
   .season-compare-copy { min-width:0; }
   .season-compare-copy strong { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:13px; }
   .season-compare-copy small { color:var(--text-dim);font-size:10px; }
-  .season-poster {
-    position:relative;overflow:hidden;padding:18px;border:1px solid rgba(212,175,55,.36);border-radius:16px;
-    background:radial-gradient(circle at 50% 0,rgba(212,175,55,.15),transparent 45%),linear-gradient(145deg,#15120a,#080808 70%);
-  }
-  .season-poster::before { content:'CHAMPIONS';position:absolute;right:12px;top:-15px;color:transparent;-webkit-text-stroke:1px rgba(212,175,55,.1);font:80px 'Bebas Neue',sans-serif;letter-spacing:3px; }
-  .season-poster-head { position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px; }
-  .season-poster-title { color:#fff;font:27px 'Bebas Neue',sans-serif;letter-spacing:2px; }
-  .season-poster-grid { position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
-  .season-poster-car { overflow:hidden;border:1px solid rgba(212,175,55,.34);border-radius:9px;background:#111;cursor:pointer; }
-  .season-poster-car img,.season-poster-placeholder { display:grid;place-items:center;width:100%;aspect-ratio:16/9;object-fit:cover;background:#181818;font-size:38px; }
-  .season-poster-copy { padding:9px; }
-  .season-poster-copy small { color:var(--gold-dim);font-size:9px;letter-spacing:1px;text-transform:uppercase; }
-  .season-poster-copy strong { display:block;margin-top:2px;color:#fff;font:17px 'Bebas Neue',sans-serif;letter-spacing:.8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .season-car-placeholder { display:grid;place-items:center;width:100%;aspect-ratio:16/9;object-fit:cover;background:#181818;font-size:38px; }
   .season-launch {
     position:relative;overflow:hidden;margin:0 0 24px;padding:17px;border:1px solid rgba(212,175,55,.35);border-radius:15px;
     background:linear-gradient(105deg,rgba(212,175,55,.13),rgba(12,12,12,.98) 42%,rgba(212,175,55,.06));
@@ -2975,6 +2963,10 @@ const css = `
   .season-launch-car img { width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;border:1px solid var(--gold-dim); }
   .season-launch-car strong { display:block;margin-top:5px;color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
   .archive-result-card { overflow:hidden;border:1px solid rgba(212,175,55,.35);border-radius:15px;background:linear-gradient(145deg,#17140c,#0b0b0b 68%); }
+  .archive-result-relegation { border-color:rgba(231,76,60,.42);background:linear-gradient(145deg,#25120f,#0b0b0b 68%); }
+  .archive-result-relegation .archive-result-copy .eyebrow { color:#f2877b; }
+  .archive-result-relegation .btn { margin-top:14px;border-color:rgba(231,76,60,.55);color:#ff9a8e; }
+  .archive-result-relegation .btn:hover { background:#3a1814; }
   .archive-result-hero { display:grid;grid-template-columns:minmax(260px,1.25fr) minmax(220px,.75fr);align-items:center; }
   .archive-result-photo { width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--dark3); }
   .archive-result-copy { padding:24px; }
@@ -2984,19 +2976,16 @@ const css = `
   @keyframes seasonLaunchIn { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:none} }
   @keyframes seasonCarMove { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:none} }
   @media (max-width:900px) {
-    .season-facts-grid,.season-compare-grid,.season-poster-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+    .season-facts-grid,.season-compare-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
   }
   @media (max-width:600px) {
     .season-summary-heading { align-items:flex-start;flex-direction:column; }
     .season-facts-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
     .season-fact-card { min-height:102px;padding:11px; }
     .season-fact-value { font-size:18px; }
-    .season-compare-grid,.season-poster-grid { grid-template-columns:1fr 1fr;gap:8px; }
+    .season-compare-grid { grid-template-columns:1fr 1fr;gap:8px; }
     .season-compare-line { display:block; }
     .season-compare-line img { width:100%;margin-bottom:7px; }
-    .season-poster { padding:12px; }
-    .season-poster-head { align-items:flex-start;flex-direction:column; }
-    .season-poster::before { font-size:48px; }
     .archive-result-hero { grid-template-columns:1fr; }
     .archive-result-copy { padding:18px; }
     .archive-result-copy h3 { font-size:27px; }
@@ -8770,7 +8759,7 @@ function AppInner() {
       const championCards = LEAGUES.map(leagueName => {
         const id = currentSeason.champions?.[leagueName];
         const car = id ? currentSeason.leagues?.[leagueName]?.cars?.find(c => c.id === id) : null;
-        return { leagueName,id,car,brand:id ? getCarBrand(id) : '',photo:id ? getCarPhoto(id) : '' };
+        return { leagueName,id,car,photo:id ? getCarPhoto(id) : '' };
       }).filter(x => x.car);
       const previousChampionCards = prevSeason ? LEAGUES.map(leagueName => {
         const id = prevSeason.champions?.[leagueName];
@@ -8787,48 +8776,6 @@ function AppInner() {
       seasonPresentation.bestDefense && { icon:'🛡️',label:'Meilleure défense',value:seasonPresentation.bestDefense.name,detail:`${seasonPresentation.bestDefense.ga} buts accordés` },
       seasonPresentation.biggestWin && { icon:'⚡',label:'Plus grande victoire',value:getCar(seasonPresentation.biggestWin.leagueName,seasonPresentation.biggestWin.winnerId)?.name || '—',detail:`${seasonPresentation.biggestWin.score} · écart de ${seasonPresentation.biggestWin.margin}` },
     ].filter(Boolean);
-    async function saveSeasonPoster() {
-      const canvas = document.createElement('canvas');
-      canvas.width = 1600; canvas.height = 900;
-      const ctx = canvas.getContext('2d');
-      const bg = ctx.createLinearGradient(0,0,1600,900);
-      bg.addColorStop(0,'#171208'); bg.addColorStop(.52,'#080808'); bg.addColorStop(1,'#151006');
-      ctx.fillStyle = bg; ctx.fillRect(0,0,1600,900);
-      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(28,28,1544,844);
-      ctx.fillStyle = '#d4af37'; ctx.font = "32px 'Bebas Neue', sans-serif"; ctx.letterSpacing = '5px'; ctx.fillText('TOURNOIS DE VOITURES',60,85);
-      ctx.fillStyle = '#fff'; ctx.font = "76px 'Bebas Neue', sans-serif"; ctx.fillText(`CHAMPIONS · SAISON ${currentSeason.season}`,60,170);
-      const load = src => new Promise(resolve => {
-        if (!src) return resolve(null);
-        const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = src;
-      });
-      const entries = seasonPresentation.championCards.slice(0,4);
-      const images = await Promise.all(entries.map(e => load(e.photo)));
-      entries.forEach((entry,i) => {
-        const x = 55 + i * 385, y = 230, w = 345, h = 194;
-        ctx.fillStyle = '#141414'; ctx.fillRect(x,y,w,350);
-        ctx.strokeStyle = 'rgba(212,175,55,.72)'; ctx.lineWidth = 2; ctx.strokeRect(x,y,w,350);
-        const img = images[i];
-        if (img) {
-          const scale = Math.max(w/img.width,h/img.height), sw=w/scale, sh=h/scale;
-          ctx.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,x,y,w,h);
-        } else { ctx.fillStyle='#222';ctx.fillRect(x,y,w,h);ctx.font='70px sans-serif';ctx.fillText('🏆',x+135,y+120); }
-        ctx.fillStyle='#d4af37';ctx.font="24px 'Bebas Neue', sans-serif";ctx.fillText(entry.leagueName.toUpperCase(),x+18,y+235);
-        ctx.fillStyle='#fff';ctx.font="31px 'Bebas Neue', sans-serif";
-        const name=entry.car.name.length>22?entry.car.name.slice(0,21)+'…':entry.car.name;ctx.fillText(name.toUpperCase(),x+18,y+282);
-        ctx.fillStyle='#9e9a90';ctx.font="18px 'Rajdhani', sans-serif";ctx.fillText((entry.brand||'').toUpperCase(),x+18,y+316);
-        ctx.fillStyle='#d4af37';ctx.font="17px 'Rajdhani', sans-serif";ctx.fillText('CHAMPION',x+18,y+340);
-      });
-      ctx.fillStyle='#8e8879';ctx.font="20px 'Rajdhani', sans-serif";ctx.fillText('LES QUATRE CHAMPIONS OFFICIELS',60,820);
-      try {
-        const blob = await new Promise((resolve,reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('image')), 'image/png'));
-        const fileName = `champions-saison-${currentSeason.season}.png`;
-        if (navigator.share && navigator.canShare) {
-          const file = new File([blob],fileName,{type:'image/png'});
-          if (navigator.canShare({files:[file]})) { await navigator.share({files:[file],title:`Champions S${currentSeason.season}`}); return; }
-        }
-        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fileName;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
-      } catch (error) { alert("L'affiche est visible, mais son enregistrement a été bloqué par le navigateur."); }
-    }
     return (
       <div className="dashboard-shell">
         <section className={`dashboard-hero ${seasonClosed ? 'season-finished' : ''}`} aria-labelledby="dashboard-title">
@@ -8852,7 +8799,7 @@ function AppInner() {
             <div className="text-dim" style={{fontSize:12}}>Les champions en titre ouvrent officiellement une nouvelle saison.</div>
             <div className="season-launch-cars">
               {seasonPresentation.previousChampionCards.map((entry,i) => <div key={entry.leagueName} className="season-launch-car" style={{'--i':i}}>
-                {entry.photo ? <img src={entry.photo} alt="" /> : <div className="season-poster-placeholder">🏆</div>}
+                {entry.photo ? <img src={entry.photo} alt="" /> : <div className="season-car-placeholder">🏆</div>}
                 <strong>{entry.car.name} · {entry.leagueName}</strong>
               </div>)}
             </div>
@@ -8879,21 +8826,11 @@ function AppInner() {
               return <div key={leagueName} className="season-compare-card">
                 <div className="season-compare-league">{leagueName} · {retained ? 'Titre conservé' : 'Nouveau champion'}</div>
                 <div className="season-compare-line">
-                  {now?.photo ? <img src={now.photo} alt="" /> : <div className="season-poster-placeholder" style={{width:64}}>🏆</div>}
+                  {now?.photo ? <img src={now.photo} alt="" /> : <div className="season-car-placeholder" style={{width:64}}>🏆</div>}
                   <div className="season-compare-copy"><strong>{now?.car?.name || 'À déterminer'}</strong><small>{before?.car ? `Précédent : ${before.car.name}` : 'Aucun champion précédent'}</small></div>
                 </div>
               </div>;
             })}
-          </div>
-        </section>}
-
-        {seasonClosed && seasonPresentation.championCards.length > 0 && <section className="season-summary-section season-poster">
-          <div className="season-poster-head"><div className="season-poster-title">L'affiche officielle des champions · Saison {currentSeason.season}</div><button className="btn btn-gold btn-sm" onClick={saveSeasonPoster}>📥 Enregistrer l'affiche</button></div>
-          <div className="season-poster-grid">
-            {seasonPresentation.championCards.map(entry => <div key={entry.leagueName} className="season-poster-car" onClick={() => openProfileCar({leagueName:entry.leagueName,carId:entry.id})}>
-              {entry.photo ? <img src={entry.photo} alt={`${entry.car.name}, champion de ${entry.leagueName}`} /> : <div className="season-poster-placeholder">🏆</div>}
-              <div className="season-poster-copy"><small>{entry.leagueName} · Champion</small><strong>{entry.car.name}</strong><small>{entry.brand}</small></div>
-            </div>)}
           </div>
         </section>}
 
@@ -10668,11 +10605,14 @@ function AppInner() {
     const relCars = (league.relegationCars || []).map(id => getCar(leagueTab, id)).filter(Boolean);
     const relMatches = Object.values(rm);
     const standings = relMatches.length > 0 ? computeStandings(relCars, relMatches) : [];
-    const relId = currentSeason.relegated[leagueTab];
+    const relId = currentSeason.relegated?.[leagueTab];
     const latestSeasonNum = Math.max(...db.seasons.map(s => Number(s.season) || 0));
-    const archivedRelCar = relId ? getCar(leagueTab, relId) : null;
-    const archivedRelPhoto = relId ? getCarPhoto(relId) : null;
-    const showArchivedRelegationResult = relCars.length === 0 && currentSeason.season < latestSeasonNum && archivedRelCar;
+    // Une archive peut conserver les participants et le verdict sans les scores.
+    const showArchivedRelegationResult = currentSeason.season < latestSeasonNum && Boolean(relId)
+      && !relMatches.some(match => match?.homeGoals != null && match?.awayGoals != null);
+    const archivedRelCar = showArchivedRelegationResult ? getCar(leagueTab, relId) : null;
+    const archivedRelPhoto = showArchivedRelegationResult ? getCarPhoto(relId) : null;
+    const archivedRelBrand = showArchivedRelegationResult ? getCarBrand(relId) : '';
     const [openDay, setOpenDay] = [relOpenDay, setRelOpenDay];
 
     const listRef = React.useRef(null);
@@ -10818,17 +10758,17 @@ function AppInner() {
     return (
       <div>
         {showArchivedRelegationResult ? (
-          <div className="archive-result-card" style={{borderColor:'rgba(231,76,60,.36)',background:'linear-gradient(145deg,#1b0d0b,#0b0b0b 68%)'}}>
+          <div className="archive-result-card archive-result-relegation">
             <div className="archive-result-hero">
               {archivedRelPhoto
-                ? <img className="archive-result-photo" src={archivedRelPhoto} alt={`${archivedRelCar.name}, relégué de ${leagueTab}`} />
-                : <div className="archive-result-photo" style={{display:'grid',placeItems:'center',fontSize:76}}>⬇</div>}
+                ? <img className="archive-result-photo" src={archivedRelPhoto} alt={archivedRelCar?.name || 'Voiture reléguée'} />
+                : <div className="archive-result-photo" aria-hidden="true" style={{display:'grid',placeItems:'center',fontSize:76}}>⬇</div>}
               <div className="archive-result-copy">
-                <div className="eyebrow" style={{color:'#e74c3c'}}>⬇ Verdict officiel · Saison {currentSeason.season}</div>
-                <h3>{archivedRelCar.name}</h3>
-                <p>Voiture reléguée de {leagueTab}{getCarBrand(relId) ? ` · ${getCarBrand(relId)}` : ''}.</p>
-                <p style={{marginTop:8}}>Le verdict final demeure conservé dans les archives de la saison.</p>
-                <button className="btn btn-sm" style={{marginTop:14,borderColor:'rgba(231,76,60,.55)',color:'#e74c3c'}} onClick={() => openProfileCar({leagueName:leagueTab,carId:relId})}>Voir le profil →</button>
+                <div className="eyebrow">⬇ Relégation officielle · Saison {currentSeason.season}</div>
+                <h3>{archivedRelCar?.name || 'Relégation enregistrée'}</h3>
+                <p>Voiture reléguée de {leagueTab}{archivedRelBrand ? ` · ${archivedRelBrand}` : ''}.</p>
+                <p style={{marginTop:8}}>Le verdict est conservé. Le détail des matchs du barrage n’est pas disponible dans cette archive.</p>
+                {archivedRelCar && <button type="button" className="btn btn-sm" onClick={() => openProfileCar({leagueName:leagueTab,carId:relId})}>Voir le profil →</button>}
               </div>
             </div>
           </div>
