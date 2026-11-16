@@ -2919,6 +2919,88 @@ const css = `
     letter-spacing: 3px;
     text-transform: uppercase;
   }
+  .season-finished .dashboard-season-badge { color:#f5d66f; }
+  .season-finished::after {
+    background:linear-gradient(90deg,#f5d66f,rgba(212,175,55,.2) 72%,transparent);
+  }
+  .season-finished-seal {
+    display:inline-flex;align-items:center;gap:7px;margin-top:12px;padding:7px 11px;
+    border:1px solid rgba(212,175,55,.38);border-radius:999px;background:rgba(212,175,55,.08);
+    color:#f5d66f;font:700 10px 'Rajdhani',sans-serif;letter-spacing:1.7px;text-transform:uppercase;
+  }
+  .season-summary-section { margin:0 0 28px; }
+  .season-summary-heading { display:flex;align-items:end;justify-content:space-between;gap:12px;margin:0 0 12px; }
+  .season-summary-heading h2 { margin:0;color:var(--gold);font:28px 'Bebas Neue',sans-serif;letter-spacing:2px; }
+  .season-summary-heading span { color:var(--text-dim);font-size:12px; }
+  .season-facts-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
+  .season-fact-card {
+    min-height:112px;padding:14px;border:1px solid var(--border);border-radius:12px;
+    background:linear-gradient(145deg,rgba(28,28,28,.98),rgba(11,11,11,.98));
+    box-shadow:0 14px 34px rgba(0,0,0,.22);
+  }
+  .season-fact-icon { font-size:22px;margin-bottom:8px; }
+  .season-fact-label { color:var(--text-dim);font:700 10px 'Rajdhani',sans-serif;letter-spacing:1.6px;text-transform:uppercase; }
+  .season-fact-value { margin-top:5px;color:#fff;font:22px 'Bebas Neue',sans-serif;letter-spacing:1px;line-height:1.05; }
+  .season-fact-detail { margin-top:5px;color:var(--gold);font-size:11px; }
+  .season-compare-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
+  .season-compare-card { padding:13px;border:1px solid var(--border);border-radius:11px;background:var(--dark2); }
+  .season-compare-league { color:var(--gold-dim);font:16px 'Bebas Neue',sans-serif;letter-spacing:1px; }
+  .season-compare-line { display:flex;align-items:center;gap:8px;margin-top:9px;min-width:0; }
+  .season-compare-line img { width:64px;aspect-ratio:16/9;object-fit:cover;border-radius:4px;border:1px solid var(--border); }
+  .season-compare-copy { min-width:0; }
+  .season-compare-copy strong { display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff;font-size:13px; }
+  .season-compare-copy small { color:var(--text-dim);font-size:10px; }
+  .season-poster {
+    position:relative;overflow:hidden;padding:18px;border:1px solid rgba(212,175,55,.36);border-radius:16px;
+    background:radial-gradient(circle at 50% 0,rgba(212,175,55,.15),transparent 45%),linear-gradient(145deg,#15120a,#080808 70%);
+  }
+  .season-poster::before { content:'CHAMPIONS';position:absolute;right:12px;top:-15px;color:transparent;-webkit-text-stroke:1px rgba(212,175,55,.1);font:80px 'Bebas Neue',sans-serif;letter-spacing:3px; }
+  .season-poster-head { position:relative;display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px; }
+  .season-poster-title { color:#fff;font:27px 'Bebas Neue',sans-serif;letter-spacing:2px; }
+  .season-poster-grid { position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
+  .season-poster-car { overflow:hidden;border:1px solid rgba(212,175,55,.34);border-radius:9px;background:#111;cursor:pointer; }
+  .season-poster-car img,.season-poster-placeholder { display:grid;place-items:center;width:100%;aspect-ratio:16/9;object-fit:cover;background:#181818;font-size:38px; }
+  .season-poster-copy { padding:9px; }
+  .season-poster-copy small { color:var(--gold-dim);font-size:9px;letter-spacing:1px;text-transform:uppercase; }
+  .season-poster-copy strong { display:block;margin-top:2px;color:#fff;font:17px 'Bebas Neue',sans-serif;letter-spacing:.8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .season-launch {
+    position:relative;overflow:hidden;margin:0 0 24px;padding:17px;border:1px solid rgba(212,175,55,.35);border-radius:15px;
+    background:linear-gradient(105deg,rgba(212,175,55,.13),rgba(12,12,12,.98) 42%,rgba(212,175,55,.06));
+    animation:seasonLaunchIn .8s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .season-launch-title { color:#fff;font:28px 'Bebas Neue',sans-serif;letter-spacing:2px; }
+  .season-launch-title b { color:var(--gold);font-size:1.35em; }
+  .season-launch-cars { display:flex;gap:8px;margin-top:12px;overflow-x:auto;scrollbar-width:none; }
+  .season-launch-car { flex:0 0 150px;animation:seasonCarMove .85s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--i) * 100ms); }
+  .season-launch-car img { width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:6px;border:1px solid var(--gold-dim); }
+  .season-launch-car strong { display:block;margin-top:5px;color:var(--text);font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .archive-result-card { overflow:hidden;border:1px solid rgba(212,175,55,.35);border-radius:15px;background:linear-gradient(145deg,#17140c,#0b0b0b 68%); }
+  .archive-result-hero { display:grid;grid-template-columns:minmax(260px,1.25fr) minmax(220px,.75fr);align-items:center; }
+  .archive-result-photo { width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--dark3); }
+  .archive-result-copy { padding:24px; }
+  .archive-result-copy .eyebrow { color:var(--gold);font:11px 'Rajdhani',sans-serif;font-weight:800;letter-spacing:2px;text-transform:uppercase; }
+  .archive-result-copy h3 { margin:8px 0 4px;color:#fff;font:34px 'Bebas Neue',sans-serif;letter-spacing:1.5px; }
+  .archive-result-copy p { margin:0;color:var(--text-dim);font-size:12px;line-height:1.5; }
+  @keyframes seasonLaunchIn { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:none} }
+  @keyframes seasonCarMove { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:none} }
+  @media (max-width:900px) {
+    .season-facts-grid,.season-compare-grid,.season-poster-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  }
+  @media (max-width:600px) {
+    .season-summary-heading { align-items:flex-start;flex-direction:column; }
+    .season-facts-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; }
+    .season-fact-card { min-height:102px;padding:11px; }
+    .season-fact-value { font-size:18px; }
+    .season-compare-grid,.season-poster-grid { grid-template-columns:1fr 1fr;gap:8px; }
+    .season-compare-line { display:block; }
+    .season-compare-line img { width:100%;margin-bottom:7px; }
+    .season-poster { padding:12px; }
+    .season-poster-head { align-items:flex-start;flex-direction:column; }
+    .season-poster::before { font-size:48px; }
+    .archive-result-hero { grid-template-columns:1fr; }
+    .archive-result-copy { padding:18px; }
+    .archive-result-copy h3 { font-size:27px; }
+  }
   .dashboard-leagues { gap: 28px; }
   .dashboard-league-card {
     --league-accent: var(--gold);
@@ -8644,21 +8726,176 @@ function AppInner() {
   }, [brandStatsUpTo, currentSeason.season]);
 
   function Dashboard() {
+    const latestSeasonNum = Math.max(...db.seasons.map(s => Number(s.season) || 0));
+    const isArchivedSeason = currentSeason.season < latestSeasonNum;
+    const seasonPresentation = React.useMemo(() => {
+      const rows = [];
+      let totalGoals = 0;
+      let playedMatches = 0;
+      let biggestWin = null;
+      LEAGUES.forEach(leagueName => {
+        const league = currentSeason.leagues?.[leagueName];
+        if (!league) return;
+        Array.from({ length: GROUPS }, (_, group) => {
+          const cars = (league.cars || []).filter(c => c.group === group);
+          const matches = league.groupResults?.[group] || [];
+          const played = matches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined);
+          played.forEach(m => {
+            playedMatches++;
+            totalGoals += Number(m.homeGoals || 0) + Number(m.awayGoals || 0);
+            const margin = Math.abs(Number(m.homeGoals || 0) - Number(m.awayGoals || 0));
+            if (!biggestWin || margin > biggestWin.margin) {
+              const winnerId = m.homeGoals > m.awayGoals ? m.homeId : m.awayId;
+              const loserId = m.homeGoals > m.awayGoals ? m.awayId : m.homeId;
+              biggestWin = { margin, leagueName, winnerId, loserId, score:`${Math.max(m.homeGoals,m.awayGoals)}–${Math.min(m.homeGoals,m.awayGoals)}` };
+            }
+          });
+          computeStandings(cars, matches).forEach(s => rows.push({ ...s, leagueName }));
+        });
+      });
+      const bestPoints = [...rows].sort((a,b) => b.pts-a.pts || (b.gf-b.ga)-(a.gf-a.ga))[0] || null;
+      const bestAttack = [...rows].sort((a,b) => b.gf-a.gf || b.pts-a.pts)[0] || null;
+      const bestDefense = [...rows].filter(r => r.gp > 0).sort((a,b) => a.ga-b.ga || b.pts-a.pts)[0] || null;
+      const bestDiff = [...rows].sort((a,b) => (b.gf-b.ga)-(a.gf-a.ga) || b.pts-a.pts)[0] || null;
+      const complete = LEAGUES.every(leagueName => {
+        const league = currentSeason.leagues?.[leagueName];
+        if (!league || !currentSeason.champions?.[leagueName] || !currentSeason.relegated?.[leagueName]) return false;
+        return Array.from({ length:GROUPS },(_,g) => {
+          const count = (league.cars || []).filter(c => c.group === g).length;
+          const expected = count * Math.max(0,count-1) / 2;
+          const played = (league.groupResults?.[g] || []).filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
+          return expected > 0 && played >= expected;
+        }).every(Boolean);
+      });
+      const championCards = LEAGUES.map(leagueName => {
+        const id = currentSeason.champions?.[leagueName];
+        const car = id ? currentSeason.leagues?.[leagueName]?.cars?.find(c => c.id === id) : null;
+        return { leagueName,id,car,brand:id ? getCarBrand(id) : '',photo:id ? getCarPhoto(id) : '' };
+      }).filter(x => x.car);
+      const previousChampionCards = prevSeason ? LEAGUES.map(leagueName => {
+        const id = prevSeason.champions?.[leagueName];
+        const car = id ? prevSeason.leagues?.[leagueName]?.cars?.find(c => c.id === id) : null;
+        return { leagueName,id,car,photo:id ? getCarPhoto(id) : '' };
+      }).filter(x => x.car) : [];
+      return { rows,totalGoals,playedMatches,biggestWin,bestPoints,bestAttack,bestDefense,bestDiff,complete,championCards,previousChampionCards };
+    }, [currentSeason, prevSeason, db.brands]);
+    const seasonClosed = isArchivedSeason || seasonPresentation.complete;
+    const showSeasonLaunch = currentSeason.season === latestSeasonNum && seasonPresentation.playedMatches === 0 && seasonPresentation.previousChampionCards.length > 0;
+    const factCards = [
+      seasonPresentation.bestPoints && { icon:'👑',label:'Meilleur total de groupe',value:seasonPresentation.bestPoints.name,detail:`${seasonPresentation.bestPoints.pts} points · ${seasonPresentation.bestPoints.leagueName}` },
+      seasonPresentation.bestAttack && { icon:'🔥',label:'Meilleure attaque',value:seasonPresentation.bestAttack.name,detail:`${seasonPresentation.bestAttack.gf} buts marqués` },
+      seasonPresentation.bestDefense && { icon:'🛡️',label:'Meilleure défense',value:seasonPresentation.bestDefense.name,detail:`${seasonPresentation.bestDefense.ga} buts accordés` },
+      seasonPresentation.biggestWin && { icon:'⚡',label:'Plus grande victoire',value:getCar(seasonPresentation.biggestWin.leagueName,seasonPresentation.biggestWin.winnerId)?.name || '—',detail:`${seasonPresentation.biggestWin.score} · écart de ${seasonPresentation.biggestWin.margin}` },
+    ].filter(Boolean);
+    async function saveSeasonPoster() {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1600; canvas.height = 900;
+      const ctx = canvas.getContext('2d');
+      const bg = ctx.createLinearGradient(0,0,1600,900);
+      bg.addColorStop(0,'#171208'); bg.addColorStop(.52,'#080808'); bg.addColorStop(1,'#151006');
+      ctx.fillStyle = bg; ctx.fillRect(0,0,1600,900);
+      ctx.strokeStyle = '#d4af37'; ctx.lineWidth = 4; ctx.strokeRect(28,28,1544,844);
+      ctx.fillStyle = '#d4af37'; ctx.font = "32px 'Bebas Neue', sans-serif"; ctx.letterSpacing = '5px'; ctx.fillText('TOURNOIS DE VOITURES',60,85);
+      ctx.fillStyle = '#fff'; ctx.font = "76px 'Bebas Neue', sans-serif"; ctx.fillText(`CHAMPIONS · SAISON ${currentSeason.season}`,60,170);
+      const load = src => new Promise(resolve => {
+        if (!src) return resolve(null);
+        const img = new Image(); img.crossOrigin = 'anonymous'; img.onload = () => resolve(img); img.onerror = () => resolve(null); img.src = src;
+      });
+      const entries = seasonPresentation.championCards.slice(0,4);
+      const images = await Promise.all(entries.map(e => load(e.photo)));
+      entries.forEach((entry,i) => {
+        const x = 55 + i * 385, y = 230, w = 345, h = 194;
+        ctx.fillStyle = '#141414'; ctx.fillRect(x,y,w,350);
+        ctx.strokeStyle = 'rgba(212,175,55,.72)'; ctx.lineWidth = 2; ctx.strokeRect(x,y,w,350);
+        const img = images[i];
+        if (img) {
+          const scale = Math.max(w/img.width,h/img.height), sw=w/scale, sh=h/scale;
+          ctx.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,x,y,w,h);
+        } else { ctx.fillStyle='#222';ctx.fillRect(x,y,w,h);ctx.font='70px sans-serif';ctx.fillText('🏆',x+135,y+120); }
+        ctx.fillStyle='#d4af37';ctx.font="24px 'Bebas Neue', sans-serif";ctx.fillText(entry.leagueName.toUpperCase(),x+18,y+235);
+        ctx.fillStyle='#fff';ctx.font="31px 'Bebas Neue', sans-serif";
+        const name=entry.car.name.length>22?entry.car.name.slice(0,21)+'…':entry.car.name;ctx.fillText(name.toUpperCase(),x+18,y+282);
+        ctx.fillStyle='#9e9a90';ctx.font="18px 'Rajdhani', sans-serif";ctx.fillText((entry.brand||'').toUpperCase(),x+18,y+316);
+        ctx.fillStyle='#d4af37';ctx.font="17px 'Rajdhani', sans-serif";ctx.fillText('CHAMPION',x+18,y+340);
+      });
+      ctx.fillStyle='#8e8879';ctx.font="20px 'Rajdhani', sans-serif";ctx.fillText('LES QUATRE CHAMPIONS OFFICIELS',60,820);
+      try {
+        const blob = await new Promise((resolve,reject) => canvas.toBlob(b => b ? resolve(b) : reject(new Error('image')), 'image/png'));
+        const fileName = `champions-saison-${currentSeason.season}.png`;
+        if (navigator.share && navigator.canShare) {
+          const file = new File([blob],fileName,{type:'image/png'});
+          if (navigator.canShare({files:[file]})) { await navigator.share({files:[file],title:`Champions S${currentSeason.season}`}); return; }
+        }
+        const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=fileName;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      } catch (error) { alert("L'affiche est visible, mais son enregistrement a été bloqué par le navigateur."); }
+    }
     return (
       <div className="dashboard-shell">
-        <section className="dashboard-hero" aria-labelledby="dashboard-title">
+        <section className={`dashboard-hero ${seasonClosed ? 'season-finished' : ''}`} aria-labelledby="dashboard-title">
           <div>
             <div className="dashboard-kicker">Championnat automobile</div>
             <h1 id="dashboard-title" className="section-title">Tableau de bord</h1>
             <p className="dashboard-hero-copy">
               Les quatre ligues principales, leurs champions et la course aux points annexes réunis dans une vue d'ensemble.
             </p>
+            {seasonClosed && <div className="season-finished-seal">🏆 Archives officielles · Saison complétée</div>}
           </div>
           <div className="dashboard-season-badge" aria-label={`Saison ${currentSeason.season}`}>
-            <small>Saison en cours</small>
+            <small>{seasonClosed ? 'Saison terminée' : 'Saison en cours'}</small>
             {currentSeason.season}
           </div>
         </section>
+
+        {showSeasonLaunch && (
+          <section className="season-launch" aria-label={`Passage de la saison ${prevSeason.season} à la saison ${currentSeason.season}`}>
+            <div className="season-launch-title">Passage de la saison <span>{prevSeason.season}</span> à <b>{currentSeason.season}</b></div>
+            <div className="text-dim" style={{fontSize:12}}>Les champions en titre ouvrent officiellement une nouvelle saison.</div>
+            <div className="season-launch-cars">
+              {seasonPresentation.previousChampionCards.map((entry,i) => <div key={entry.leagueName} className="season-launch-car" style={{'--i':i}}>
+                {entry.photo ? <img src={entry.photo} alt="" /> : <div className="season-poster-placeholder">🏆</div>}
+                <strong>{entry.car.name} · {entry.leagueName}</strong>
+              </div>)}
+            </div>
+          </section>
+        )}
+
+        {seasonClosed && factCards.length > 0 && <section className="season-summary-section">
+          <div className="season-summary-heading"><h2>Faits saillants · S{currentSeason.season}</h2><span>Calculés à partir des résultats enregistrés</span></div>
+          <div className="season-facts-grid">
+            {factCards.map(card => <div key={card.label} className="season-fact-card">
+              <div className="season-fact-icon">{card.icon}</div><div className="season-fact-label">{card.label}</div>
+              <div className="season-fact-value">{card.value}</div><div className="season-fact-detail">{card.detail}</div>
+            </div>)}
+          </div>
+        </section>}
+
+        {seasonClosed && prevSeason && <section className="season-summary-section">
+          <div className="season-summary-heading"><h2>S{prevSeason.season} → S{currentSeason.season}</h2><span>Évolution des champions</span></div>
+          <div className="season-compare-grid">
+            {LEAGUES.map(leagueName => {
+              const now = seasonPresentation.championCards.find(x => x.leagueName === leagueName);
+              const before = seasonPresentation.previousChampionCards.find(x => x.leagueName === leagueName);
+              const retained = Boolean(now?.id && before?.id && now.id === before.id);
+              return <div key={leagueName} className="season-compare-card">
+                <div className="season-compare-league">{leagueName} · {retained ? 'Titre conservé' : 'Nouveau champion'}</div>
+                <div className="season-compare-line">
+                  {now?.photo ? <img src={now.photo} alt="" /> : <div className="season-poster-placeholder" style={{width:64}}>🏆</div>}
+                  <div className="season-compare-copy"><strong>{now?.car?.name || 'À déterminer'}</strong><small>{before?.car ? `Précédent : ${before.car.name}` : 'Aucun champion précédent'}</small></div>
+                </div>
+              </div>;
+            })}
+          </div>
+        </section>}
+
+        {seasonClosed && seasonPresentation.championCards.length > 0 && <section className="season-summary-section season-poster">
+          <div className="season-poster-head"><div className="season-poster-title">L'affiche officielle des champions · Saison {currentSeason.season}</div><button className="btn btn-gold btn-sm" onClick={saveSeasonPoster}>📥 Enregistrer l'affiche</button></div>
+          <div className="season-poster-grid">
+            {seasonPresentation.championCards.map(entry => <div key={entry.leagueName} className="season-poster-car" onClick={() => openProfileCar({leagueName:entry.leagueName,carId:entry.id})}>
+              {entry.photo ? <img src={entry.photo} alt={`${entry.car.name}, champion de ${entry.leagueName}`} /> : <div className="season-poster-placeholder">🏆</div>}
+              <div className="season-poster-copy"><small>{entry.leagueName} · Champion</small><strong>{entry.car.name}</strong><small>{entry.brand}</small></div>
+            </div>)}
+          </div>
+        </section>}
 
         <div className="dashboard-leagues">
           {LEAGUES.map(l => {
@@ -10065,6 +10302,11 @@ function AppInner() {
     const champion = championId ? getCar(leagueTab, championId) : null;
     const championPhoto = championId ? getCarPhoto(championId) : null;
     const playedTotal = allMatches.filter(m => m.homeGoals !== null && m.homeGoals !== undefined).length;
+    const latestSeasonNum = Math.max(...db.seasons.map(s => Number(s.season) || 0));
+    const archivedChampionId = currentSeason.champions?.[leagueTab];
+    const archivedChampion = archivedChampionId ? getCar(leagueTab, archivedChampionId) : null;
+    const archivedChampionPhoto = archivedChampionId ? getCarPhoto(archivedChampionId) : null;
+    const showArchivedPlayoffResult = r1.length === 0 && currentSeason.season < latestSeasonNum && archivedChampion;
     const currentRound = playoffRounds.find(({ matches }) => matches.some(m => m.homeId && (m.homeGoals === null || m.homeGoals === undefined)));
     const [selectedPlayoffRound, setSelectedPlayoffRound] = useState(null);
     React.useEffect(() => { setSelectedPlayoffRound(null); }, [leagueTab, currentSeason?.season]);
@@ -10325,7 +10567,22 @@ function AppInner() {
 
     return (
       <div>
-        {r1.length === 0 ? (
+        {showArchivedPlayoffResult ? (
+          <div className="archive-result-card">
+            <div className="archive-result-hero">
+              {archivedChampionPhoto
+                ? <img className="archive-result-photo" src={archivedChampionPhoto} alt={`${archivedChampion.name}, champion de ${leagueTab}`} />
+                : <div className="archive-result-photo" style={{display:'grid',placeItems:'center',fontSize:76}}>🏆</div>}
+              <div className="archive-result-copy">
+                <div className="eyebrow">🏆 Archives officielles · Saison {currentSeason.season}</div>
+                <h3>{archivedChampion.name}</h3>
+                <p>Champion des playoffs de {leagueTab}{getCarBrand(archivedChampionId) ? ` · ${getCarBrand(archivedChampionId)}` : ''}.</p>
+                <p style={{marginTop:8}}>Le résultat final est conservé dans le palmarès. L'affichage détaillé des rondes n'est pas requis pour cette saison archivée.</p>
+                <button className="btn btn-gold btn-sm" style={{marginTop:14}} onClick={() => openProfileCar({leagueName:leagueTab,carId:archivedChampionId})}>Voir le profil du champion →</button>
+              </div>
+            </div>
+          </div>
+        ) : r1.length === 0 ? (
           <div className="card" style={{ padding:32,textAlign:'center' }}>
             <div className="text-dim" style={{ marginBottom:8 }}>
               64 voitures qualifiées (Top 8 par groupe) seedées globalement par points
@@ -10412,6 +10669,10 @@ function AppInner() {
     const relMatches = Object.values(rm);
     const standings = relMatches.length > 0 ? computeStandings(relCars, relMatches) : [];
     const relId = currentSeason.relegated[leagueTab];
+    const latestSeasonNum = Math.max(...db.seasons.map(s => Number(s.season) || 0));
+    const archivedRelCar = relId ? getCar(leagueTab, relId) : null;
+    const archivedRelPhoto = relId ? getCarPhoto(relId) : null;
+    const showArchivedRelegationResult = relCars.length === 0 && currentSeason.season < latestSeasonNum && archivedRelCar;
     const [openDay, setOpenDay] = [relOpenDay, setRelOpenDay];
 
     const listRef = React.useRef(null);
@@ -10556,7 +10817,22 @@ function AppInner() {
 
     return (
       <div>
-        {relCars.length === 0 ? (
+        {showArchivedRelegationResult ? (
+          <div className="archive-result-card" style={{borderColor:'rgba(231,76,60,.36)',background:'linear-gradient(145deg,#1b0d0b,#0b0b0b 68%)'}}>
+            <div className="archive-result-hero">
+              {archivedRelPhoto
+                ? <img className="archive-result-photo" src={archivedRelPhoto} alt={`${archivedRelCar.name}, relégué de ${leagueTab}`} />
+                : <div className="archive-result-photo" style={{display:'grid',placeItems:'center',fontSize:76}}>⬇</div>}
+              <div className="archive-result-copy">
+                <div className="eyebrow" style={{color:'#e74c3c'}}>⬇ Verdict officiel · Saison {currentSeason.season}</div>
+                <h3>{archivedRelCar.name}</h3>
+                <p>Voiture reléguée de {leagueTab}{getCarBrand(relId) ? ` · ${getCarBrand(relId)}` : ''}.</p>
+                <p style={{marginTop:8}}>Le verdict final demeure conservé dans les archives de la saison.</p>
+                <button className="btn btn-sm" style={{marginTop:14,borderColor:'rgba(231,76,60,.55)',color:'#e74c3c'}} onClick={() => openProfileCar({leagueName:leagueTab,carId:relId})}>Voir le profil →</button>
+              </div>
+            </div>
+          </div>
+        ) : relCars.length === 0 ? (
           <div className="card" style={{ padding:32,textAlign:'center' }}>
             <div className="text-dim" style={{ marginBottom:8 }}>
               Barrage de relégation : les 8 derniers (un par groupe) s'affrontent en round-robin
