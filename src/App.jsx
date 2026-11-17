@@ -2553,8 +2553,23 @@ const css = `
   .league-brand-dialog-head p { margin:3px 0 0;color:var(--text-dim);font-size:14px; }
   .league-brand-dialog-head button { min-height:44px;flex-shrink:0; }
   .league-brand-list { list-style:none;margin:0;padding:8px 15px 14px; }
-  .league-brand-list li { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:16px; }
-  .league-brand-list li:last-child { border-bottom:0; }
+  .league-brand-list > li { border-bottom:1px solid var(--border);font-size:16px; }
+  .league-brand-list > li:last-child { border-bottom:0; }
+  .league-brand-row { display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:44px;padding:4px 0; }
+  .league-brand-row-name { display:flex;align-items:center;gap:8px;min-width:0;overflow-wrap:anywhere; }
+  summary.league-brand-row { cursor:pointer;list-style:none; }
+  summary.league-brand-row::-webkit-details-marker { display:none; }
+  summary.league-brand-row:focus-visible { outline:2px solid var(--gold);outline-offset:2px; }
+  .league-brand-row-end { display:flex;align-items:center;gap:4px;flex:none; }
+  .league-brand-caret { color:var(--gold); }
+  .league-brand-list details[open] > summary .league-brand-caret { transform:rotate(90deg); }
+  .league-brand-models { list-style:none;display:grid;gap:3px;margin:0 0 8px;padding:4px 8px;background:#0003;border-radius:8px; }
+  .league-brand-models button {
+    display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;padding:6px 8px;
+    border:0;border-radius:6px;background:transparent;color:var(--text);text-align:left;font:inherit;overflow-wrap:anywhere;cursor:pointer;
+  }
+  .league-brand-models button:hover { background:var(--dark3); }
+  .league-brand-models button small { color:var(--gold);white-space:nowrap; }
   .league-brand-count { min-width:34px;text-align:center;color:var(--gold);font:22px 'Bebas Neue',sans-serif;font-variant-numeric:tabular-nums; }
   .league-brand-summary { margin:0;padding:12px 15px 0;color:var(--text-dim);font-size:14px; }
   @media (max-width:540px) {
@@ -5162,15 +5177,16 @@ function summarizeLeagueBrands(cars, brands, group) {
       continue;
     }
     const key = label;
-    const row = totals.get(key) || { key, label, count: 0 };
+    const row = totals.get(key) || { key, label, count: 0, cars: [] };
     row.count++;
+    row.cars.push(car);
     totals.set(key, row);
   }
   const rows = [...totals.values()].sort((a,b) => b.count - a.count || a.label.localeCompare(b.label, 'fr'));
   return { total, missing, rows };
 }
 
-function LeagueBrandButton({ leagueName, season, cars, brands, group }) {
+function LeagueBrandButton({ leagueName, season, cars, brands, group, getCountry, onOpenProfile }) {
   const [show, setShow] = useState(false);
   const dialogRef = useRef(null);
   const dialogId = React.useId();
@@ -5196,8 +5212,32 @@ function LeagueBrandButton({ leagueName, season, cars, brands, group }) {
           <>
             <p className="league-brand-summary">{summary.total} voiture{summary.total !== 1 ? 's' : ''} · {summary.rows.length} marque{summary.rows.length !== 1 ? 's' : ''}</p>
             <ul className="league-brand-list">
-              {summary.rows.map(({ key, label, count }) => <li key={key}><span>{label}</span><strong className="league-brand-count">{count}</strong></li>)}
-              {summary.missing > 0 && <li><span>Marque non renseignée</span><strong className="league-brand-count">{summary.missing}</strong></li>}
+              {summary.rows.map(({ key, label, count, cars: brandCars }) => (
+                <li key={key}>
+                  <details>
+                    <summary className="league-brand-row">
+                      <span className="league-brand-row-name"><CountryFlag code={getCountry(label)} size={18} />{label}</span>
+                      <span className="league-brand-row-end">
+                        <strong className="league-brand-count">{count}</strong>
+                        <span className="league-brand-caret" aria-hidden="true">›</span>
+                      </span>
+                    </summary>
+                    <ul className="league-brand-models">
+                      {brandCars.map(car => (
+                        <li key={car.id}>
+                          <button type="button" onClick={() => {
+                            dialogRef.current.close();
+                            onOpenProfile({ leagueName, carId: car.id });
+                          }}>
+                            <span>{car.name}</span><small>Profil →</small>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  </details>
+                </li>
+              ))}
+              {summary.missing > 0 && <li className="league-brand-row"><span>Marque non renseignée</span><strong className="league-brand-count">{summary.missing}</strong></li>}
             </ul>
           </>
         ) : <p className="league-brand-summary" style={{ paddingBottom:14 }}>Aucune voiture inscrite.</p>)}
@@ -8503,7 +8543,8 @@ function AppInner() {
   function leagueBrandButton(leagueName, group) {
     return <LeagueBrandButton key={JSON.stringify([currentSeason.season, leagueName, group])}
       season={currentSeason.season} leagueName={leagueName} group={group}
-      cars={currentSeason.leagues[leagueName]?.cars || []} brands={db.brands} />;
+      cars={currentSeason.leagues[leagueName]?.cars || []} brands={db.brands}
+      getCountry={getBrandCountry} onOpenProfile={openProfileCar} />;
   }
 
   function renderAuxLeagueHeading(leagueName) {
