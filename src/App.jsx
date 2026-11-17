@@ -2522,6 +2522,46 @@ const css = `
     margin-top: 9px;
     background: linear-gradient(90deg, rgba(212,175,55,.72), transparent);
   }
+  .league-brand-title-row {
+    display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;
+    gap:clamp(8px,2vw,20px);margin-bottom:18px;
+  }
+  .league-brand-title-row > .section-title { margin:0;min-width:0;overflow-wrap:anywhere;text-wrap:wrap; }
+  .league-brand-context { display:flex;align-items:center;gap:10px;padding:8px 24px;background:#0d0d0d;border-top:1px solid #1a1a1a; }
+  .league-brand-context-title { min-width:0;color:var(--gold);font:15px/1.15 'Bebas Neue',sans-serif;letter-spacing:1px; }
+  .league-brand-context > .btn,.league-brand-context > .league-brand-button { flex-shrink:0; }
+  .league-brand-context > .league-brand-button { margin-inline-start:auto; }
+  .league-brand-button {
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 clamp(8px,2.2vw,15px);
+    min-height:44px;white-space:nowrap;border:1px solid var(--gold-dim);border-radius:9px;
+    background:linear-gradient(155deg,#302710,#19160f);color:#f0d477;cursor:pointer;
+    font:700 clamp(12px,1.5vw,15px)/1.15 'Rajdhani',sans-serif;letter-spacing:.035em;
+  }
+  .league-brand-button:hover { border-color:var(--gold);background:#302710; }
+  .league-brand-button:focus-visible,.league-brand-dialog button:focus-visible { outline:2px solid var(--gold);outline-offset:2px; }
+  .league-brand-dialog {
+    margin:auto;padding:0;width:min(460px,calc(100% - 24px));max-width:none;max-height:85vh;
+    max-height:min(85dvh,680px);overflow:auto;overscroll-behavior:contain;border:1px solid var(--gold-dim);
+    border-radius:16px;background:var(--dark2);color:var(--text);box-shadow:0 20px 85px #000a;
+  }
+  .league-brand-dialog::backdrop { background:#000b; }
+  .league-brand-dialog-head {
+    position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 15px;border-bottom:1px solid var(--border);background:var(--dark2);
+  }
+  .league-brand-dialog-head h2 { margin:0;color:var(--gold);font:26px/1.1 'Bebas Neue',sans-serif;letter-spacing:1px; }
+  .league-brand-dialog-head p { margin:3px 0 0;color:var(--text-dim);font-size:14px; }
+  .league-brand-dialog-head button { min-height:44px;flex-shrink:0; }
+  .league-brand-list { list-style:none;margin:0;padding:8px 15px 14px; }
+  .league-brand-list li { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:16px; }
+  .league-brand-list li:last-child { border-bottom:0; }
+  .league-brand-count { min-width:34px;text-align:center;color:var(--gold);font:22px 'Bebas Neue',sans-serif;font-variant-numeric:tabular-nums; }
+  .league-brand-summary { margin:0;padding:12px 15px 0;color:var(--text-dim);font-size:14px; }
+  @media (max-width:540px) {
+    .league-brand-context { gap:7px;padding-inline:12px; }
+    .league-brand-context-title { font-size:14px;letter-spacing:.6px; }
+    .league-brand-title-row > .section-title { font-size:clamp(20px,5.5vw,27px);letter-spacing:2px; }
+  }
   .card {
     background: linear-gradient(145deg, rgba(29,29,29,.94), rgba(13,13,13,.96));
     border-color: var(--hairline);
@@ -5105,6 +5145,64 @@ function CatalogQueueForm({ season, ready, isLatest, onAdd, entries, onProfile }
         </form>
       )}
     </section>
+  );
+}
+
+function summarizeLeagueBrands(cars, brands, group) {
+  const totals = new Map();
+  let total = 0;
+  let missing = 0;
+  for (const car of cars) {
+    if (group != null && car.group !== group) continue;
+    total++;
+    const value = brands?.[car.id];
+    const label = typeof value === 'string' ? value.trim() : '';
+    if (!label) {
+      missing++;
+      continue;
+    }
+    const key = label;
+    const row = totals.get(key) || { key, label, count: 0 };
+    row.count++;
+    totals.set(key, row);
+  }
+  const rows = [...totals.values()].sort((a,b) => b.count - a.count || a.label.localeCompare(b.label, 'fr'));
+  return { total, missing, rows };
+}
+
+function LeagueBrandButton({ leagueName, season, cars, brands, group }) {
+  const [show, setShow] = useState(false);
+  const dialogRef = useRef(null);
+  const dialogId = React.useId();
+  const context = group == null ? leagueName : `${leagueName} — Groupe ${group + 1}`;
+  const summary = show ? summarizeLeagueBrands(cars, brands, group) : null;
+  return (
+    <>
+      <button type="button" className="league-brand-button" aria-haspopup="dialog" aria-controls={dialogId}
+        aria-label={`Répartition des marques : ${context}`}
+        onClick={() => { dialogRef.current.showModal(); setShow(true); }}>
+        <span aria-hidden="true">▥</span> Marques
+      </button>
+      <dialog ref={dialogRef} id={dialogId} className="league-brand-dialog" aria-labelledby={`${dialogId}-title`} aria-describedby={`${dialogId}-context`}
+        onClose={() => setShow(false)} onClick={e => { if (e.target === e.currentTarget) dialogRef.current.close(); }}>
+        <div className="league-brand-dialog-head">
+          <div>
+            <h2 id={`${dialogId}-title`}>Répartition des marques</h2>
+            <p id={`${dialogId}-context`}>{context} · S{season}</p>
+          </div>
+          <button type="button" className="btn btn-dark btn-sm" autoFocus onClick={() => dialogRef.current.close()}>Fermer</button>
+        </div>
+        {summary && (summary.total ? (
+          <>
+            <p className="league-brand-summary">{summary.total} voiture{summary.total !== 1 ? 's' : ''} · {summary.rows.length} marque{summary.rows.length !== 1 ? 's' : ''}</p>
+            <ul className="league-brand-list">
+              {summary.rows.map(({ key, label, count }) => <li key={key}><span>{label}</span><strong className="league-brand-count">{count}</strong></li>)}
+              {summary.missing > 0 && <li><span>Marque non renseignée</span><strong className="league-brand-count">{summary.missing}</strong></li>}
+            </ul>
+          </>
+        ) : <p className="league-brand-summary" style={{ paddingBottom:14 }}>Aucune voiture inscrite.</p>)}
+      </dialog>
+    </>
   );
 }
 
@@ -8401,6 +8499,21 @@ function AppInner() {
   function getGroupCars(l, g) { return getLeague(l)?.cars?.filter(c => c.group === g) || []; }
   function getGroupMatches(l, g) { return getLeague(l)?.groupResults?.[g] || []; }
   function getGroupStandings(l, g) { return computeStandings(getGroupCars(l, g), getGroupMatches(l, g)); }
+
+  function leagueBrandButton(leagueName, group) {
+    return <LeagueBrandButton key={JSON.stringify([currentSeason.season, leagueName, group])}
+      season={currentSeason.season} leagueName={leagueName} group={group}
+      cars={currentSeason.leagues[leagueName]?.cars || []} brands={db.brands} />;
+  }
+
+  function renderAuxLeagueHeading(leagueName) {
+    return (
+      <div className="league-brand-title-row">
+        <h2 className="section-title">{leagueName}</h2>
+        {leagueBrandButton(leagueName)}
+      </div>
+    );
+  }
 
   function getHistLeague(leagueName) {
     const overrides = db.histOverrides?.[leagueName] || {};
@@ -12144,7 +12257,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Successeurs</div>
+        {renderAuxLeagueHeading(leagueName)}
 
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
@@ -12642,7 +12755,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Successeurs aux Successeurs</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -12889,7 +13002,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Remplaçants des Successeurs</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -13130,7 +13243,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Avant-dernière chance</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -13346,7 +13459,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Dernière chance</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -13562,7 +13675,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Persévérance</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -13778,7 +13891,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Détermination</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -13994,7 +14107,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Acharnement</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -14210,7 +14323,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Obstination</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -14426,7 +14539,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Insistance</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -14642,7 +14755,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Comeback</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -14861,7 +14974,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Importation</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -15017,7 +15130,7 @@ function AppInner() {
     const [openDay, setOpenDay] = [oublOpenDay, setOublOpenDay];
     const leagueName = 'Oubliettes';
     const league = currentSeason.leagues[leagueName];
-    if (!league) return <div className="card" style={{ padding:24,textAlign:'center',color:'var(--text-dim)' }}>Ligue non initialisée pour cette saison.</div>;
+    if (!league) return <>{renderAuxLeagueHeading(leagueName)}<div className="card" style={{ padding:24,textAlign:'center',color:'var(--text-dim)' }}>Ligue non initialisée pour cette saison.</div></>;
     const cars = league?.cars || [];
     const playedMatches = league?.matches || [];
     const [search, setSearch] = useState('');
@@ -15081,7 +15194,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">Oubliettes</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -15288,7 +15401,7 @@ function AppInner() {
 
     return (
       <div>
-        <div className="section-title">{leagueName}</div>
+        {renderAuxLeagueHeading(leagueName)}
         <div className="tabs" style={{ background:'var(--dark3)',borderBottom:'1px solid var(--border)' }}>
           <button className={`tab ${subTab === 'classement' ? 'active' : ''}`} onClick={() => setSubTab('classement')}>📊 Classement</button>
           <button className={`tab ${subTab === 'matchs' ? 'active' : ''}`} onClick={() => setSubTab('matchs')}>⚽ Matchs ({playedCount}/{totalCount})</button>
@@ -19533,11 +19646,12 @@ function AppInner() {
           </div>
         )}
         {mainTab === 'ligues' && !liguesMenuOpen && ligueSubTab === 'principales' && !leagueMenuOpen && !sectionMenuOpen && (
-          <div style={{ display:'flex',alignItems:'center',gap:10,padding:'8px 24px',background:'#0d0d0d',borderTop:'1px solid #1a1a1a' }}>
+          <div className="league-brand-context">
             <button className="btn btn-dark btn-sm" onClick={navBack}>← Retour</button>
-            <span style={{ fontFamily:"'Bebas Neue',sans-serif", fontSize:15, letterSpacing:1, color:'var(--gold)' }}>
+            <span className="league-brand-context-title">
               {leagueTab} — {sectionTab === 'groupes' ? 'Phase de Groupes' : sectionTab === 'playoffs' ? 'Playoffs' : 'Barrage Relégation'}
             </span>
+            {sectionTab === 'groupes' && leagueBrandButton(leagueTab, activeGroup)}
           </div>
         )}
 
