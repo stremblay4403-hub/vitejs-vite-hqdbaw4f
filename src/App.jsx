@@ -1391,6 +1391,15 @@ function simulateGroupProbabilities(groupCars, matches, trials = 500) {
   return result;
 }
 
+// Même ordre de priorité que pour le bonus : participants archivés, puis tableau des quarts.
+function getArchivedQuarterfinalistIds(season, leagueName, quarterfinalMatches) {
+  const participants = season.tournoiChampions?.participants;
+  const ids = Array.isArray(participants)
+    ? participants.filter(p => p?.league === leagueName).map(p => p.carId)
+    : quarterfinalMatches.flatMap(m => [m.homeId, m.awayId]);
+  return [...new Set(ids.filter(Boolean))];
+}
+
 function computeBonusPoints(season, leagueName) {
   const league = season.leagues[leagueName];
   const bonusMap = {};
@@ -2973,6 +2982,20 @@ const css = `
   .archive-result-copy .eyebrow { color:var(--gold);font:11px 'Rajdhani',sans-serif;font-weight:800;letter-spacing:2px;text-transform:uppercase; }
   .archive-result-copy h3 { margin:8px 0 4px;color:#fff;font:34px 'Bebas Neue',sans-serif;letter-spacing:1.5px; }
   .archive-result-copy p { margin:0;color:var(--text-dim);font-size:12px;line-height:1.5; }
+  .archive-quarterfinals { margin:16px 0; }
+  .archive-quarterfinals-title { margin:0;color:var(--gold);font:24px 'Bebas Neue',sans-serif;letter-spacing:1.3px; }
+  .archive-quarterfinals p { margin:3px 0 12px;color:var(--text-dim);font-size:13px; }
+  .archive-quarterfinals-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px; }
+  .archive-quarterfinal-card { padding:0;min-width:0;overflow:hidden;text-align:left;border:1px solid var(--border);border-radius:10px;background:var(--dark3);color:var(--text);font:inherit; }
+  button.archive-quarterfinal-card { cursor:pointer; }
+  button.archive-quarterfinal-card:hover,.archive-quarterfinal-card.is-champion { border-color:var(--gold-dim); }
+  button.archive-quarterfinal-card:focus-visible { outline:2px solid var(--gold);outline-offset:2px; }
+  .archive-quarterfinal-photo { display:grid;place-items:center;width:100%;aspect-ratio:16/9;object-fit:cover;background:var(--dark2);font-size:28px; }
+  .archive-quarterfinal-copy { display:grid;gap:4px;padding:9px; }
+  .archive-quarterfinal-copy strong { font:19px 'Bebas Neue',sans-serif;letter-spacing:.6px;overflow-wrap:anywhere; }
+  .archive-quarterfinal-copy small { color:var(--text-dim); }
+  .archive-quarterfinal-badge { color:var(--gold);font-size:12px;font-weight:700; }
+  @media (max-width:700px) { .archive-quarterfinals-grid { grid-template-columns:repeat(2,minmax(0,1fr));gap:8px; } }
   @keyframes seasonLaunchIn { from{opacity:0;transform:translateY(-14px)} to{opacity:1;transform:none} }
   @keyframes seasonCarMove { from{opacity:0;transform:translateX(-30px)} to{opacity:1;transform:none} }
   @media (max-width:900px) {
@@ -10243,7 +10266,9 @@ function AppInner() {
     const archivedChampionId = currentSeason.champions?.[leagueTab];
     const archivedChampion = archivedChampionId ? getCar(leagueTab, archivedChampionId) : null;
     const archivedChampionPhoto = archivedChampionId ? getCarPhoto(archivedChampionId) : null;
-    const showArchivedPlayoffResult = r1.length === 0 && currentSeason.season < latestSeasonNum && archivedChampion;
+    const isArchivedSeason = currentSeason.season < latestSeasonNum;
+    const showArchivedPlayoffResult = r1.length === 0 && isArchivedSeason && archivedChampion;
+    const quarterfinalistIds = isArchivedSeason ? getArchivedQuarterfinalistIds(currentSeason, leagueTab, qf) : [];
     const currentRound = playoffRounds.find(({ matches }) => matches.some(m => m.homeId && (m.homeGoals === null || m.homeGoals === undefined)));
     const [selectedPlayoffRound, setSelectedPlayoffRound] = useState(null);
     React.useEffect(() => { setSelectedPlayoffRound(null); }, [leagueTab, currentSeason?.season]);
@@ -10502,9 +10527,47 @@ function AppInner() {
     }
     roundSectionImplRef.current = RoundSection;
 
+    const quarterfinalistCards = isArchivedSeason && (archivedChampion || quarterfinalistIds.length > 0) && (
+      <section className="archive-quarterfinals" aria-label="Quarts-de-finalistes archivés">
+        <h2 className="archive-quarterfinals-title">Quarts-de-finalistes · Saison {currentSeason.season}</h2>
+        {quarterfinalistIds.length > 0 ? (
+          <>
+            <p>Bonus de qualification : +5 pts par voiture.{quarterfinalistIds.length < 8 && ` ${quarterfinalistIds.length} sur 8 confirmés dans l’archive.`}</p>
+            <div className="archive-quarterfinals-grid">
+              {quarterfinalistIds.map(id => ({id, car:getCar(leagueTab,id)}))
+                .sort((a,b) => Number(b.id === archivedChampionId) - Number(a.id === archivedChampionId)
+                  || (a.car?.name || '').localeCompare(b.car?.name || '', 'fr'))
+                .map(({id,car}) => {
+                  const photo = getCarPhoto(id);
+                  const brand = getCarBrand(id);
+                  const isChampion = id === archivedChampionId;
+                  const cardClass = `archive-quarterfinal-card${isChampion ? ' is-champion' : ''}`;
+                  const content = (
+                    <>
+                      {photo
+                        ? <img className="archive-quarterfinal-photo" src={photo} alt="" loading="lazy" decoding="async" />
+                        : <span className="archive-quarterfinal-photo" aria-hidden="true">🏁</span>}
+                      <span className="archive-quarterfinal-copy">
+                        <strong>{car?.name || 'Voiture non identifiée'}</strong>
+                        {brand && <small>{brand}</small>}
+                        <span className="archive-quarterfinal-badge">{isChampion ? '🏆 Champion · +5 pts de qualification' : '+5 pts de qualification'}</span>
+                      </span>
+                    </>
+                  );
+                  return car
+                    ? <button key={id} type="button" className={cardClass} onClick={() => openProfileCar({leagueName:leagueTab,carId:id})}>{content}</button>
+                    : <div key={id} className={cardClass}>{content}</div>;
+                })}
+            </div>
+          </>
+        ) : <p>La liste des bénéficiaires du bonus de qualification n’est pas disponible dans cette archive.</p>}
+      </section>
+    );
+
     return (
       <div>
         {showArchivedPlayoffResult ? (
+          <>
           <div className="archive-result-card">
             <div className="archive-result-hero">
               {archivedChampionPhoto
@@ -10519,7 +10582,10 @@ function AppInner() {
               </div>
             </div>
           </div>
+          {quarterfinalistCards}
+          </>
         ) : r1.length === 0 ? (
+          <>
           <div className="card" style={{ padding:32,textAlign:'center' }}>
             <div className="text-dim" style={{ marginBottom:8 }}>
               64 voitures qualifiées (Top 8 par groupe) seedées globalement par points
@@ -10541,6 +10607,8 @@ function AppInner() {
                 : <div style={{ color:'var(--red)',fontSize:13,marginTop:8 }}>⛔ Tous les matchs de groupes doivent être joués avant de générer les playoffs.</div>;
             })()}
           </div>
+          {quarterfinalistCards}
+          </>
         ) : (
           <div>
             <div className="sim-bar" style={{ marginBottom:12 }}>
@@ -10591,6 +10659,7 @@ function AppInner() {
                 <div className="text-dim" style={{ fontSize:12 }}>Touchez un duel pour voir ses détails et les voitures.</div>
               </div>
             </div>
+            {quarterfinalistCards}
             <StableBracketView />
           </div>
         )}
